@@ -11,6 +11,7 @@
  * The steps "eject" and "insert" make every later pack read fail or work again: an SD card
  * pulled while the app runs.
  */
+#define _POSIX_C_SOURCE 200809L /* strdup, strtok on glibc under -std=c11 */
 #include "../../app/ui/ui_app.h"
 
 #include <stdio.h>
