@@ -63,6 +63,19 @@ class AtlasTest(unittest.TestCase):
                          "Article+contents")
         self.assertEqual(atlas.last_view("== 00\n@ Map\n x"), "Map")
 
+    def test_pixels_ignore_compression(self):
+        import zlib
+        raw = b"\x00" + b"\xff" * 4
+        def png(level):
+            body = zlib.compress(raw, level)
+            ihdr = b"IHDR" + (4).to_bytes(4, "big") + (1).to_bytes(4, "big") + b"\x08\x00\x00\x00\x00"
+            chunk = lambda kind, d: len(d).to_bytes(4, "big") + kind + d + b"\0\0\0\0"
+            return (b"\x89PNG\r\n\x1a\n" + len(ihdr[4:]).to_bytes(4, "big") + ihdr + b"\0\0\0\0"
+                    + chunk(b"IDAT", body) + chunk(b"IEND", b""))
+        self.assertNotEqual(png(1), png(9))
+        self.assertEqual(atlas.pixels(png(1)), atlas.pixels(png(9)))
+        self.assertEqual(atlas.pixels(b"{}"), b"{}")
+
     def test_render_and_check(self):
         good = fake_run({"home": "Home", "menu": "Home"})
         with mock.patch.object(atlas.subprocess, "run", good):

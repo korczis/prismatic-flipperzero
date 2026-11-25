@@ -5,7 +5,9 @@
   tools/atlas.py --check   render into a temporary folder and fail unless
                            - every walk ends on the screen (and overlay) it declares,
                            - every Screen of app/ui/ui_app.c appears at least once,
-                           - docs/evidence/atlas equals the fresh render byte for byte.
+                           - docs/evidence/atlas equals the fresh render: the same files,
+                             the same manifest, the same pixels in every PNG (compared after
+                             decompression, so another zlib cannot fail the check).
 
 The simulator draws with the firmware's own u8g2 and fonts and the same app code as the FAP
 (tools/parity.sh proves the device draws identical pixels), so the atlas is what the device
@@ -19,6 +21,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import zlib
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -107,6 +110,19 @@ def render(out):
     return problems
 
 
+def pixels(data):
+    """A PNG's decompressed image data: equal pixels compare equal whatever zlib wrote them."""
+    if not data.startswith(b"\x89PNG"):
+        return data
+    at, idat = 8, b""
+    while at < len(data):
+        n = int.from_bytes(data[at:at + 4], "big")
+        if data[at + 4:at + 8] == b"IDAT":
+            idat += data[at + 8:at + 8 + n]
+        at += 12 + n
+    return data[16:24] + zlib.decompress(idat)  # width, height, then the scanlines
+
+
 def main(argv):
     subprocess.run(["tests/sim/build.sh"], cwd=ROOT, check=True, stdout=subprocess.DEVNULL)
     if argv[:1] != ["--check"]:
@@ -120,8 +136,8 @@ def main(argv):
     with tempfile.TemporaryDirectory() as tmp:
         fresh = Path(tmp) / "atlas"
         problems = render(fresh)
-        have = {p.name: p.read_bytes() for p in OUT.glob("*")} if OUT.exists() else {}
-        want = {p.name: p.read_bytes() for p in fresh.glob("*")}
+        have = {p.name: pixels(p.read_bytes()) for p in OUT.glob("*")} if OUT.exists() else {}
+        want = {p.name: pixels(p.read_bytes()) for p in fresh.glob("*")}
         for name in sorted(set(have) | set(want)):
             if have.get(name) != want.get(name):
                 problems.append(f"docs/evidence/atlas/{name} is stale: run tools/atlas.py")
