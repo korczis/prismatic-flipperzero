@@ -1,11 +1,10 @@
 {
  "date": "2026-11-25",
  "firmware": "1.5.1",
- "firmware_source": "read by tools/acceptance.sh --device on the same device earlier the same day; the CLI did not answer device_info after this walk",
  "keys": "right,down,up,ok,ok,ok,down,right,ok:long,back,ok:long,down,down,ok,up,back,back,back,back:long,down,ok,down,ok",
  "frames_identical": 24,
  "frames_different": 0,
- "fap_sha256": "4860e2d66b64812ea6505ee6919a7d47339591f318de5fab4dfe3e2d9344197f",
- "pack_sha256": "6752496025b2cdb66464417e7645013da98d79e6bcd236afc478dec3ebe3c5b9",
- "command": "tools/parity.sh (frames compared; --record step written by hand after the CLI wedge)"
+ "fap_sha256": "bf223c9b52f1b4b3a2eafd9a82c6012b785280e8a6ef561fc08694265e715639",
+ "pack_sha256": "641489c56b6748d0f7fd752bd123390b64bcf658bbdc51ef62ca59943a29f58a",
+ "command": "tools/parity.sh --record"
 }
