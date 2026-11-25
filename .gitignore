@@ -1,0 +1,12 @@
+.ai/local/
+.ai/repo/**/.tmp.*
+
+# Build outputs
+/app/dist/
+/app/.vscode/
+/bridge/target/
+/build/
+*.gcda
+*.gcno
+*.profraw
+.DS_Store
