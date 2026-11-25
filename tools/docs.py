@@ -25,6 +25,7 @@ from pathlib import Path
 ROOT = Path(os.environ.get("POCKET_ROOT") or Path(__file__).resolve().parent.parent)
 STATS = ROOT / "docs" / "data" / "pack-stats.json"
 SCREENS = ROOT / "docs" / "evidence" / "pocket" / "manifest.json"
+SIM_SCREENS = ROOT / "docs" / "evidence" / "sim" / "manifest.json"
 REGION = re.compile(r"(<!-- docs:begin (?P<name>[a-z-]+) -->\n)(?P<body>.*?)(<!-- docs:end (?P=name) -->)",
                     re.S)
 
@@ -68,19 +69,32 @@ def pack_kinds():
     return "\n".join(out) + "\n"
 
 
-def screens():
-    m = json.loads(SCREENS.read_text())
+def gallery(manifest, folder, note):
+    """A two-column table of frames from a manifest, with where they came from."""
+    m = json.loads(manifest.read_text())
     cells = []
     for shot in m["frames"]:
-        cells.append(f'<td align="center" width="50%"><img src="docs/evidence/pocket/{shot["file"]}" '
+        cells.append(f'<td align="center" width="50%"><img src="{folder}/{shot["file"]}" '
                      f'width="384" alt="{shot["caption"]}"><br><sub>{shot["caption"]}</sub></td>')
     rows = ["<table>"]
     for i in range(0, len(cells), 2):
         rows.append("  <tr>" + "".join(cells[i:i + 2]) + "</tr>")
     rows.append("</table>")
     rows.append("")
-    rows.append(f"Captured {m['captured']} on firmware {m['firmware']} with `{m['command']}`.")
+    rows.append(note.format(**m))
     return "\n".join(rows) + "\n"
+
+
+def screens():
+    return gallery(SCREENS, "docs/evidence/pocket",
+                   "Captured {captured} on firmware {firmware} with `{command}`.")
+
+
+def sim_screens():
+    return gallery(SIM_SCREENS, "docs/evidence/sim",
+                   "Rendered {captured} by `{command}`: the real pack, the firmware's own u8g2 and "
+                   "fonts, the same app code as the FAP. `tools/parity.sh` recorded the device "
+                   "drawing identical frames ([evidence](docs/evidence/parity/manifest.json)).")
 
 
 def timeline():
@@ -116,7 +130,7 @@ def ui_geometry():
     return "\n".join(rows)
 
 
-GENERATORS = {"ui-geometry": ui_geometry, "pack-stats": pack_stats, "pack-kinds": pack_kinds, "screens": screens,
+GENERATORS = {"sim-screens": sim_screens, "ui-geometry": ui_geometry, "pack-stats": pack_stats, "pack-kinds": pack_kinds, "screens": screens,
               "timeline": timeline}
 
 

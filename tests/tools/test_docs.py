@@ -46,7 +46,13 @@ class DocsTest(unittest.TestCase):
         subprocess.run(["git", "-C", str(root), "-c", "user.email=t@t", "-c", "user.name=t",
                         "commit", "-q", "--allow-empty", "-m", "first | with bar"], check=True)
         self.root = root
+        (root / "docs" / "evidence" / "sim").mkdir(parents=True)
+        (root / "docs" / "evidence" / "sim" / "manifest.json").write_text(json.dumps({
+            "captured": "2026-11-25", "firmware": "simulator", "command": "s",
+            "frames": [{"file": "s.png", "caption": "S"}]}))
         self.patches = [mock.patch.object(docs, "ROOT", root),
+                        mock.patch.object(docs, "SIM_SCREENS",
+                                          root / "docs/evidence/sim/manifest.json"),
                         mock.patch.object(docs, "STATS", root / "docs/data/pack-stats.json"),
                         mock.patch.object(docs, "SCREENS",
                                           root / "docs/evidence/pocket/manifest.json")]
@@ -74,6 +80,9 @@ class DocsTest(unittest.TestCase):
         gallery = docs.screens()
         self.assertEqual(gallery.count("<tr>"), 2)  # three frames, two per row
         self.assertIn("firmware 1.5.1", gallery)
+        sim = docs.sim_screens()
+        self.assertIn("docs/evidence/sim/s.png", sim)
+        self.assertIn("Rendered 2026-11-25 by `s`", sim)
         self.assertIn("first | with bar", docs.timeline())
         self.assertEqual(docs.fmt(1234567), "1 234 567")
         geometry = docs.ui_geometry()  # the real engine source

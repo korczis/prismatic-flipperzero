@@ -1,10 +1,10 @@
 {
  "date": "2026-11-25",
  "firmware": "1.5.1",
- "keys": "down,ok,ok,down,down,down,right,right,down,back,back,up",
- "frames_identical": 13,
+ "keys": "down,ok,ok,down,right,ok:long,down,down,ok,up,back,right,back,back,ok,ok",
+ "frames_identical": 17,
  "frames_different": 0,
- "fap_sha256": "fa0f3fe01dcc18f608aa52b758f21213d3813adc893b91a1691d618f9dba486e",
+ "fap_sha256": "31a8728e5ad1bdc989b2d7e9515882a5a40624fc78e1f614f4ddde5ce9f8657e",
  "pack_sha256": "6752496025b2cdb66464417e7645013da98d79e6bcd236afc478dec3ebe3c5b9",
  "command": "tools/parity.sh --record"
 }

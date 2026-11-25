@@ -1,0 +1,71 @@
+{
+ "captured": "2026-11-25",
+ "firmware": "simulator (u8g2 of 1.5.1)",
+ "command": "tools/sim-gallery.sh",
+ "frames": [
+  {
+   "file": "01-home.png",
+   "caption": "Home: icons, counts and a bar for each share of the pack"
+  },
+  {
+   "file": "02-browse.png",
+   "caption": "Browse: the book's chapters, sized by a square-root bar"
+  },
+  {
+   "file": "03-article.png",
+   "caption": "An article: bold title, the kind in a pill, its code"
+  },
+  {
+   "file": "04-chips.png",
+   "caption": "One Down reaches the action chips: detector, quiz, map"
+  },
+  {
+   "file": "05-section.png",
+   "caption": "Right jumps a section; heading and icon move into the header"
+  },
+  {
+   "file": "06-menu.png",
+   "caption": "Hold OK: the page's actions over a stippled page"
+  },
+  {
+   "file": "07-contents.png",
+   "caption": "Contents: every section; OK jumps there"
+  },
+  {
+   "file": "08-map.png",
+   "caption": "Map of links: confusables dotted, four neighbours at a time"
+  },
+  {
+   "file": "09-map-focus.png",
+   "caption": "A focused neighbour's full name in the header; OK walks there"
+  },
+  {
+   "file": "10-detector.png",
+   "caption": "Detector: progress cells, one marker at a time, No / ? / Yes"
+  },
+  {
+   "file": "11-result.png",
+   "caption": "Result: your marks as a number and a bar, never a score"
+  },
+  {
+   "file": "12-quiz.png",
+   "caption": "Quiz: which term is this? The name is masked"
+  },
+  {
+   "file": "13-options.png",
+   "caption": "Distractors are the objects the page calls confusable"
+  },
+  {
+   "file": "14-answer.png",
+   "caption": "The answer, the definition, a link to the article"
+  },
+  {
+   "file": "15-trainer.png",
+   "caption": "Trainer: manipulative or benign? A catalogue example"
+  },
+  {
+   "file": "16-trainer-answer.png",
+   "caption": "Why, and a good response, from the catalogue"
+  }
+ ]
+}

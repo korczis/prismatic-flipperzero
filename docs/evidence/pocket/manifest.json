@@ -5,63 +5,83 @@
  "frames": [
   {
    "file": "01-home.png",
-   "caption": "Home: every count is derived from the pack on the SD card"
+   "caption": "Home: icons, counts and a bar for each share of the pack"
   },
   {
-   "file": "02-detectors.png",
-   "caption": "Detectors: objects whose page lists observable markers"
+   "file": "02-browse.png",
+   "caption": "Browse: the book's chapters, sized by a square-root bar"
   },
   {
-   "file": "04-article-link.png",
-   "caption": "Right jumps to the next link; OK opens it"
+   "file": "03-list.png",
+   "caption": "A list: position in the header, pages of forty"
   },
   {
-   "file": "05-detector.png",
-   "caption": "Detector: one marker at a time, No / ? / Yes, hold OK for n/a"
+   "file": "04-article.png",
+   "caption": "An article: bold title, the kind in a pill, its code"
   },
   {
-   "file": "06-result.png",
-   "caption": "Result: your own marks back, never a score"
+   "file": "05-chips.png",
+   "caption": "One Down reaches the action chips: detector, map"
   },
   {
-   "file": "07-result-steps.png",
-   "caption": "Then what to rule out first and the next steps"
+   "file": "06-section.png",
+   "caption": "A section: its heading and icon move into the header"
   },
   {
-   "file": "08-quiz-term.png",
-   "caption": "Quiz: which term is this? The name is masked in the definition"
+   "file": "07-menu.png",
+   "caption": "Hold OK: the page's actions over a stippled page"
   },
   {
-   "file": "09-quiz-options.png",
-   "caption": "Distractors come from the objects the page calls confusable"
+   "file": "08-contents.png",
+   "caption": "Contents: every section; OK jumps there"
   },
   {
-   "file": "10-quiz-result.png",
-   "caption": "The answer, with the full definition and a link to the article"
+   "file": "09-map.png",
+   "caption": "Map of links: confusables dotted, four neighbours at a time"
   },
   {
-   "file": "11-trainer.png",
-   "caption": "Trainer: manipulative or benign? A catalogue example in context"
+   "file": "10-map-focus.png",
+   "caption": "A focused neighbour's full name in the header; OK walks there"
   },
   {
-   "file": "12-trainer-result.png",
+   "file": "11-detector.png",
+   "caption": "Detector: progress cells, one marker at a time, No / ? / Yes"
+  },
+  {
+   "file": "12-result.png",
+   "caption": "Result: your marks as a number and a bar, never a score"
+  },
+  {
+   "file": "13-result-legend.png",
+   "caption": "The bar's legend, then what to rule out and the next steps"
+  },
+  {
+   "file": "14-quiz.png",
+   "caption": "Quiz: which term is this? The name is masked"
+  },
+  {
+   "file": "15-options.png",
+   "caption": "Distractors are the objects the page calls confusable"
+  },
+  {
+   "file": "16-answer.png",
+   "caption": "The answer, the definition, a link to the article"
+  },
+  {
+   "file": "17-trainer.png",
+   "caption": "Trainer: manipulative or benign? A catalogue example"
+  },
+  {
+   "file": "18-trainer-answer.png",
    "caption": "Why, and a good response, from the catalogue"
   },
   {
-   "file": "13-categories.png",
-   "caption": "Browse: the Kompendium's own chapters and collections"
+   "file": "19-objects.png",
+   "caption": "A category; Back returns to the same row"
   },
   {
-   "file": "14-objects.png",
-   "caption": "A category, paged; Back returns to the same row"
-  },
-  {
-   "file": "15-info.png",
-   "caption": "Pack and device info: source commit, contents"
-  },
-  {
-   "file": "16-info-measured.png",
-   "caption": "Provenance: the source repository and the pinned commit"
+   "file": "20-info.png",
+   "caption": "Pack and device: source, contents, measured open and scan times"
   }
  ]
 }
