@@ -300,6 +300,17 @@ class ExtractTest(Fixture):
             self.assertNotIn("links", o)
         pocket.validate(ir)
 
+    def test_extract_adds_the_applications(self):
+        apps = Path(self.tmp.name) / pocket.APPLICATIONS
+        apps.parent.mkdir(parents=True)
+        apps.write_text(
+            '[[application]]\nid = "applications/t"\ntitle = "T"\ndefinition = "D"\n'
+            'provenance = { repository = "r", commit = "c", path = "p" }\n'
+            '[[application.axis]]\nname = "S"\nlevels = [["A", "a", ""], ["B", "b", ""]]\n')
+        ir, report = pocket.extract(self.src)
+        self.assertEqual(report["applications"], 1)
+        self.assertIn("applications/t", {o["id"] for o in ir["objects"]})
+
     def test_markdown_helpers(self):
         self.assertEqual(pocket.plain("**a** [b](x) `c` *d*"), "a b c d")
         self.assertEqual(pocket.items_of("Jen odstavec.\n\nDruhý."), ["Jen odstavec.", "Druhý."])
@@ -456,6 +467,45 @@ class PackTest(unittest.TestCase):
             self.assertIn(part, msg)
         with self.assertRaisesRegex(pocket.PocketError, "no objects"):
             pocket.validate({"schema": pocket.SCHEMA, "objects": []})
+
+    def test_assessments(self):
+        """A rubric becomes axis and level items and the assess capability, never a quiz."""
+        ir = tiny_ir(5)
+        o = ir["objects"][0]
+        o["rubric"] = [{"name": "Reliability", "levels": [["A", "Sure", "very"], ["B", "Less", ""]]}]
+        dump = pocket.decode(pocket.encode(ir))
+        at, got = next((i, x) for i, x in enumerate(dump["objects"]) if x["id"] == "x/0")
+        self.assertIn("assess", got["caps"])
+        self.assertFalse([q for q in dump["quiz"]  # its trainer example stays; no term question
+                          if q["kind"] == 1 and q["options"][q["answer"]] == at])
+        types = [it["type"] for it in got["items"]]
+        self.assertIn(pocket.ITEM_TYPES["axis"], types)
+        self.assertIn({"type": pocket.ITEM_TYPES["level"], "text": "A|Sure|very"}, got["items"])
+        for bad in ([{"name": "", "levels": [["A", "a", ""], ["B", "b", ""]]}],
+                    [{"name": "S", "levels": [["A", "a", ""]]}],
+                    [{"name": "S", "levels": [["A", "a|b", ""], ["B", "b", ""]]}],
+                    [{"name": "S", "levels": [["A", "a"], ["B", "b", ""]]}]):
+            o["rubric"] = bad
+            with self.assertRaisesRegex(pocket.PocketError, "a scale needs"):
+                pocket.validate(ir)
+
+    def test_applications_file(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "apps.toml"
+            self.assertEqual(pocket.load_applications(path), [])  # no file, no applications
+            path.write_text(
+                '[[application]]\nid = "applications/t"\ntitle = "T"\ndefinition = "D"\n'
+                'provenance = { repository = "r", commit = "c", path = "p" }\n'
+                '[[application.axis]]\nname = "S"\nlevels = [["A", "a", ""], ["B", "b", "x"]]\n')
+            (o,) = pocket.load_applications(path)
+            self.assertEqual(o["kind"], "protocol")
+            self.assertEqual(o["category"], pocket.APPLICATIONS_CATEGORY)
+            self.assertEqual(o["rubric"][0]["levels"][1], ["B", "b", "x"])
+            self.assertNotIn("links", o)
+        # the repository's own file: every application validates
+        apps = pocket.load_applications(pocket.ROOT / pocket.APPLICATIONS)
+        self.assertTrue(apps)
+        pocket.validate({"schema": pocket.SCHEMA, "objects": apps})
 
     def test_too_many_objects(self):
         ir = tiny_ir(1)

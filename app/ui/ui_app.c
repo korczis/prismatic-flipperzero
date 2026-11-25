@@ -27,6 +27,10 @@
 #define T_OF_KIND   (11u << 24) /* argument: object kind */
 #define T_PICK      (12u << 24) /* argument: object whose look-alikes to list */
 #define T_COMPARE   (13u << 24) /* argument: the look-alike to compare the frame's object with */
+#define T_ASSESS    (14u << 24) /* start the frame object's assessment */
+#define T_GRADE     (15u << 24) /* argument: the grade chosen on the current scale */
+#define MAX_AXES    4u
+#define MAX_LEVELS  16u
 #define KIND_CAP    32u
 #define T_KIND(t)   ((t) & 0xFF000000u)
 #define T_ARG(t)    ((t) & 0x00FFFFFFu)
@@ -50,7 +54,9 @@
     X(Hub)          \
     X(Kinds)        \
     X(Forget)       \
-    X(Compare)
+    X(Compare)      \
+    X(Assess)       \
+    X(AssessResult)
 
 typedef enum {
 #define SCREEN_ENUM(name) Scr##name,
@@ -74,6 +80,7 @@ enum {
     HomeRandom,
     HomeRandomDetect,
     HomeReview,
+    HomeAssess,
     HomeForget,
     HomeForgetNow,
     HomeHub, /* HomeHub + n: hub n of the hubs table */
@@ -100,7 +107,7 @@ struct UiApp {
     PkpStatus pack_status;
     uint32_t open_ms;
     uint32_t scan_ms;
-    uint16_t cap_count[5];
+    uint16_t cap_count[6];
     uint32_t quiz_kind_count[3];
     uint16_t kind_count[KIND_CAP];
 
@@ -115,6 +122,12 @@ struct UiApp {
     uint16_t cand_obj[2];
     uint32_t cand_first[2];
     uint16_t cand_count[2];
+    /* an assessment: its scales (the item of each scale's name, how many grades follow) and
+     * the grade chosen on each */
+    uint8_t axes;
+    uint32_t axis_item[MAX_AXES];
+    uint8_t axis_levels[MAX_AXES];
+    uint8_t grade[MAX_AXES];
 
     PkpQuiz quiz;
     uint16_t quiz_asked; /* this session's answers, shown in the quiz header */
@@ -266,6 +279,7 @@ static uint32_t entry_count(UiApp* app, uint32_t entry) {
         [HomeRandom] = total,
         [HomeRandomDetect] = app->cap_count[cap_index(PKP_CAP_DETECT)],
         [HomeReview] = progress_due_count(&app->progress),
+        [HomeAssess] = app->cap_count[cap_index(PKP_CAP_ASSESS)],
     };
     return entry < sizeof(counts) / sizeof(counts[0]) ? counts[entry] : 0;
 }
@@ -316,7 +330,13 @@ static const Hub hubs[] = {
      HomeApply,
      "%lu with steps to take",
      {{UiIconApply, HomeApply, "What to do", "%lu", "Objects with steps", ShareObjects},
-      {UiIconCompare, HomeCompare, "Confusables", "%lu", "Pairs to tell apart", ShareObjects}}},
+      {UiIconCompare, HomeCompare, "Confusables", "%lu", "Pairs to tell apart", ShareObjects},
+      {UiIconCorrect,
+       HomeAssess,
+       "Assess",
+       "%lu",
+       "Grade a source, a claim, a finding",
+       ShareNone}}},
     {UiIconQuiz,
      "Train",
      HomeQuizTerm,
@@ -468,7 +488,7 @@ static void render_objects(UiApp* app) {
 static void render_filter(UiApp* app) {
     Frame* f = top(app);
     static const char* const names[] = {
-        "Everything", "Detectors", "What to do", "Quiz", "Confusables"};
+        "Everything", "Detectors", "What to do", "Quiz", "Confusables", "Assess"};
     char kind[24];
     bool by_kind = f->filter == 0;
     if(by_kind) pkp_kind_name(app->pack, (uint8_t)f->cat, kind, sizeof(kind));
@@ -521,12 +541,110 @@ static uint32_t look_alikes(UiApp* app, const PkpObject* o, Page* page) {
     return n;
 }
 
+/* A grade's text "code|label|meaning", split in place. */
+static void split_level(char* text, const char** code, const char** label, const char** meaning) {
+    *code = text;
+    *label = *meaning = "";
+    char* tab = strchr(text, '|');
+    if(!tab) return;
+    *tab = '\0';
+    *label = tab + 1;
+    tab = strchr(tab + 1, '|');
+    if(!tab) return;
+    *tab = '\0';
+    *meaning = tab + 1;
+}
+
+/* An assessment's scales in an article: each scale a heading, its grades bullets. */
+static void add_scales(UiApp* app, const PkpObject* o) {
+    char line[160];
+    for(uint32_t k = 0; k < o->items_count; k++) {
+        PkpItem it;
+        if(pkp_item(app->pack, o->items_first + k, &it) != PKP_OK) continue;
+        if(it.type == PKP_ITEM_AXIS)
+            page_add_icon(app->page, PageHeading, UiIconCorrect, str(app, it.text), 0);
+        if(it.type != PKP_ITEM_LEVEL) continue;
+        const char *code, *label, *meaning;
+        split_level((char*)str(app, it.text), &code, &label, &meaning);
+        snprintf(line, sizeof(line), "%s  %s%s%s", code, label, *meaning ? ": " : "", meaning);
+        page_add(app->page, PageBullet, line, 0);
+    }
+}
+
 /* Pick the look-alike to run side by side with the object. */
 static void render_compare(UiApp* app) {
     PkpObject o;
     page_reset(app->page, "Compare with");
     page_set_title_icon(app->page, UiIconCompare);
     if(pkp_object(app->pack, top(app)->obj, &o) == PKP_OK) look_alikes(app, &o, app->page);
+    restore(app);
+}
+
+/* One scale of an assessment: its grades as rows, the focused grade's meaning in the status
+ * line; OK chooses it and moves to the next scale. */
+static void render_assess(UiApp* app) {
+    Frame* f = top(app);
+    char pos[16], row[96]; /* pos: two counts, "4294967295/255" */
+    PkpItem it;
+    if(app->axes == 0 || pkp_item(app->pack, app->axis_item[f->aux], &it) != PKP_OK) {
+        page_reset(app->page, "Assess");
+        page_add(app->page, PageNote, "This assessment could not be read.", 0);
+        restore(app);
+        return;
+    }
+    page_reset(app->page, str(app, it.text));
+    page_set_title_icon(app->page, UiIconCorrect);
+    snprintf(pos, sizeof(pos), "%lu/%u", (unsigned long)f->aux + 1, app->axes);
+    page_set_position(app->page, pos);
+    for(uint8_t l = 0; l < app->axis_levels[f->aux]; l++) {
+        if(pkp_item(app->pack, app->axis_item[f->aux] + 1 + l, &it) != PKP_OK) continue;
+        const char *code, *label, *meaning;
+        split_level((char*)str(app, it.text), &code, &label, &meaning);
+        snprintf(row, sizeof(row), "%s  %s", code, label);
+        page_add_row(app->page, 0, row, NULL, T_GRADE | l);
+        if(*meaning) page_set_hint(app->page, meaning);
+    }
+    restore(app);
+}
+
+/* The grade: the chosen codes together, then each scale's grade and what it means, then the
+ * object's guidance and grading rules. */
+static void render_assess_result(UiApp* app) {
+    Frame* f = top(app);
+    PkpObject o;
+    char big[48], line[160];
+    page_reset(app->page, "Your grade");
+    page_set_title_icon(app->page, UiIconCorrect);
+    if(pkp_object(app->pack, f->obj, &o) != PKP_OK) {
+        page_add(app->page, PageNote, "This assessment could not be read.", 0);
+        return;
+    }
+    size_t at = 0;
+    for(uint8_t a = 0; a < app->axes; a++) {
+        PkpItem it;
+        if(pkp_item(app->pack, app->axis_item[a] + 1 + app->grade[a], &it) != PKP_OK) continue;
+        const char *code, *label, *meaning;
+        split_level((char*)str(app, it.text), &code, &label, &meaning);
+        at += (size_t)snprintf(big + at, sizeof(big) - at, "%s", code);
+        if(at >= sizeof(big)) at = sizeof(big) - 1;
+    }
+    snprintf(big + at, sizeof(big) - at, " %s", o.code.len ? str(app, o.code) : "");
+    page_add(app->page, PageBig, big, 0);
+    for(uint8_t a = 0; a < app->axes; a++) {
+        PkpItem it;
+        if(pkp_item(app->pack, app->axis_item[a], &it) != PKP_OK) continue;
+        page_add(app->page, PageHeading, str(app, it.text), 0);
+        if(pkp_item(app->pack, app->axis_item[a] + 1 + app->grade[a], &it) != PKP_OK) continue;
+        const char *code, *label, *meaning;
+        split_level((char*)str(app, it.text), &code, &label, &meaning);
+        snprintf(line, sizeof(line), "%s  %s", code, label);
+        page_add(app->page, PageParagraph, line, 0);
+        if(*meaning) page_add(app->page, PageNote, meaning, 0);
+    }
+    section(app, &o, PKP_ITEM_ACTION, "What to do with it");
+    section(app, &o, PKP_ITEM_VALIDATION, "How to grade");
+    page_add(app->page, PageLink, "Assess again", T_ASSESS);
+    page_add(app->page, PageLink, str(app, o.title), T_OBJECT | f->obj);
     restore(app);
 }
 
@@ -552,6 +670,8 @@ static void render_article(UiApp* app) {
         snprintf(line, sizeof(line), "%lu", (unsigned long)markers);
         page_add_icon(app->page, PageChip, UiIconDetect, line, T_DETECT);
     }
+    if(o.caps & PKP_CAP_ASSESS)
+        page_add_icon(app->page, PageChip, UiIconCorrect, "Assess", T_ASSESS);
     if(o.caps & PKP_CAP_QUIZ) page_add_icon(app->page, PageChip, UiIconQuiz, "Quiz", T_QUIZ);
     if(o.rel_count) {
         snprintf(line, sizeof(line), "%u", o.rel_count);
@@ -560,6 +680,7 @@ static void render_article(UiApp* app) {
     page_add(app->page, PageParagraph, str(app, o.definition), 0);
 
     section(app, &o, PKP_ITEM_INDICATOR, "How to recognise it");
+    add_scales(app, &o);
     section(app, &o, PKP_ITEM_ACTION, "What to do");
     section(app, &o, PKP_ITEM_ESCALATION, "When to escalate");
     uint8_t confused = relation_type(app, "confused_with");
@@ -597,6 +718,7 @@ static void render_article(UiApp* app) {
     }
     page_add(app->page, PageNote, "Markers describe; they never prove.", 0);
     if(markers) page_add_menu(app->page, "Run the detector", T_DETECT);
+    if(o.caps & PKP_CAP_ASSESS) page_add_menu(app->page, "Assess", T_ASSESS);
     if(markers && look_alikes(app, &o, NULL))
         page_add_menu(app->page, "Compare with a look-alike", T_PICK | f->obj);
     if(o.caps & PKP_CAP_QUIZ) page_add_menu(app->page, "Take the quiz", T_QUIZ);
@@ -1048,6 +1170,12 @@ static void render(UiApp* app) {
     case ScrCompare:
         render_compare(app);
         break;
+    case ScrAssess:
+        render_assess(app);
+        break;
+    case ScrAssessResult:
+        render_assess_result(app);
+        break;
     default:
         render_about(app);
         break;
@@ -1081,6 +1209,26 @@ static void start_detect(UiApp* app, uint16_t obj, int16_t other) {
     add_candidate(app, obj);
     if(other >= 0) add_candidate(app, (uint16_t)other);
     push(app, (Frame){.screen = ScrDetect, .obj = obj});
+}
+
+/* An assessment's scales: each axis item and the grades right after it (bounded). */
+static void start_assess(UiApp* app, uint16_t obj) {
+    PkpObject o;
+    app->axes = 0;
+    if(pkp_object(app->pack, obj, &o) != PKP_OK) o.items_count = 0;
+    for(uint32_t k = 0; k < o.items_count; k++) {
+        PkpItem it;
+        if(pkp_item(app->pack, o.items_first + k, &it) != PKP_OK) break;
+        if(it.type == PKP_ITEM_AXIS && app->axes < MAX_AXES) {
+            app->axis_item[app->axes] = o.items_first + k;
+            app->axis_levels[app->axes++] = 0;
+        } else if(
+            it.type == PKP_ITEM_LEVEL && app->axes &&
+            app->axis_levels[app->axes - 1] < MAX_LEVELS) {
+            app->axis_levels[app->axes - 1]++;
+        }
+    }
+    push(app, (Frame){.screen = ScrAssess, .obj = obj, .aux = 0});
 }
 
 /* q < 0 (no readable question) opens the quiz screen anyway, which says it could not read one. */
@@ -1125,6 +1273,7 @@ static void home(UiApp* app, uint32_t entry) {
         [HomeCompare] = PKP_CAP_COMPARE,
         [HomeAll] = PKP_CAP_BROWSE,
         [HomeQuizzable] = PKP_CAP_QUIZ,
+        [HomeAssess] = PKP_CAP_ASSESS,
     };
     switch(entry) {
     case HomeTop:
@@ -1144,6 +1293,7 @@ static void home(UiApp* app, uint32_t entry) {
     case HomeCompare:
     case HomeAll:
     case HomeQuizzable:
+    case HomeAssess:
         push(app, (Frame){.screen = ScrFilter, .filter = filters[entry]});
         break;
     case HomeInfo:
@@ -1210,6 +1360,17 @@ static void open_target(UiApp* app, uint32_t target, bool long_press) {
         break;
     case T_COMPARE:
         start_detect(app, f->obj, (int16_t)T_ARG(target));
+        break;
+    case T_ASSESS:
+        if(f->screen == ScrAssessResult) app->depth -= (uint8_t)(app->axes + 1); /* again */
+        start_assess(app, top(app)->obj);
+        break;
+    case T_GRADE:
+        app->grade[f->aux] = (uint8_t)T_ARG(target);
+        if(f->aux + 1 < app->axes)
+            push(app, (Frame){.screen = ScrAssess, .obj = f->obj, .aux = f->aux + 1});
+        else
+            push(app, (Frame){.screen = ScrAssessResult, .obj = f->obj});
         break;
     case T_QUIZ:
         start_quiz(app, quiz_for(app, f->obj), f->obj);
@@ -1307,7 +1468,7 @@ void ui_app_set_pack(UiApp* app, PkpReader* pack, PkpStatus status, uint32_t ope
         for(uint32_t i = 0; i < pkp_count(pack, PKP_SEC_OBJECTS); i++) {
             PkpObject o;
             if(pkp_object(pack, i, &o) != PKP_OK) continue;
-            for(uint8_t bit = 1; bit <= PKP_CAP_COMPARE; bit <<= 1) {
+            for(uint8_t bit = 1; bit <= PKP_CAP_ASSESS; bit <<= 1) {
                 if(o.caps & bit) app->cap_count[cap_index(bit)]++;
             }
             if(o.kind < KIND_CAP) app->kind_count[o.kind]++;

@@ -28,6 +28,7 @@ flowchart LR
   home --> h2["Act"]
   h2 --> h2e0["What to do<br/><small>Objects with steps</small>"]
   h2 --> h2e1["Confusables<br/><small>Pairs to tell apart</small>"]
+  h2 --> h2e2["Assess<br/><small>Grade a source, a claim, a finding</small>"]
   home --> h3["Train"]
   h3 --> h3e0["Which term?<br/><small>Pick the term of four</small>"]
   h3 --> h3e1["Manipulative?<br/><small>Manipulative or benign</small>"]
@@ -68,6 +69,16 @@ An article whose look-alikes (its *Don't confuse with* links) have markers of th
 markers in a row, the header naming whose marker is on screen, and the result shows each
 object's marks as a count and a bar, with a link to each article. It never ranks the two or says
 which one "it is": two sets of the reader's own marks, side by side, are what the screen shows.
+
+### Applications: assessments one scale at a time
+
+Objects with the capability `assess` (Act > Assess) are tools for grading: the Admiralty code
+(source A-F, claim 1-6), the due-diligence evidence level (0-9) and the OSINT confidence levels,
+from `knowledge/applications.toml`. **Assess** (a chip and a menu entry) asks one scale per
+screen: its grades are rows, and the status line shows what the focused grade means. The result
+puts the chosen codes together ("B2"), then each scale's grade with its meaning, then what to do
+with the grade and how to grade. The device never computes a grade; the reader chooses, the
+screen records and explains. A new scale is data, not code.
 
 ## Typography
 

@@ -69,6 +69,14 @@ def ir():
     objects.append(obj("pair", "Pair with the full object", "C compare",
                        indicators=["pair marker one", "pair marker two"], definition="Short.",
                        relations=[{"type": "confused_with", "target": "full"}]))
+    # an assessment: two scales, a grade with a meaning and one without, guidance and rules
+    objects.append(obj("rate", "Rate a source", "D assess", kind="protocol", code="R",
+                       definition="Short.", actions=["use the grade"], validation=["grade fairly"],
+                       rubric=[{"name": "Axis one", "levels": [["A", "Alpha", "first meaning"],
+                                                               ["B", "Beta", ""]]},
+                               {"name": "Axis two", "levels": [["1", "One", ""],
+                                                               ["2", "Two", "second"],
+                                                               ["3", "Three", ""]]}]))
     return {"schema": pocket.SCHEMA,
             "pack": {"id": "ui", "title": "UI test pack", "version": "1",
                      "source_repository": "r", "source_commit": "c"},

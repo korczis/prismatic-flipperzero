@@ -19,7 +19,9 @@
   "Hub",
   "Kinds",
   "Forget",
-  "Compare"
+  "Compare",
+  "Assess",
+  "AssessResult"
  ],
  "frames": [
   {
@@ -232,7 +234,7 @@
   {
    "name": "compare-pick",
    "pack": "ui",
-   "keys": "ok,ok,up,ok,ok,ok:long,down,down,ok",
+   "keys": "ok,ok,up,up,ok,ok,ok:long,down,down,ok",
    "view": "Compare",
    "caption": "Compare with a look-alike: only those with markers of their own",
    "file": "24-compare-pick.png",
@@ -241,11 +243,29 @@
   {
    "name": "compare-result",
    "pack": "ui",
-   "keys": "ok,ok,up,ok,ok,ok:long,down,down,ok,ok,right,right,left,right,ok:long,right",
+   "keys": "ok,ok,up,up,ok,ok,ok:long,down,down,ok,ok,right,right,left,right,ok:long,right",
    "view": "DetectResult",
    "caption": "Side by side: your marks for both, a count and a bar each, no ranking",
    "file": "25-compare-result.png",
    "screen": "DetectResult"
+  },
+  {
+   "name": "assess-scale",
+   "pack": "kompendium",
+   "keys": "down,ok,down,down,ok,ok,down,ok,down",
+   "view": "Assess",
+   "caption": "An assessment, one scale at a time: the focused grade's meaning in the status line",
+   "file": "26-assess-scale.png",
+   "screen": "Assess"
+  },
+  {
+   "name": "assess-result",
+   "pack": "kompendium",
+   "keys": "down,ok,down,down,ok,ok,down,ok,down,ok,down,ok",
+   "view": "AssessResult",
+   "caption": "The grade: the codes together, each grade's meaning, then what to do with it",
+   "file": "27-assess-result.png",
+   "screen": "AssessResult"
   },
   {
    "name": "quiz",
@@ -253,7 +273,7 @@
    "keys": "down,right,ok,ok",
    "view": "Quiz",
    "caption": "Which term? The definition with the name masked",
-   "file": "26-quiz.png",
+   "file": "28-quiz.png",
    "screen": "Quiz"
   },
   {
@@ -262,7 +282,7 @@
    "keys": "down,right,ok,ok,ok",
    "view": "QuizOptions",
    "caption": "Distractors are the objects the page calls confusable",
-   "file": "27-quiz-options.png",
+   "file": "29-quiz-options.png",
    "screen": "QuizOptions"
   },
   {
@@ -271,7 +291,7 @@
    "keys": "down,right,ok,ok,ok,ok",
    "view": "QuizResult",
    "caption": "The answer, the definition, a link to the article",
-   "file": "28-quiz-result.png",
+   "file": "30-quiz-result.png",
    "screen": "QuizResult"
   },
   {
@@ -280,7 +300,7 @@
    "keys": "down,right,ok,down,ok",
    "view": "Quiz",
    "caption": "Manipulative or benign? A catalogue example",
-   "file": "29-trainer.png",
+   "file": "31-trainer.png",
    "screen": "Quiz"
   },
   {
@@ -289,7 +309,7 @@
    "keys": "down,right,ok,down,ok,left",
    "view": "QuizResult",
    "caption": "Why, and a good response, from the catalogue",
-   "file": "30-trainer-result.png",
+   "file": "32-trainer-result.png",
    "screen": "QuizResult"
   },
   {
@@ -298,7 +318,7 @@
    "keys": "down,right,ok,ok,ok,ok,restart,restart,down,right,ok,down,down,ok,ok,ok,down,down,ok",
    "view": "Quiz",
    "caption": "Review: questions come back by their Leitner box; here nothing is due",
-   "file": "31-review-empty.png",
+   "file": "33-review-empty.png",
    "screen": "Quiz"
   },
   {
@@ -307,7 +327,7 @@
    "keys": "down,right,ok,ok,ok,ok,back:long,down,down,ok,right,right,right,right,right,down,ok",
    "view": "Forget",
    "caption": "Forgetting your progress asks first; Back keeps it",
-   "file": "32-forget.png",
+   "file": "34-forget.png",
    "screen": "Forget"
   },
   {
@@ -316,7 +336,7 @@
    "keys": "down,down,ok",
    "view": "Info",
    "caption": "Pack & device: what the pack is and where it came from",
-   "file": "33-info.png",
+   "file": "35-info.png",
    "screen": "Info"
   },
   {
@@ -325,7 +345,7 @@
    "keys": "down,down,ok,right,right,right",
    "view": "Info",
    "caption": "Measured here: open time, scan time, the read cache's hits",
-   "file": "34-info-cache.png",
+   "file": "36-info-cache.png",
    "screen": "Info"
   },
   {
@@ -334,7 +354,7 @@
    "keys": "down,down,right,ok",
    "view": "About",
    "caption": "About: what the app is and the keys",
-   "file": "35-about.png",
+   "file": "37-about.png",
    "screen": "About"
   },
   {
@@ -343,7 +363,7 @@
    "keys": "",
    "view": "Home",
    "caption": "No pack: Info and About still work and say what to do",
-   "file": "36-no-pack.png",
+   "file": "38-no-pack.png",
    "screen": "Home"
   }
  ]

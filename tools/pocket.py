@@ -56,10 +56,13 @@ KINDS = ["pattern", "technique", "signature", "fallacy", "bias", "trait", "modal
          "concept", "article"]
 ITEM_ROLES = ["indicators", "actions", "escalation", "alternatives", "validation"]
 ITEM_TYPES = {"indicators": 1, "actions": 2, "escalation": 3, "alternatives": 4,
-              "validation": 5, "heading": 6, "text": 7, "example": 8}
+              "validation": 5, "heading": 6, "text": 7, "example": 8, "axis": 9, "level": 10}
 RELATIONS = ["related_to", "contrasts_with", "confused_with", "specializes", "generalizes",
              "requires", "supports", "contradicts", "mitigated_by", "illustrated_by"]
-CAPS = {"browse": 1, "detect": 2, "apply": 4, "quiz": 8, "compare": 16}
+CAPS = {"browse": 1, "detect": 2, "apply": 4, "quiz": 8, "compare": 16, "assess": 32}
+APPLICATIONS = Path("knowledge") / "applications.toml"  # under ROOT
+WORKING_FIELDS = ("links", "confused_links", "related_terms", "catalog_id", "ea_code")
+APPLICATIONS_CATEGORY = "Applications"
 META_FIELDS = ["pack_id", "title", "version", "source_repository", "source_commit",
                "generator", "licence"]
 QUIZ_DEFINITION, QUIZ_TRAINER = 1, 2
@@ -367,7 +370,7 @@ def resolve(objects, aliases, slugs, report):
                 seen.add(target)
                 rels.append({"type": kind, "target": target})
         o["relations"] = rels[:24]
-        for k in ("links", "confused_links", "related_terms", "catalog_id", "ea_code"):
+        for k in WORKING_FIELDS:
             del o[k]
 
 
@@ -379,6 +382,26 @@ def category_titles(git, spec):
                 front, _ = split_frontmatter(git.read(path))
                 titles[str(PurePosixPath(path).parent)] = front.get("title", "")
     return titles
+
+
+def load_applications(path=None):
+    """The assessments in knowledge/applications.toml as IR objects with a `rubric`: their
+    scales and grades, with each one's own provenance (they are not pages of the book)."""
+    path = Path(path) if path else ROOT / APPLICATIONS
+    if not path.exists():
+        return []
+    data = tomllib.loads(path.read_text())
+    objects = []
+    for a in data.get("application", []):
+        o = empty_object(a["id"], "protocol", a["title"], APPLICATIONS_CATEGORY, a["provenance"])
+        o.update(code=a.get("code", ""), definition=a["definition"], actions=a.get("actions", []),
+                 validation=a.get("validation", []), validation_status="sourced_scale",
+                 rubric=[{"name": x["name"], "levels": [list(lv) for lv in x["levels"]]}
+                         for x in a["axis"]])
+        for k in WORKING_FIELDS:  # an application has no page links to resolve
+            del o[k]
+        objects.append(o)
+    return objects
 
 
 def extract(source_dir):
@@ -407,6 +430,9 @@ def extract(source_dir):
     aliases = overlay_quick_reference(objects, spec, report)
     slugs = merge_catalog(objects, git, spec, prov, report)
     resolve(objects, aliases, slugs, report)
+    for o in load_applications():
+        objects[o["id"]] = o
+    report["applications"] = sum(1 for o in objects.values() if o.get("rubric"))
     report["accepted"] = len(objects)
     ir = {"schema": SCHEMA, "pack": {**spec["pack"], "source_repository": src["repository"],
                                      "source_commit": src["commit"]},
@@ -438,6 +464,12 @@ def validate(ir):
         for ex in o.get("examples", []):
             if not ex.get("utterance") or not isinstance(ex.get("benign"), bool):
                 errors.append(f"{oid}: example needs utterance and boolean benign")
+        for axis in o.get("rubric", []):
+            levels = axis.get("levels", [])
+            if not axis.get("name") or len(levels) < 2 or any(
+                    len(lv) != 3 or not lv[0] or not lv[1] or "|" in "".join(lv)
+                    for lv in levels):
+                errors.append(f"{oid}: a scale needs a name and 2+ [code, label, meaning]")
     for o in ir.get("objects", []):
         for r in o.get("relations", []):
             if r.get("type") not in RELATIONS:
@@ -460,6 +492,8 @@ def capabilities(o, has_quiz):
         caps.append("quiz")
     if o["alternatives"] or any(r["type"] == "confused_with" for r in o["relations"]):
         caps.append("compare")
+    if o.get("rubric"):
+        caps.append("assess")
     return caps
 
 
@@ -472,7 +506,8 @@ def mask(text, title):
 
 
 def derive_quiz(objects):
-    """Definition recognition for every non-article object with a real definition, and one
+    """Definition recognition for every non-article object with a real definition (not the
+    assessments: they are tools, not terms), and one
     trainer question per catalogue example. Distractors come from the subject's own relations
     first (confusable by construction), then its category, then the pack, each in id order;
     the answer position is a deterministic function of the id, never a random seed."""
@@ -483,7 +518,7 @@ def derive_quiz(objects):
     ids = [o["id"] for o in objects]
     quiz = []
     for i, o in enumerate(objects):
-        if len(o["definition"]) >= 60 and o["kind"] != "article":
+        if len(o["definition"]) >= 60 and o["kind"] != "article" and not o.get("rubric"):
             pool = [r["target"] for r in o["relations"]] + by_cat[o["category"]] + ids
             picks, titles = [], {fold(o["title"]).lower()}
             for cand in pool:
@@ -543,6 +578,10 @@ def object_items(o):
     for role in ITEM_ROLES:
         for text in o[role]:
             yield ITEM_TYPES[role], text
+    for axis in o.get("rubric", []):
+        yield ITEM_TYPES["axis"], axis["name"]
+        for code, label, meaning in axis["levels"]:
+            yield ITEM_TYPES["level"], f"{code}|{label}|{meaning}"
     for ch in o["chapters"]:
         yield ITEM_TYPES["heading"], ch["heading"]
         for piece in chunks(ch["text"]):

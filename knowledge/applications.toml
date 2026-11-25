@@ -1,0 +1,103 @@
+# Applications: assessments the device walks through one scale at a time (capability "assess").
+# Each is a knowledge object whose `axis` tables are its scales; a scale's `level` tables are
+# its grades, top to bottom, as [code, label, meaning]; a meaning is empty where the source
+# gives none. The device asks one scale at a time and shows the grade with what
+# it means, then the object's `actions` (what to do with the grade) and `validation` (the rules
+# of grading). Every level here is copied from its source, which `provenance` names; nothing is
+# invented, and no grade is computed for you: you choose, the device records and explains.
+#
+# Publication: the owner asked on 2026-11-25 to add "ruzne aplikace (rozumej hodnoceni,
+# prismatic veci, etc)" to this public project; see knowledge/LICENSE.md.
+
+[[application]]
+id = "applications/admiralty-code"
+title = "Admiralty code: grade a source and a claim"
+code = "NATO"
+definition = "The NATO Admiralty System grades a report twice: how reliable its source is (A to F) and how credible this piece of information is (1 to 6). The two combine into a code like B2. Grade the source and the claim separately."
+actions = [
+  "Record the code with its reasoning and with each source that corroborates or contradicts the claim.",
+  "When the evidence is thin, prefer F and 6 over guessing.",
+]
+validation = [
+  "Base the letter on the source's provenance and track record, not on whether you like the claim.",
+  "Base the digit on corroboration: independent sources raise credibility; contradiction or a single source lowers it.",
+  "The same source repeated is not corroboration.",
+  "Use probabilistic, non-accusatory language and state uncertainty plainly.",
+]
+provenance = { repository = "https://gitlab.com/korczis/prismatic-platform", commit = "49adc18f7bac", path = "apps/prismatic/priv/prompt_library_seeds/osint-assess-source-reliability.json" }
+
+  [[application.axis]]
+  name = "Source reliability"
+  levels = [
+    ["A", "Completely reliable", "Authoritative, with a proven track record."],
+    ["B", "Usually reliable", ""],
+    ["C", "Fairly reliable", ""],
+    ["D", "Not usually reliable", ""],
+    ["E", "Unreliable", ""],
+    ["F", "Reliability cannot be judged", ""],
+  ]
+
+  [[application.axis]]
+  name = "Information credibility"
+  levels = [
+    ["1", "Confirmed by independent sources", ""],
+    ["2", "Probably true", ""],
+    ["3", "Possibly true", ""],
+    ["4", "Doubtful", ""],
+    ["5", "Improbable", ""],
+    ["6", "Truth cannot be judged", ""],
+  ]
+
+[[application]]
+id = "applications/dd-evidence-level"
+title = "Due diligence: evidence level of a finding"
+code = "DD"
+definition = "Prismatic's due-diligence levels say how far a finding has been checked, from a raw adapter result (0) to adversarial forensic verification (9). Each level adds sources, confidence or checks to the one below it."
+actions = [
+  "Level 5 (cross-validated) is the first level marked decision-grade.",
+  "Level 9 (adversarial forensic) is for deal-breaker verification.",
+]
+validation = [
+  "Count only independent sources; the level's minimum number of sources must be met.",
+  "Flag contradictions from level 5 up instead of averaging them away.",
+]
+provenance = { repository = "https://gitlab.com/korczis/prismatic-platform", commit = "49adc18f7bac", path = "apps/prismatic_dd/lib/prismatic_dd/dd_level.ex" }
+
+  [[application.axis]]
+  name = "Evidence level"
+  levels = [
+    ["9", "Adversarial forensic", "L8 plus tightened thresholds (3+ sources, 0.85+ confidence). For deal-breaker verification."],
+    ["8", "EU cross-border", "L7 plus EU-wide business and beneficial-ownership registries."],
+    ["7", "Sanctions/PEP screening", "L6 plus sanctions and politically-exposed-person lists."],
+    ["6", "Expanded (global)", "L5 plus global OSINT (tech infra, media, professional networks)."],
+    ["5", "Cross-validated", "At least 2 independent sources, confidence 0.7+, contradictions flagged. Decision-grade."],
+    ["4", "Multi-source confirm", "At least 2 sources, confidence 0.5+. Facts with reasonable agreement."],
+    ["3", "NABLA signal plurality", "At least 2 independent sources, confidence 0.3+. NABLA compliance minimum."],
+    ["2", "Frame threshold", "One source, confidence 0.3+ (Capital DD frame engine default)."],
+    ["1", "Single-source", "One source, any confidence. Baseline presence check."],
+    ["0", "Raw ingestion", "Unfiltered findings as returned by any single adapter."],
+  ]
+
+[[application]]
+id = "applications/osint-confidence"
+title = "OSINT confidence: how sure is a finding"
+code = "OSINT"
+definition = "Prismatic's OSINT confidence framework names five levels of certainty for a finding, each with the confidence it stands for, from confirmed (0.95) to unconfirmed (0.10)."
+actions = [
+  "Possible and below require additional verification.",
+]
+validation = [
+  "Confirmed needs multiple independent, verified sources.",
+  "Weak evidence or contradictory indicators mean unlikely.",
+]
+provenance = { repository = "https://gitlab.com/korczis/prismatic-platform", commit = "49adc18f7bac", path = "apps/prismatic/lib/prismatic_patterns/adapters/osint_domain_adapter.ex" }
+
+  [[application.axis]]
+  name = "Confidence"
+  levels = [
+    ["0.95", "Confirmed", "Multiple independent sources, verified."],
+    ["0.80", "Probable", "Strong evidence, limited verification."],
+    ["0.60", "Possible", "Some evidence, requires additional verification."],
+    ["0.30", "Unlikely", "Weak evidence, contradictory indicators."],
+    ["0.10", "Unconfirmed", "Insufficient evidence, speculation."],
+  ]

@@ -838,9 +838,24 @@ static void draw_big(Canvas* canvas, const Page* p, const Block* blk, int y) {
     size_t kn = k < sizeof(num) ? k : sizeof(num) - 1;
     memcpy(num, s, kn);
     num[kn] = '\0';
-    canvas_set_font(canvas, FontBigNumbers);
-    canvas_draw_str(canvas, LEFT, y + 18, num);
-    int x = LEFT + canvas_string_width(canvas, num) + 5;
+    /* the big digit font has digits only: a code with letters ("B2") is drawn bold, inverted */
+    bool digits = true;
+    for(size_t i = 0; i < kn; i++)
+        digits = digits && ((num[i] >= '0' && num[i] <= '9') || num[i] == '/' || num[i] == '.');
+    int x;
+    if(digits) {
+        canvas_set_font(canvas, FontBigNumbers);
+        canvas_draw_str(canvas, LEFT, y + 18, num);
+        x = LEFT + canvas_string_width(canvas, num) + 5;
+    } else {
+        canvas_set_font(canvas, FontPrimary);
+        int w = canvas_string_width(canvas, num) + 10;
+        canvas_draw_rbox(canvas, LEFT, y + 3, (size_t)w, 17, 3);
+        canvas_set_color(canvas, ColorWhite);
+        canvas_draw_str(canvas, LEFT + 5, y + 15, num);
+        canvas_set_color(canvas, ColorBlack);
+        x = LEFT + w + 5;
+    }
     canvas_set_font(canvas, FontSecondary);
     fit(canvas, s + (k < n ? k + 1 : n), k < n ? n - k - 1 : 0, RIGHT - x, buf, sizeof(buf));
     canvas_draw_str(canvas, x, y + 17, buf);

@@ -55,6 +55,7 @@ Generated from the repository's history by [`tools/docs.py`](../tools/docs.py). 
 | `c9fa1c6` | 10:47 | fix(ui): paging position fits two 32-bit counts; build the sim with GCC too |
 | `b40edb4` | 10:49 | docs(evidence): parity 24 of 24 on the marquee and quiz-score FAP |
 | `7480076` | 11:49 | feat(train): spaced repetition with Leitner boxes, kept safely on the SD card |
+| `d40840a` | 12:00 | feat(detect): side-by-side detection of an object and a look-alike |
 <!-- docs:end timeline -->
 
 ## What made it fast
@@ -133,20 +134,20 @@ The pack this session produced:
 <!-- docs:begin pack-stats -->
 | | |
 |---|---:|
-| Knowledge objects | **2 224** |
-| Categories | **64** |
+| Knowledge objects | **2 227** |
+| Categories | **65** |
 | Typed relations (links between objects) | **37 567** |
 | Objects with a detector (observable markers) | **1 212** |
-| Objects with what-to-do steps | **1 541** |
+| Objects with what-to-do steps | **1 544** |
 | Objects with confusables to rule out | **1 128** |
 | Quiz questions | **2 856** |
 |   of which: recognise the term from its definition | **1 671** |
 |   of which: manipulative or benign? (catalogue examples) | **1 185** |
 | Markers (indicators) | **4 246** |
-| Actions and escalation steps | **4 558** |
+| Actions and escalation steps | **4 563** |
 | Chapters | **16 789** |
 
-Pack `kompendium.pkp`: 20 649 388 bytes, sha256 `6752496025b2cdb6…`, rebuilt byte-for-byte identical by CI from the pinned source.
+Pack `kompendium.pkp`: 20 653 128 bytes, sha256 `b8412a9c09234926…`, rebuilt byte-for-byte identical by CI from the pinned source.
 <!-- docs:end pack-stats -->
 
 ## What it would have taken otherwise

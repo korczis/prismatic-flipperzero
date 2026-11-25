@@ -61,7 +61,9 @@ typedef enum {
     PKP_ITEM_HEADING,
     PKP_ITEM_TEXT,
     PKP_ITEM_EXAMPLE,
-    PKP_ITEM_LAST = PKP_ITEM_EXAMPLE,
+    PKP_ITEM_AXIS, /* a scale of an assessment: its name */
+    PKP_ITEM_LEVEL, /* one grade of the scale above: "code|label|meaning" */
+    PKP_ITEM_LAST = PKP_ITEM_LEVEL,
 } PkpItemType;
 
 enum {
@@ -70,6 +72,7 @@ enum {
     PKP_CAP_APPLY = 4,
     PKP_CAP_QUIZ = 8,
     PKP_CAP_COMPARE = 16,
+    PKP_CAP_ASSESS = 32,
 };
 
 enum {

@@ -163,7 +163,7 @@ static void m_obj_string(uint8_t* d, uint32_t n) { (void)n; put32(d + sec_offset
 static void m_obj_kind(uint8_t* d, uint32_t n) { (void)n; d[sec_offset(d, PKP_SEC_OBJECTS) + 26] = 0; }
 static void m_obj_items(uint8_t* d, uint32_t n) { (void)n; put32(d + sec_offset(d, PKP_SEC_OBJECTS) + 28, 0xFFFFFFFFu); }
 static void m_obj_category(uint8_t* d, uint32_t n) { (void)n; put16(d + sec_offset(d, PKP_SEC_OBJECTS) + 24, 0xFFFF); }
-static void m_item_type(uint8_t* d, uint32_t n) { (void)n; d[sec_offset(d, PKP_SEC_ITEMS)] = 9; }
+static void m_item_type(uint8_t* d, uint32_t n) { (void)n; d[sec_offset(d, PKP_SEC_ITEMS)] = PKP_ITEM_LAST + 1; }
 static void m_item_string(uint8_t* d, uint32_t n) { (void)n; put16(d + sec_offset(d, PKP_SEC_ITEMS) + 6, 0xFFFF); }
 static void m_rel_target(uint8_t* d, uint32_t n) { (void)n; put16(d + sec_offset(d, PKP_SEC_RELATIONS) + 2, 0xFFFF); }
 static void m_cat_range(uint8_t* d, uint32_t n) { (void)n; put16(d + sec_offset(d, PKP_SEC_CATEGORIES) + 8, 0xFFFF); }
@@ -405,9 +405,10 @@ static void json_str(const PkpReader* r, PkpStr s) {
 static int dump(const uint8_t* d, uint32_t size) {
     static const char* const metas[] = {"pack_id", "title", "version", "source_repository",
                                         "source_commit", "generator", "licence"};
-    static const char* const caps[] = {"apply", "browse", "compare", "detect", "quiz"};
-    static const uint8_t capbit[] = {PKP_CAP_APPLY, PKP_CAP_BROWSE, PKP_CAP_COMPARE,
-                                     PKP_CAP_DETECT, PKP_CAP_QUIZ};
+    /* sorted by name, as the Python reference prints them */
+    static const char* const caps[] = {"apply", "assess", "browse", "compare", "detect", "quiz"};
+    static const uint8_t capbit[] = {PKP_CAP_APPLY, PKP_CAP_ASSESS, PKP_CAP_BROWSE,
+                                     PKP_CAP_COMPARE, PKP_CAP_DETECT, PKP_CAP_QUIZ};
     Mem m = {d, size, -1};
     PkpReader r;
     PkpStatus st = pkp_open(&r, mem_read, &m, size);
@@ -446,7 +447,7 @@ static int dump(const uint8_t* d, uint32_t size) {
         pkp_kind_name(&r, o.kind, kname, sizeof(kname));
         printf(",\"category\":%u,\"kind\":\"%s\",\"caps\":[", o.category, kname);
         int first = 1;
-        for(int k = 0; k < 5; k++) {
+        for(size_t k = 0; k < sizeof(capbit); k++) {
             if(o.caps & capbit[k]) {
                 printf("%s\"%s\"", first ? "" : ",", caps[k]);
                 first = 0;
