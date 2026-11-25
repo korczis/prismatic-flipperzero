@@ -61,6 +61,14 @@ first; each answer offers the next due question. A question whose text changed i
 no longer matches its stored key and is dropped. Info shows how many questions are filed and
 offers to forget them, behind a confirmation; the file holds only the reader's own answers.
 
+### Side by side: differential detection
+
+An article whose look-alikes (its *Don't confuse with* links) have markers of their own offers
+**Compare with a look-alike** in its context menu. The detector then walks both objects'
+markers in a row, the header naming whose marker is on screen, and the result shows each
+object's marks as a count and a bar, with a link to each article. It never ranks the two or says
+which one "it is": two sets of the reader's own marks, side by side, are what the screen shows.
+
 ## Typography
 
 There are three roles, all from one family:

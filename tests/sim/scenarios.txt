@@ -46,13 +46,13 @@ map-hub              | ui  | ok,ok,down,ok,down,down,ok,ok:long,down,down,ok,rig
 map-eject            | ui  | ok,ok,down,ok,down,down,ok,ok:long,down,down,eject,ok,insert | This object could not be
 paragraph-split      | ui  | ok,ok,down,ok,down,down,ok,down,down,down,down,down,down,down,down | The hub links to many;neighbours at a time.;More neighbours rotate
 home-grid            | ui  | right,right,left,left,down,right,down,left,up,ok | >Detect;>Library;>Act;>Train;>About;>Info;# Act;~ Objects with steps
-home-hints           | ui  | right,down,down | ~ 50 objects to read;~ 46: mark what you saw;~ 18 questions to try;~ Keys; hold Back: Home
+home-hints           | ui  | right,down,down | ~ 51 objects to read;~ 47: mark what you saw;~ 18 questions to try;~ Keys; hold Back: Home
 hub-library          | ui  | ok,down,ok,up,ok,ok,back,back,back,down,ok,back,down,ok | # Library;~ Chapters in book order;# By kind;>technique;>article;# article;>Bare article;# Everything [p1/2];~ A random article
 hub-detect           | ui  | right,ok,ok,back,down,ok | # Detect;# Detectors;~ Markers of a random one;[No|Unsure|Yes]
 hub-train            | ui  | down,right,ok,down,down,ok,ok | # Train;~ Pick the term of four;~ Manipulative or benign;# Quiz [1/18];technique - 
 back-long-home       | ui  | ok,ok,ok,ok,back:long,back:long,back | # A long category;# Prismatic Pocket [1/6];EXIT
 eject-random         | ui  | eject,ok,down,down,down,ok,insert,back,back:long,right,ok,eject,down,ok,insert | This object could not be;# Detector
-marquee              | ui  | ok,ok,down,down,ok,tick10,tick,tick30,tick6,tick,down,tick,ok:long,tick20,back,back,back,tick | == 06 tick10-idle;== 07 tick;# A long category;== 12 tick-idle;[Actions];== 14 tick20-idle
+marquee              | ui  | ok,ok,ok,tick10,tick,tick30,tick6,tick,down,tick,ok:long,tick20,back,back,back,tick | == 04 tick10-idle;== 05 tick;# A long category;== 10 tick-idle;[Actions];== 12 tick20-idle
 quiz-score           | ui  | down,right,ok,ok,ok,ok,back,down,ok,left | # Which term?;# Correct [1 of 1];# Manipulative? [1 of 1];# Not quite [1 of 2]
 review               | ui  | down,right,ok,ok,ok,ok,restart,restart,down,right,ok,down,down,ok,ok,ok,down,down,ok | # Correct [1 of 1];~ Due again: boxes 1 to 5;>Next due question;# Review;Nothing is due now.
 progress-two         | ui  | down,right,ok,ok,ok,ok,back,down,ok,left,restart,down,down,ok,right,right,right,right,right | # Your progress;Answered: 2.;Session 2.;Forget my progress
@@ -61,3 +61,5 @@ progress-no-rename   | ui  | down,right,ok,ok,ok,ok,back,norename,down,ok,left,r
 progress-card-full   | ui  | full,down,right,ok,ok,ok,ok,back:long,down,down,ok,right,right,right,right,right | The last save failed.;Answered: 1.
 progress-forget      | ui  | down,right,ok,ok,ok,ok,back:long,down,down,ok,right,right,right,right,right,down,ok,down,ok | # Forget progress?;>Forget it;Answered: 0.;!The last save failed.
 progress-stale-entry | ui  | down,right,ok,ok,ok,ok,back,ok,ok,ok,rekey,restart,restart,restart,down,right,ok,down,down,ok | # Review;Nothing is due now.
+compare              | ui  | ok,ok,up,ok,ok,ok:long,down,down,ok,ok,right,right,left,right,ok:long,right,down,down,down,down,down,down,ok | # Compare with;>Full object with every section;# Pair with the full object [1/5];# Full object with every section [3/5];# Side by side;2/2 markers observed;1/3 markers observed;# Full object with every section
+eject-compare        | ui  | ok,ok,up,ok,ok,ok:long,down,down,ok,eject,ok,insert | This marker could not be

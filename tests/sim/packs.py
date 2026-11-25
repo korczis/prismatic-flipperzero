@@ -64,6 +64,11 @@ def ir():
                        chapters=[{"heading": "Everything", "text": "word " * 2600}] +
                        [{"heading": f"Part {k}", "text": "x"} for k in range(240)],
                        relations=[{"type": "related_to", "target": "full"}]))
+    # a pair for side-by-side detection: its look-alike (full) has markers of its own; its own
+    # category sorts last, so the other lists keep their rows
+    objects.append(obj("pair", "Pair with the full object", "C compare",
+                       indicators=["pair marker one", "pair marker two"], definition="Short.",
+                       relations=[{"type": "confused_with", "target": "full"}]))
     return {"schema": pocket.SCHEMA,
             "pack": {"id": "ui", "title": "UI test pack", "version": "1",
                      "source_repository": "r", "source_commit": "c"},

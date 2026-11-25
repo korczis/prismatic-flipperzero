@@ -25,6 +25,8 @@
 #define T_OPTION    (9u << 24) /* argument: quiz option */
 #define T_MAP       (10u << 24) /* argument: object at the centre of a map */
 #define T_OF_KIND   (11u << 24) /* argument: object kind */
+#define T_PICK      (12u << 24) /* argument: object whose look-alikes to list */
+#define T_COMPARE   (13u << 24) /* argument: the look-alike to compare the frame's object with */
 #define KIND_CAP    32u
 #define T_KIND(t)   ((t) & 0xFF000000u)
 #define T_ARG(t)    ((t) & 0x00FFFFFFu)
@@ -47,7 +49,8 @@
     X(Map)          \
     X(Hub)          \
     X(Kinds)        \
-    X(Forget)
+    X(Forget)       \
+    X(Compare)
 
 typedef enum {
 #define SCREEN_ENUM(name) Scr##name,
@@ -107,7 +110,11 @@ struct UiApp {
     uint8_t marks[MAX_MARKERS];
     uint16_t marker_count;
     uint16_t marker_at;
-    uint32_t marker_first;
+    /* the detector's candidates: one object, or two side by side; their markers in a row */
+    uint8_t cands;
+    uint16_t cand_obj[2];
+    uint32_t cand_first[2];
+    uint16_t cand_count[2];
 
     PkpQuiz quiz;
     uint16_t quiz_asked; /* this session's answers, shown in the quiz header */
@@ -498,6 +505,31 @@ static void section(UiApp* app, const PkpObject* o, uint8_t type, const char* he
     add_items(app, o, type, PageBullet);
 }
 
+/* The objects `o` is confused with that have markers of their own; adds them as rows when
+ * `page` is set. Returns how many there are. */
+static uint32_t look_alikes(UiApp* app, const PkpObject* o, Page* page) {
+    uint8_t confused = relation_type(app, "confused_with");
+    uint32_t n = 0;
+    for(uint32_t k = 0; k < o->rel_count; k++) {
+        PkpRelation r;
+        PkpObject t;
+        if(pkp_relation(app->pack, o->rel_first + k, &r) != PKP_OK || r.type != confused) continue;
+        if(pkp_object(app->pack, r.target, &t) != PKP_OK || !(t.caps & PKP_CAP_DETECT)) continue;
+        if(page) page_add_row(page, UiIconCompare, str(app, t.title), NULL, T_COMPARE | r.target);
+        n++;
+    }
+    return n;
+}
+
+/* Pick the look-alike to run side by side with the object. */
+static void render_compare(UiApp* app) {
+    PkpObject o;
+    page_reset(app->page, "Compare with");
+    page_set_title_icon(app->page, UiIconCompare);
+    if(pkp_object(app->pack, top(app)->obj, &o) == PKP_OK) look_alikes(app, &o, app->page);
+    restore(app);
+}
+
 static void render_article(UiApp* app) {
     Frame* f = top(app);
     PkpObject o;
@@ -565,6 +597,8 @@ static void render_article(UiApp* app) {
     }
     page_add(app->page, PageNote, "Markers describe; they never prove.", 0);
     if(markers) page_add_menu(app->page, "Run the detector", T_DETECT);
+    if(markers && look_alikes(app, &o, NULL))
+        page_add_menu(app->page, "Compare with a look-alike", T_PICK | f->obj);
     if(o.caps & PKP_CAP_QUIZ) page_add_menu(app->page, "Take the quiz", T_QUIZ);
     if(o.rel_count) page_add_menu(app->page, "Map of links", T_MAP | f->obj);
     page_add_menu(app->page, "Open the category", T_CATEGORY | o.category);
@@ -627,8 +661,11 @@ static void render_detect(UiApp* app) {
     PkpItem it;
     PkpObject o;
     char line[24];
-    if(pkp_item(app->pack, app->marker_first + app->marker_at, &it) != PKP_OK ||
-       pkp_object(app->pack, top(app)->obj, &o) != PKP_OK) {
+    /* which candidate the current marker belongs to */
+    uint8_t k = app->cands == 2 && app->marker_at >= app->cand_count[0];
+    uint32_t at = app->marker_at - (k ? app->cand_count[0] : 0u);
+    if(app->marker_count == 0 || pkp_item(app->pack, app->cand_first[k] + at, &it) != PKP_OK ||
+       pkp_object(app->pack, app->cand_obj[k], &o) != PKP_OK) {
         page_reset(app->page, "Detector");
         page_add(app->page, PageNote, "This marker could not be read.", 0);
         return;
@@ -643,9 +680,46 @@ static void render_detect(UiApp* app) {
     page_set_softkeys(app->page, "No", "Unsure", "Yes");
 }
 
+/* Two candidates' marks side by side: a count and a bar each, never a ranking. */
+static void render_compare_result(UiApp* app) {
+    char line[64];
+    page_reset(app->page, "Side by side");
+    page_set_title_icon(app->page, UiIconCompare);
+    for(uint8_t k = 0; k < 2; k++) {
+        PkpObject o;
+        PocketSummary s;
+        const uint8_t* marks = app->marks + (k ? app->cand_count[0] : 0);
+        pocket_summarize(marks, app->cand_count[k], &s);
+        bool have = pkp_object(app->pack, app->cand_obj[k], &o) == PKP_OK;
+        page_add(app->page, PageHeading, have ? str(app, o.title) : "(unreadable)", 0);
+        snprintf(line, sizeof(line), "%u/%u markers observed", s.counts[POCKET_OBSERVED], s.total);
+        page_add(app->page, PageParagraph, line, 0);
+        snprintf(
+            line,
+            sizeof(line),
+            "%u seen,%u no,%u ?,%u n/a",
+            s.counts[POCKET_OBSERVED],
+            s.counts[POCKET_NOT_OBSERVED],
+            s.counts[POCKET_UNKNOWN],
+            s.counts[POCKET_NOT_APPLICABLE]);
+        page_add(app->page, PageBar, line, 0);
+        page_add(app->page, PageLink, "Open the article", T_OBJECT | app->cand_obj[k]);
+    }
+    page_add(
+        app->page,
+        PageNote,
+        "Two sets of your marks, side by side. Neither count is a score or a verdict.",
+        0);
+    restore(app);
+}
+
 static void render_detect_result(UiApp* app) {
     Frame* f = top(app);
     PkpObject o;
+    if(app->cands == 2) {
+        render_compare_result(app);
+        return;
+    }
     page_reset(app->page, "Your observations");
     if(pkp_object(app->pack, f->obj, &o) != PKP_OK) {
         page_add(app->page, PageNote, "This object could not be read.", 0);
@@ -971,6 +1045,9 @@ static void render(UiApp* app) {
     case ScrForget:
         render_forget(app);
         break;
+    case ScrCompare:
+        render_compare(app);
+        break;
     default:
         render_about(app);
         break;
@@ -979,23 +1056,30 @@ static void render(UiApp* app) {
 
 /* ------------------------------------------------------------------ actions */
 
-static void start_detect(UiApp* app, uint16_t obj) {
+/* Append an object's markers (its leading indicator items) to the detector's. */
+static void add_candidate(UiApp* app, uint16_t obj) {
     PkpObject o;
+    uint8_t k = app->cands++;
+    app->cand_obj[k] = obj;
+    app->cand_count[k] = 0;
+    app->cand_first[k] = UINT32_MAX;
+    if(pkp_object(app->pack, obj, &o) != PKP_OK) o.items_count = 0;
+    for(uint32_t i = 0; i < o.items_count && app->marker_count < MAX_MARKERS; i++) {
+        PkpItem it;
+        if(pkp_item(app->pack, o.items_first + i, &it) != PKP_OK) break;
+        if(it.type != PKP_ITEM_INDICATOR) break; /* the encoder writes indicators first */
+        if(app->cand_count[k] == 0) app->cand_first[k] = o.items_first + i;
+        app->cand_count[k]++;
+        app->marks[app->marker_count++] = POCKET_UNANSWERED;
+    }
+}
+
+static void start_detect(UiApp* app, uint16_t obj, int16_t other) {
     app->marker_count = 0;
     app->marker_at = 0;
-    o.items_count = 0;
-    if(pkp_object(app->pack, obj, &o) != PKP_OK) o.items_count = 0;
-    for(uint32_t k = 0; k < o.items_count && app->marker_count < MAX_MARKERS; k++) {
-        PkpItem it;
-        if(pkp_item(app->pack, o.items_first + k, &it) != PKP_OK) break;
-        if(it.type == PKP_ITEM_INDICATOR) {
-            if(app->marker_count == 0) app->marker_first = o.items_first + k;
-            app->marks[app->marker_count++] = POCKET_UNANSWERED;
-        } else if(app->marker_count) {
-            break; /* indicators are contiguous: the encoder writes them first */
-        }
-    }
-    if(app->marker_count == 0) app->marker_first = UINT32_MAX; /* the screen says why */
+    app->cands = 0;
+    add_candidate(app, obj);
+    if(other >= 0) add_candidate(app, (uint16_t)other);
     push(app, (Frame){.screen = ScrDetect, .obj = obj});
 }
 
@@ -1072,7 +1156,7 @@ static void home(UiApp* app, uint32_t entry) {
         push(app, (Frame){.screen = ScrArticle, .obj = random_object(app, PKP_CAP_BROWSE)});
         break;
     case HomeRandomDetect:
-        start_detect(app, random_object(app, PKP_CAP_DETECT));
+        start_detect(app, random_object(app, PKP_CAP_DETECT), -1);
         break;
     case HomeReview:
         start_review(app);
@@ -1119,7 +1203,13 @@ static void open_target(UiApp* app, uint32_t target, bool long_press) {
         push(app, (Frame){.screen = ScrChapter, .obj = f->obj, .aux = T_ARG(target)});
         break;
     case T_DETECT:
-        start_detect(app, f->obj);
+        start_detect(app, f->obj, -1);
+        break;
+    case T_PICK:
+        push(app, (Frame){.screen = ScrCompare, .obj = (uint16_t)T_ARG(target)});
+        break;
+    case T_COMPARE:
+        start_detect(app, f->obj, (int16_t)T_ARG(target));
         break;
     case T_QUIZ:
         start_quiz(app, quiz_for(app, f->obj), f->obj);

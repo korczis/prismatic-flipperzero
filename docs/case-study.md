@@ -54,6 +54,7 @@ Generated from the repository's history by [`tools/docs.py`](../tools/docs.py). 
 | `1340051` | 10:43 | feat(ui): a cut name scrolls after a pause; the quiz keeps score |
 | `c9fa1c6` | 10:47 | fix(ui): paging position fits two 32-bit counts; build the sim with GCC too |
 | `b40edb4` | 10:49 | docs(evidence): parity 24 of 24 on the marquee and quiz-score FAP |
+| `7480076` | 11:49 | feat(train): spaced repetition with Leitner boxes, kept safely on the SD card |
 <!-- docs:end timeline -->
 
 ## What made it fast

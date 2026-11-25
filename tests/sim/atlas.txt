@@ -27,6 +27,8 @@ map              | kompendium | right,ok,ok,ok,ok:long,down,down,ok | Map | Map 
 map-focus        | kompendium | right,ok,ok,ok,ok:long,down,down,ok,up | Map | A focused neighbour's full name in the header; OK walks there
 detect           | kompendium | right,ok,ok,ok,down,ok | Detect | Detector: progress cells, one marker at a time: No, Unsure, Yes
 detect-result    | kompendium | right,ok,ok,ok,down,ok,left,ok,right,ok:long,right | DetectResult | Result: your marks as a number and a bar, never a score
+compare-pick     | ui | ok,ok,up,ok,ok,ok:long,down,down,ok | Compare | Compare with a look-alike: only those with markers of their own
+compare-result   | ui | ok,ok,up,ok,ok,ok:long,down,down,ok,ok,right,right,left,right,ok:long,right | DetectResult | Side by side: your marks for both, a count and a bar each, no ranking
 quiz             | kompendium | down,right,ok,ok | Quiz | Which term? The definition with the name masked
 quiz-options     | kompendium | down,right,ok,ok,ok | QuizOptions | Distractors are the objects the page calls confusable
 quiz-result      | kompendium | down,right,ok,ok,ok,ok | QuizResult | The answer, the definition, a link to the article
