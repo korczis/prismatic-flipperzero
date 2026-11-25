@@ -49,5 +49,9 @@ if [ "${VERIFY_SKIP_GOVERNANCE:-0}" != 1 ]; then
   step "governance"
   majordomus doctor | tail -n 1
 fi
+step "pages explorer (e2e in Chromium, JS line coverage)"
+python3 tools/explorer.py >/dev/null
+(cd site && yarn install --frozen-lockfile --silent && node build.mjs >/dev/null \
+  && npx playwright test --reporter=dot && node coverage.mjs)
 echo
 echo "verify: PASS"

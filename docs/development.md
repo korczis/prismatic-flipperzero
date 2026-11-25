@@ -22,6 +22,7 @@ just test            # tool tests + line-coverage gate
 just test-native     # portable core: sanitizers, fuzz, differential, llvm-cov gate
 just launch          # build the FAP, install over the storage CLI, start with the loader
 just walk build/w ok,down,ok 1.2   # drive the device and capture a frame after each key
+just site            # Pages explorer: data, build, Playwright e2e, JS line coverage
 tools/docs.py        # regenerate derived doc regions (CI fails if you forget)
 just verify          # all of the above, the way CI runs it
 ```
@@ -33,6 +34,10 @@ just verify          # all of the above, the way CI runs it
   self-test.
 - **Derived, not typed.** Numbers, galleries and timelines in Markdown live between
   `<!-- docs:begin … -->` markers and come from `tools/docs.py`; `--check` runs in verify and CI.
+- **UI is Flowbite on Tailwind 3, charts are ECharts through one layer.** `site/src/viz.js` is
+  the only place that creates a chart; every chart is in its registry, maximizable, with its
+  state in the URL. `site/coverage.mjs` fails on any line of `app.js` or `viz.js` that no
+  Playwright test ran.
 - **Hardware claims need frames.** A feature that runs on the device is shown with frames from
   `just walk` or `just screenshot`.
 - **Governance.** Work runs as Majordomus tasks (`majordomus start … --scope …`), with

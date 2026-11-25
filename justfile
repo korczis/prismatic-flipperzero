@@ -76,3 +76,12 @@ verify:
 # Assemble release assets (FAPs per SDK, SHA256SUMS, build provenance) into build/release/
 release-assets:
     tools/release.sh
+
+# Pages explorer: data from the pack, site build, e2e in Chromium, JS line coverage
+site:
+    python3 tools/explorer.py
+    cd site && yarn install --frozen-lockfile && node build.mjs && npx playwright test && node coverage.mjs
+
+# Serve the built explorer locally
+site-serve port="4790":
+    python3 -m http.server {{port}} --bind 127.0.0.1 --directory site/dist

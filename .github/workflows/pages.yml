@@ -1,0 +1,72 @@
+name: Pages
+
+# The explorer at https://korczis.github.io/prismatic-flipperzero/ is rebuilt from the pinned
+# Kompendium on every push to main: pack -> explorer data -> site -> e2e in a real browser ->
+# JS line coverage -> deploy. A failing test or an untested line stops the deploy.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  KOMPENDIUM_REPO: korczis/kompendium-epistemicke-anihilace
+
+jobs:
+  build:
+    name: Build and test the explorer
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+      - name: Pinned Kompendium source
+        run: |
+          commit=$(python3 -c 'import json;print(json.load(open("knowledge/sources.json"))["source"]["commit"])')
+          git clone --filter=blob:none --no-checkout "https://github.com/${KOMPENDIUM_REPO}.git" "$RUNNER_TEMP/kompendium"
+          git -C "$RUNNER_TEMP/kompendium" fetch --quiet origin "$commit"
+          echo "KOMPENDIUM_DIR=$RUNNER_TEMP/kompendium" >> "$GITHUB_ENV"
+      - name: Pack and explorer data
+        run: |
+          python3 tools/pocket.py build
+          cmp docs/data/pack-stats.json build/packs/kompendium.report.json
+          python3 tools/explorer.py
+      - name: Build the site
+        working-directory: site
+        run: |
+          yarn install --frozen-lockfile
+          node build.mjs
+      - name: End-to-end tests in Chromium, then JS line coverage
+        working-directory: site
+        run: |
+          npx playwright install --with-deps chromium
+          npx playwright test
+          node coverage.mjs
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site/dist
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

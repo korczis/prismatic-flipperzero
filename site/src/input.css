@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* A device frame for real Flipper screenshots: pixels stay crisp at any zoom. */
+.lcd { image-rendering: pixelated; }
+.prose-pocket p { margin: 0.5rem 0; line-height: 1.6; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
