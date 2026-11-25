@@ -1,5 +1,6 @@
 #include "page.h"
 
+#include "fonts.h"
 #include "icons.h"
 
 #include <stdlib.h>
@@ -23,7 +24,9 @@
 #define SOFT_H    12
 #define LEFT      2
 #define RIGHT     123 /* last text column; the scrollbar is 125..127 */
-#define LEADING   10
+#define LEADING   11 /* body (helvR08) line pitch */
+#define CAPTION_H 10 /* caption (haxrcorp4089) line pitch */
+#define CHIP_H    15
 #define ROW_H     12
 #define HEADING_H 13
 #define BIG_H     24
@@ -40,6 +43,7 @@ typedef struct {
     uint32_t target;
     uint16_t line_first; /* set by layout: the block's first and last line */
     uint16_t line_last;
+    uint8_t bar; /* rows: share of the largest value in a list, 0..100 */
 } Block;
 
 typedef struct {
@@ -200,7 +204,7 @@ static int32_t put_text(Page* p, const char* text, size_t n) {
         p->truncated = true;
         memcpy(p->text + p->text_len, note, sizeof(note) - 1);
         p->blocks[p->blocks_n++] =
-            (Block){PageNote, 0, p->text_len, (uint16_t)(sizeof(note) - 1), 0, 0, 0, 0, 0};
+            (Block){PageNote, 0, p->text_len, (uint16_t)(sizeof(note) - 1), 0, 0, 0, 0, 0, 0};
         p->text_len += (uint16_t)(sizeof(note) - 1);
         return -1;
     }
@@ -218,7 +222,7 @@ void page_add(Page* p, PageStyle style, const char* text, uint32_t target) {
     int32_t at = put_text(p, text, n);
     if(at < 0) return;
     p->blocks[p->blocks_n++] =
-        (Block){(uint8_t)style, 0, (uint16_t)at, (uint16_t)n, 0, 0, target, 0, 0};
+        (Block){(uint8_t)style, 0, (uint16_t)at, (uint16_t)n, 0, 0, target, 0, 0, 0};
     p->dirty = true;
 }
 
@@ -230,13 +234,37 @@ void page_add_row(Page* p, uint8_t icon, const char* label, const char* right, u
     int32_t rat = rn ? put_text(p, right, rn) : 0;
     if(rat < 0) return;
     p->blocks[p->blocks_n++] = (Block){
-        PageRow, icon, (uint16_t)at, (uint16_t)n, (uint16_t)rat, (uint8_t)rn, target, 0, 0};
+        PageRow, icon, (uint16_t)at, (uint16_t)n, (uint16_t)rat, (uint8_t)rn, target, 0, 0, 0};
     p->list = true;
     p->dirty = true;
 }
 
+void page_add_row_bar(
+    Page* p,
+    uint8_t icon,
+    const char* label,
+    const char* right,
+    uint32_t value,
+    uint32_t max,
+    uint32_t target) {
+    page_add_row(p, icon, label, right, target);
+    if(p->blocks_n && p->blocks[p->blocks_n - 1].style == PageRow && max) {
+        /* a square-root scale, so small entries stay visible next to the largest */
+        uint32_t ratio = (uint32_t)((uint64_t)value * 10000u / max), share = 0;
+        while((share + 1) * (share + 1) <= ratio)
+            share++;
+        p->blocks[p->blocks_n - 1].bar = (uint8_t)(share > 100 ? 100 : share ? share : 1);
+    }
+}
+
+void page_add_icon(Page* p, PageStyle style, uint8_t icon, const char* text, uint32_t target) {
+    uint16_t before = p->blocks_n;
+    page_add(p, style, text, target);
+    if(p->blocks_n > before) p->blocks[p->blocks_n - 1].icon = icon;
+}
+
 static bool selectable(const Block* b) {
-    return b->style == PageLink || b->style == PageRow;
+    return b->style == PageLink || b->style == PageRow || b->style == PageChip;
 }
 
 uint16_t page_block_count(const Page* p) {
@@ -261,8 +289,40 @@ static int body_height(const Page* p) {
     return body_bottom(p) - HEADER_H;
 }
 
-static Font font_of(uint8_t style) {
-    return style == PageHeading || style == PageTitle ? FontPrimary : FontSecondary;
+/* Three roles, one family: helvB08 for titles and headings, helvR08 for reading, haxrcorp4089
+ * for captions (meta, notes, counts, legends). */
+typedef enum {
+    RoleTitle,
+    RoleBody,
+    RoleCaption,
+} Role;
+
+static Role role_of(uint8_t style) {
+    switch(style) {
+    case PageTitle:
+    case PageHeading:
+        return RoleTitle;
+    case PageMeta:
+    case PageNote:
+    case PageBadge:
+    case PageChip:
+        return RoleCaption;
+    default:
+        return RoleBody;
+    }
+}
+
+static void set_role(Canvas* canvas, Role role) {
+    if(role == RoleTitle)
+        canvas_set_font(canvas, FontPrimary);
+    else if(role == RoleBody)
+        canvas_set_custom_u8g2_font(canvas, pocket_font_body);
+    else
+        canvas_set_font(canvas, FontSecondary);
+}
+
+static void set_font_of(Canvas* canvas, uint8_t style) {
+    set_role(canvas, role_of(style));
 }
 
 static int indent_of(uint8_t style) {
@@ -314,7 +374,7 @@ static void wrap(Page* p, Canvas* canvas, uint16_t b, uint8_t height) {
     uint16_t start = 0, last_space = 0, i = 0, first_line = p->lines_n, run = 0;
     int width = 0;
     bool have_space = false;
-    canvas_set_font(canvas, font_of(blk->style));
+    set_font_of(canvas, blk->style);
     while(i < blk->len) {
         int w = (int)canvas_glyph_width(canvas, (uint8_t)s[i]);
         if(width + w > avail && i > start) {
@@ -391,6 +451,27 @@ static void reveal(Page* p, int16_t b) {
         p->top++;
 }
 
+static int chip_width(const Page* p, Canvas* canvas, uint16_t b) {
+    char buf[32];
+    const Block* blk = &p->blocks[b];
+    size_t n = blk->len < sizeof(buf) - 1 ? blk->len : sizeof(buf) - 1;
+    memcpy(buf, p->text + blk->off, n);
+    buf[n] = '\0';
+    set_role(canvas, RoleCaption);
+    return canvas_string_width(canvas, buf) + (blk->icon ? 17 : 8);
+}
+
+/* Chips flow left to right on one row (a page holds a few short ones): the first takes the
+ * row's height, the rest sit beside it; a line's `off` holds its x. */
+static void layout_chip(Page* p, Canvas* canvas, uint16_t b, bool next_same) {
+    bool cont = b > 0 && p->blocks[b - 1].style == PageChip;
+    int x = LEFT;
+    if(cont) x = p->lines[p->lines_n - 1].off + chip_width(p, canvas, (uint16_t)(b - 1)) + 3;
+    push_line(p, b, 0, 0, cont ? 0 : CHIP_H, LINE_FIRST | LINE_LAST | LINE_BODY);
+    p->lines[p->lines_n - 1].off = (uint16_t)x;
+    if(!next_same) push_gap(p, b, 2);
+}
+
 static void layout(Page* p, Canvas* canvas) {
     p->lines_n = 0;
     for(uint16_t b = 0; b < p->blocks_n; b++) {
@@ -405,6 +486,12 @@ static void layout(Page* p, Canvas* canvas) {
             break;
         case PageSteps:
             push_line(p, b, 0, 0, 8, LINE_FIRST | LINE_LAST | LINE_BODY);
+            break;
+        case PageBadge:
+            push_line(p, b, 0, 0, 12, LINE_FIRST | LINE_LAST | LINE_BODY);
+            break;
+        case PageChip:
+            layout_chip(p, canvas, b, next_same);
             break;
         case PageBar:
             push_line(p, b, 0, 0, BAR_H, LINE_FIRST | LINE_LAST | LINE_BODY);
@@ -424,7 +511,7 @@ static void layout(Page* p, Canvas* canvas) {
             push_gap(p, b, GAP + 2); /* bottom edge, then the gap */
             break;
         default:
-            wrap(p, canvas, b, LEADING);
+            wrap(p, canvas, b, role_of(st) == RoleCaption ? CAPTION_H : LEADING);
             if(!(next_same && (st == PageBullet || st == PageLink))) push_gap(p, b, GAP);
             break;
         }
@@ -560,12 +647,12 @@ static void draw_row(Canvas* canvas, const Page* p, const Block* blk, int y, boo
         canvas_draw_rbox(canvas, 0, y, RIGHT + 1, ROW_H, 2);
         canvas_set_color(canvas, ColorWhite);
     }
-    canvas_set_font(canvas, FontSecondary);
     if(blk->icon) {
         draw_icon(canvas, blk->icon, x + 1, y + 3);
         x += 12;
     }
     int rw = 0;
+    set_role(canvas, RoleCaption);
     if(blk->right_len) {
         memcpy(buf, p->text + blk->right_off, blk->right_len);
         buf[blk->right_len] = '\0';
@@ -573,6 +660,15 @@ static void draw_row(Canvas* canvas, const Page* p, const Block* blk, int y, boo
         canvas_draw_str(canvas, RIGHT - 2 - rw, y + 9, buf);
         rw += 4;
     }
+    if(blk->bar) {
+        /* a mini bar chart: a dotted 18 px track, filled by the row's share of the largest */
+        int bx = RIGHT - 2 - rw - 14, fill = blk->bar * 14 / 100;
+        for(int dx = 0; dx < 14; dx += 2)
+            canvas_draw_dot(canvas, bx + dx, y + 6);
+        canvas_draw_box(canvas, bx, y + 4, (size_t)(fill ? fill : 1), 5);
+        rw += 18;
+    }
+    set_role(canvas, RoleBody);
     fit(canvas, p->text + blk->off, blk->len, RIGHT - 2 - rw - x, buf, sizeof(buf));
     canvas_draw_str(canvas, x, y + 9, buf);
     canvas_set_color(canvas, ColorBlack);
@@ -620,6 +716,60 @@ static void draw_steps(Canvas* canvas, const char* spec, size_t n, int y) {
     }
 }
 
+/* "KIND\tcaption": the kind in capitals inside an inverted pill, the caption after it. */
+static void draw_badge(Canvas* canvas, const Page* p, const Block* blk, int y) {
+    char kind[24], caption[64];
+    const char* s = p->text + blk->off;
+    size_t n = blk->len, k = 0;
+    while(k < n && s[k] != '\t')
+        k++;
+    size_t kn = k < sizeof(kind) - 1 ? k : sizeof(kind) - 1;
+    for(size_t i = 0; i < kn; i++)
+        kind[i] = (char)(s[i] >= 'a' && s[i] <= 'z' ? s[i] - 32 : s[i]);
+    kind[kn] = '\0';
+    set_role(canvas, RoleCaption);
+    /* small capitals read better tracked out by one pixel */
+    int w = 5;
+    for(size_t i = 0; i < kn; i++)
+        w += (int)canvas_glyph_width(canvas, (uint8_t)kind[i]) + 1;
+    canvas_draw_rbox(canvas, LEFT, y, (size_t)w, 11, 2);
+    canvas_set_color(canvas, ColorWhite);
+    for(size_t i = 0, x = LEFT + 3; i < kn; i++) {
+        char one[2] = {kind[i], '\0'};
+        canvas_draw_str(canvas, (int32_t)x, y + 9, one);
+        x += canvas_glyph_width(canvas, (uint8_t)kind[i]) + 1;
+    }
+    canvas_set_color(canvas, ColorBlack);
+    if(k < n) {
+        fit(canvas, s + k + 1, n - k - 1, RIGHT - LEFT - w - 4, caption, sizeof(caption));
+        canvas_draw_str(canvas, LEFT + w + 4, y + 9, caption);
+    }
+}
+
+/* A chip: icon and a short text in a rounded box; focused = inverted. */
+static void
+    draw_chip(Canvas* canvas, const Page* p, const Block* blk, int x, int y, bool focused) {
+    char buf[32];
+    size_t n = blk->len < sizeof(buf) - 1 ? blk->len : sizeof(buf) - 1;
+    memcpy(buf, p->text + blk->off, n);
+    buf[n] = '\0';
+    set_role(canvas, RoleCaption);
+    int w = canvas_string_width(canvas, buf) + (blk->icon ? 17 : 8);
+    if(focused) {
+        canvas_draw_rbox(canvas, x, y + 1, (size_t)w, 12, 3);
+        canvas_set_color(canvas, ColorWhite);
+    } else {
+        canvas_draw_rframe(canvas, x, y + 1, (size_t)w, 12, 3);
+    }
+    int tx = x + 4;
+    if(blk->icon) {
+        draw_icon(canvas, blk->icon, x + 4, y + 4);
+        tx += 9;
+    }
+    canvas_draw_str(canvas, tx, y + 10, buf);
+    canvas_set_color(canvas, ColorBlack);
+}
+
 static void draw_line(Canvas* canvas, const Page* p, const Line* l, int y) {
     const Block* blk = &p->blocks[l->block];
     char buf[256];
@@ -651,17 +801,27 @@ static void draw_line(Canvas* canvas, const Page* p, const Line* l, int y) {
     case PageSteps:
         draw_steps(canvas, p->text + blk->off, blk->len, y);
         return;
+    case PageBadge:
+        draw_badge(canvas, p, blk, y);
+        return;
+    case PageChip:
+        draw_chip(canvas, p, blk, l->off, y - (l->height ? 0 : CHIP_H), focused);
+        return;
     default:
         break;
     }
     memcpy(buf, p->text + l->off, l->len);
     buf[l->len] = '\0';
-    canvas_set_font(canvas, font_of(blk->style));
-    int x = indent_of(blk->style), base = y + 8;
+    set_font_of(canvas, blk->style);
+    int x = indent_of(blk->style), base = y + (role_of(blk->style) == RoleBody ? 9 : 8);
     switch(blk->style) {
     case PageHeading:
         canvas_draw_box(canvas, 0, y + 1, RIGHT + 1, HEADING_H - 2);
         canvas_set_color(canvas, ColorWhite);
+        if(blk->icon) {
+            if(l->flags & LINE_FIRST) draw_icon(canvas, blk->icon, LEFT + 1, y + 4);
+            x += 10;
+        }
         canvas_draw_str(canvas, x, y + 10, buf);
         canvas_set_color(canvas, ColorBlack);
         break;
@@ -672,26 +832,26 @@ static void draw_line(Canvas* canvas, const Page* p, const Line* l, int y) {
         canvas_draw_str(canvas, x, base, buf);
         if(l->flags & LINE_LAST) {
             for(int dx = LEFT; dx <= RIGHT; dx += 2)
-                canvas_draw_dot(canvas, dx, y + LEADING);
+                canvas_draw_dot(canvas, dx, y + l->height);
         }
         break;
     case PageBullet:
-        if(l->flags & LINE_FIRST) canvas_draw_box(canvas, LEFT + 1, base - 4, 2, 2);
+        if(l->flags & LINE_FIRST) canvas_draw_box(canvas, LEFT + 1, base - 5, 3, 3);
         canvas_draw_str(canvas, x, base, buf);
         break;
     case PageNote:
-        canvas_draw_line(canvas, LEFT, y, LEFT, y + LEADING - 1);
-        canvas_draw_line(canvas, LEFT + 1, y, LEFT + 1, y + LEADING - 1);
+        canvas_draw_line(canvas, LEFT, y, LEFT, y + l->height - 1);
+        canvas_draw_line(canvas, LEFT + 1, y, LEFT + 1, y + l->height - 1);
         canvas_draw_str(canvas, x, base, buf);
         break;
     case PageQuote:
-        canvas_draw_line(canvas, LEFT, y, LEFT, y + LEADING - 1);
-        canvas_draw_line(canvas, RIGHT, y, RIGHT, y + LEADING - 1);
+        canvas_draw_line(canvas, LEFT, y, LEFT, y + l->height - 1);
+        canvas_draw_line(canvas, RIGHT, y, RIGHT, y + l->height - 1);
         canvas_draw_str(canvas, x, base, buf);
         break;
     case PageLink:
         if(focused) {
-            canvas_draw_rbox(canvas, 0, y - 1, RIGHT + 1, LEADING + 1, 2);
+            canvas_draw_rbox(canvas, 0, y - 1, RIGHT + 1, l->height + 1, 2);
             canvas_set_color(canvas, ColorWhite);
         }
         if(l->flags & LINE_FIRST) {
@@ -799,8 +959,10 @@ static void draw_header(Canvas* canvas, const Page* p) {
     int pw = pos[0] ? canvas_string_width(canvas, pos) : 0;
     if(pw) canvas_draw_str(canvas, SCREEN_W - 1 - pw, 9, pos);
     int tx = LEFT;
-    if(p->title_icon && heading < 0) {
-        draw_icon(canvas, p->title_icon, LEFT, 2);
+    uint8_t icon = heading >= 0 ? p->blocks[heading].icon : p->graph ? 0 : p->title_icon;
+    if(icon) {
+        /* the section's icon travels into the header with its heading */
+        draw_icon(canvas, icon, LEFT, 2);
         tx += 11;
     }
     canvas_set_font(canvas, FontPrimary);
@@ -906,6 +1068,7 @@ static const char* overlay_label(const Page* p, uint8_t i, char* buf, size_t cap
 #define PANEL_W    104
 #define PANEL_H    58
 #define PANEL_ROWS 4
+#define PANEL_ROW  11
 
 /* A panel over a stippled page: title strip, four rows, the selected one inverted. */
 static void draw_overlay(Canvas* canvas, const Page* p) {
@@ -924,23 +1087,23 @@ static void draw_overlay(Canvas* canvas, const Page* p) {
     canvas_draw_str(
         canvas, PANEL_X + 5, PANEL_Y + 10, p->overlay == OverlayMenu ? "Actions" : "Contents");
     canvas_set_color(canvas, ColorBlack);
-    canvas_set_font(canvas, FontSecondary);
+    set_role(canvas, RoleBody);
     uint8_t n = overlay_count(p);
     int first = p->overlay_sel > PANEL_ROWS - 1 ? p->overlay_sel - (PANEL_ROWS - 1) : 0;
     for(int r = 0; r < PANEL_ROWS && first + r < n; r++) {
-        int i = first + r, y = PANEL_Y + 14 + r * 10;
+        int i = first + r, y = PANEL_Y + 13 + r * PANEL_ROW;
         const char* label = overlay_label(p, (uint8_t)i, buf, sizeof(buf));
         fit(canvas, label, strlen(label), PANEL_W - 12, fitted, sizeof(fitted));
         if(i == p->overlay_sel) {
-            canvas_draw_rbox(canvas, PANEL_X + 2, y, PANEL_W - 4, 10, 2);
+            canvas_draw_rbox(canvas, PANEL_X + 2, y, PANEL_W - 4, PANEL_ROW, 2);
             canvas_set_color(canvas, ColorWhite);
         }
-        canvas_draw_str(canvas, PANEL_X + 6, y + 8, fitted);
+        canvas_draw_str(canvas, PANEL_X + 6, y + 9, fitted);
         canvas_set_color(canvas, ColorBlack);
     }
     if(n > PANEL_ROWS) {
-        int track = PANEL_ROWS * 10, thumb = track * PANEL_ROWS / n;
-        int ty = PANEL_Y + 14 + (track - thumb) * first / (n - PANEL_ROWS);
+        int track = PANEL_ROWS * PANEL_ROW, thumb = track * PANEL_ROWS / n;
+        int ty = PANEL_Y + 13 + (track - thumb) * first / (n - PANEL_ROWS);
         canvas_draw_box(canvas, PANEL_X + PANEL_W - 3, ty, 1, (size_t)thumb);
     }
 }
@@ -1058,6 +1221,15 @@ static bool block_visible(const Page* p, int16_t b) {
     return first >= p->top && first <= last_visible(p, p->top);
 }
 
+/* The run of consecutive chips around block b. */
+static void chip_run(const Page* p, int16_t b, int16_t* first, int16_t* last) {
+    *first = *last = b;
+    while(*first > 0 && p->blocks[*first - 1].style == PageChip)
+        (*first)--;
+    while(*last + 1 < (int16_t)p->blocks_n && p->blocks[*last + 1].style == PageChip)
+        (*last)++;
+}
+
 static void step(Page* p, int dir) {
     int16_t mt = max_top(p);
     if(p->list) {
@@ -1072,6 +1244,12 @@ static void step(Page* p, int dir) {
     }
     /* documents: the next link in view takes the focus, else the text moves one line */
     int16_t from = p->focus;
+    if(from >= 0 && p->blocks[from].style == PageChip) {
+        /* Up/Down leave a row of chips as a whole */
+        int16_t first, last;
+        chip_run(p, from, &first, &last);
+        from = dir > 0 ? last : first;
+    }
     if(from < 0) {
         from = p->lines_n ? (int16_t)p->lines[dir > 0 ? p->top : last_visible(p, p->top)].block :
                             0;
@@ -1108,6 +1286,15 @@ static bool is_heading_line(const Page* p, int16_t i) {
  * the section whose heading scrolled by), so the body starts with the section's own text. */
 static void jump(Page* p, int dir) {
     int16_t mt = max_top(p);
+    if(p->focus >= 0 && p->blocks[p->focus].style == PageChip) {
+        /* Left/Right move along a row of chips */
+        int16_t n = (int16_t)(p->focus + dir);
+        if(n >= 0 && n < (int16_t)p->blocks_n && p->blocks[n].style == PageChip) {
+            p->focus = n;
+            return;
+        }
+        /* past the last chip, Left/Right jump sections as anywhere else */
+    }
     if(p->list) {
         for(int k = 0; k < 4; k++) {
             int16_t n = next_selectable(p, p->focus, dir);
@@ -1297,14 +1484,22 @@ uint16_t page_visible_lines(const Page* p, char out[][64], uint16_t cap) {
         const Line* l = &p->lines[i];
         const Block* blk = &p->blocks[l->block];
         bool whole = blk->style == PageRow || blk->style == PageBig || blk->style == PageBar ||
-                     blk->style == PageSteps;
+                     blk->style == PageSteps || blk->style == PageBadge || blk->style == PageChip;
         const char* s = p->text + (whole ? blk->off : l->off);
         size_t len = whole ? blk->len : l->len;
         if(len == 0) continue;
         if(len > 62) len = 62;
         out[n][0] = p->focus == (int16_t)l->block ? '>' : ' ';
-        memcpy(out[n] + 1, s, len);
-        out[n][len + 1] = '\0';
+        size_t k = 1;
+        for(size_t c = 0; c < len && k < 62; c++) {
+            if(s[c] == '\t') { /* a badge: "kind - caption" */
+                memcpy(out[n] + k, " - ", 3);
+                k += 3;
+            } else {
+                out[n][k++] = s[c];
+            }
+        }
+        out[n][k] = '\0';
         n++;
     }
     if(has_softkeys(p)) {

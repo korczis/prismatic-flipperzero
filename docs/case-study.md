@@ -41,6 +41,8 @@ Generated from the repository's history by [`tools/docs.py`](../tools/docs.py). 
 | `4fb013a` | 06:39 | fix(site): ignore the gallery when the overview is already gone |
 | `d9d7a20` | 07:10 | fix(tests): docs and wiki tests no longer read the real README |
 | `3e6c165` | 08:13 | feat(ui): portable interface, host simulator with firmware fonts, device parity |
+| `f015e92` | 08:31 | feat(ui): context menu, contents outline, map of links, calmer paragraphs |
+| `152440e` | 08:35 | fix(sim): declare POSIX for strdup under -std=c11 on glibc |
 <!-- docs:end timeline -->
 
 ## What made it fast

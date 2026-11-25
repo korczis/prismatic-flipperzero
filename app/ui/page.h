@@ -36,6 +36,8 @@ typedef enum {
     PageBar, /* stacked bar: values in the text as "a,b,c,d" */
     PageQuote, /* an utterance, framed */
     PageSteps, /* progress cells: text "done/total" */
+    PageBadge, /* kind as an inverted pill, then a caption: text "KIND\tcaption" */
+    PageChip, /* selectable: icon + short text; consecutive chips share one row */
 } PageStyle;
 
 typedef enum {
@@ -79,6 +81,17 @@ void page_set_position(Page* page, const char* position);
 void page_add(Page* page, PageStyle style, const char* text, uint32_t target);
 /* A row: icon (0 = none, see ui_icons.h), label, right-aligned text (may be NULL). */
 void page_add_row(Page* page, uint8_t icon, const char* label, const char* right, uint32_t target);
+/* A row with a mini bar chart before its count: `value` of `max` (a share of the largest). */
+void page_add_row_bar(
+    Page* page,
+    uint8_t icon,
+    const char* label,
+    const char* right,
+    uint32_t value,
+    uint32_t max,
+    uint32_t target);
+/* Any block with an icon: section headings and chips. */
+void page_add_icon(Page* page, PageStyle style, uint8_t icon, const char* text, uint32_t target);
 /* An icon (ui icons.h) left of the header title; 0 for none. */
 void page_set_title_icon(Page* page, uint8_t icon);
 /* After the next layout: scroll to `top` and focus `target` (0 = none). Restores a page on Back. */

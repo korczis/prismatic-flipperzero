@@ -220,42 +220,34 @@ static void render_home(UiApp* app) {
     page_reset(app->page, "Prismatic Pocket");
     page_set_title_icon(app->page, UiIconAbout);
     if(app->pack_status == PKP_OK) {
-        page_add_row(
-            app->page,
-            UiIconBrowse,
-            "Browse",
-            num(n, sizeof(n), pkp_count(app->pack, PKP_SEC_OBJECTS)),
-            T_HOME | HomeBrowse);
-        page_add_row(
-            app->page,
-            UiIconDetect,
-            "Detectors",
-            num(n, sizeof(n), app->cap_count[cap_index(PKP_CAP_DETECT)]),
-            T_HOME | HomeDetect);
-        page_add_row(
-            app->page,
-            UiIconApply,
-            "What to do",
-            num(n, sizeof(n), app->cap_count[cap_index(PKP_CAP_APPLY)]),
-            T_HOME | HomeApply);
-        page_add_row(
-            app->page,
-            UiIconCompare,
-            "Confusables",
-            num(n, sizeof(n), app->cap_count[cap_index(PKP_CAP_COMPARE)]),
-            T_HOME | HomeCompare);
-        page_add_row(
-            app->page,
-            UiIconQuiz,
-            "Quiz: which term?",
-            num(n, sizeof(n), app->quiz_kind_count[PKP_QUIZ_DEFINITION]),
-            T_HOME | HomeQuizTerm);
-        page_add_row(
-            app->page,
-            UiIconTrainer,
-            "Quiz: manipulative?",
-            num(n, sizeof(n), app->quiz_kind_count[PKP_QUIZ_TRAINER]),
-            T_HOME | HomeQuizExample);
+        /* each entry with its count and a bar: its share of every object in the pack */
+        uint32_t total = pkp_count(app->pack, PKP_SEC_OBJECTS);
+        const struct {
+            uint8_t icon;
+            const char* label;
+            uint32_t value;
+            uint32_t entry;
+        } rows[] = {
+            {UiIconBrowse, "Browse", total, HomeBrowse},
+            {UiIconDetect, "Detectors", app->cap_count[cap_index(PKP_CAP_DETECT)], HomeDetect},
+            {UiIconApply, "What to do", app->cap_count[cap_index(PKP_CAP_APPLY)], HomeApply},
+            {UiIconCompare, "Confusables", app->cap_count[cap_index(PKP_CAP_COMPARE)], HomeCompare},
+            {UiIconQuiz, "Which term?", app->quiz_kind_count[PKP_QUIZ_DEFINITION], HomeQuizTerm},
+            {UiIconTrainer,
+             "Manipulative?",
+             app->quiz_kind_count[PKP_QUIZ_TRAINER],
+             HomeQuizExample},
+        };
+        for(size_t k = 0; k < sizeof(rows) / sizeof(rows[0]); k++) {
+            page_add_row_bar(
+                app->page,
+                rows[k].icon,
+                rows[k].label,
+                num(n, sizeof(n), rows[k].value),
+                rows[k].value,
+                total,
+                T_HOME | rows[k].entry);
+        }
     } else {
         page_add(app->page, PageNote, "No knowledge pack: see Pack & device.", 0);
     }
@@ -267,12 +259,23 @@ static void render_home(UiApp* app) {
 static void render_categories(UiApp* app) {
     char n[12];
     page_reset(app->page, "Browse");
+    uint32_t largest = 0;
+    PkpCategory c;
     for(uint32_t i = 0; i < pkp_count(app->pack, PKP_SEC_CATEGORIES); i++) {
-        PkpCategory c;
+        if(pkp_category(app->pack, i, &c) == PKP_OK && c.count > largest) largest = c.count;
+    }
+    for(uint32_t i = 0; i < pkp_count(app->pack, PKP_SEC_CATEGORIES); i++) {
         if(pkp_category(app->pack, i, &c) != PKP_OK) continue;
         char label[64];
         snprintf(label, sizeof(label), "%s", str(app, c.name));
-        page_add_row(app->page, UiIconFolder, label, num(n, sizeof(n), c.count), T_CATEGORY | i);
+        page_add_row_bar(
+            app->page,
+            UiIconFolder,
+            label,
+            num(n, sizeof(n), c.count),
+            c.count,
+            largest,
+            T_CATEGORY | i);
     }
     restore(app);
 }
@@ -330,8 +333,16 @@ static void render_filter(UiApp* app) {
 /* ------------------------------------------------------------------ documents */
 
 static void section(UiApp* app, const PkpObject* o, uint8_t type, const char* heading) {
+    /* every section carries the icon of its role */
+    static const uint8_t icons[] = {
+        [PKP_ITEM_INDICATOR] = UiIconDetect,
+        [PKP_ITEM_ACTION] = UiIconApply,
+        [PKP_ITEM_ESCALATION] = UiIconAlert,
+        [PKP_ITEM_ALTERNATIVE] = UiIconCompare,
+        [PKP_ITEM_VALIDATION] = UiIconCorrect,
+    };
     if(!count_items(app, o, type)) return;
-    page_add(app->page, PageHeading, heading, 0);
+    page_add_icon(app->page, PageHeading, icons[type], heading, 0);
     add_items(app, o, type, PageBullet);
 }
 
@@ -349,19 +360,19 @@ static void render_article(UiApp* app) {
     if(pkp_category(app->pack, o.category, &c) == PKP_OK) page_reset(app->page, str(app, c.name));
     page_add(app->page, PageTitle, str(app, o.title), 0);
     pkp_kind_name(app->pack, o.kind, kind, sizeof(kind));
-    snprintf(line, sizeof(line), "%s", kind);
-    if(o.code.len) {
-        size_t k = strlen(line);
-        snprintf(line + k, sizeof(line) - k, " - %s", str(app, o.code));
-    }
-    page_add(app->page, PageMeta, line, 0);
-    /* the actions first: one Down reaches them, however long the definition */
+    snprintf(line, sizeof(line), "%s\t%s", kind, o.code.len ? str(app, o.code) : "");
+    page_add(app->page, PageBadge, line, 0);
+    /* the actions first, as chips: one Down reaches them, however long the definition */
     uint32_t markers = count_items(app, &o, PKP_ITEM_INDICATOR);
     if(markers) {
-        snprintf(line, sizeof(line), "Run the detector (%lu)", (unsigned long)markers);
-        page_add(app->page, PageLink, line, T_DETECT);
+        snprintf(line, sizeof(line), "%lu", (unsigned long)markers);
+        page_add_icon(app->page, PageChip, UiIconDetect, line, T_DETECT);
     }
-    if(o.caps & PKP_CAP_QUIZ) page_add(app->page, PageLink, "Take the quiz", T_QUIZ);
+    if(o.caps & PKP_CAP_QUIZ) page_add_icon(app->page, PageChip, UiIconQuiz, "Quiz", T_QUIZ);
+    if(o.rel_count) {
+        snprintf(line, sizeof(line), "%u", o.rel_count);
+        page_add_icon(app->page, PageChip, UiIconMap, line, T_MAP | f->obj);
+    }
     page_add(app->page, PageParagraph, str(app, o.definition), 0);
 
     section(app, &o, PKP_ITEM_INDICATOR, "How to recognise it");
@@ -376,13 +387,13 @@ static void render_article(UiApp* app) {
             has_confused = true;
     }
     if(alt || has_confused) {
-        page_add(app->page, PageHeading, "Don't confuse with", 0);
+        page_add_icon(app->page, PageHeading, UiIconCompare, "Don't confuse with", 0);
         add_items(app, &o, PKP_ITEM_ALTERNATIVE, PageBullet);
         add_relation_links(app, &o, confused, false);
     }
     section(app, &o, PKP_ITEM_VALIDATION, "Validation tests");
     if(count_items(app, &o, PKP_ITEM_HEADING)) {
-        page_add(app->page, PageHeading, "Chapters", 0);
+        page_add_icon(app->page, PageHeading, UiIconArticle, "Chapters", 0);
         for(uint32_t k = 0; k < o.items_count; k++) {
             PkpItem it;
             if(pkp_item(app->pack, o.items_first + k, &it) == PKP_OK &&
@@ -392,7 +403,7 @@ static void render_article(UiApp* app) {
         }
     }
     if(o.rel_count > 0 && (!has_confused || o.rel_count > 1)) {
-        page_add(app->page, PageHeading, "See also", 0);
+        page_add_icon(app->page, PageHeading, UiIconMap, "See also", 0);
         page_add(app->page, PageLink, "Map of links", T_MAP | f->obj);
         add_relation_links(app, &o, confused, true);
     }

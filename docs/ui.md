@@ -4,6 +4,18 @@ Prismatic Pocket runs on a 128 × 64 monochrome LCD. It has five buttons and Bac
 fonts are about 7 px tall. This page describes the design system in `app/ui/page.c`, explains
 why each rule exists, and shows how the interface is tested.
 
+## Typography
+
+There are three roles, all from one family:
+
+- **Titles and section headings:** helvB08, the firmware's bold FontPrimary.
+- **Reading text:** helvR08, its regular weight. It is embedded in the FAP from the pinned
+  firmware's u8g2 by `tools/fonts.py`, because the firmware exports no fonts to apps.
+- **Captions:** haxrcorp4089. Used for meta lines, notes, counts, legends and the kind pill.
+
+The regular weight has a real x-height and reads at 11 px pitch. That gives four lines of text
+under the header instead of five cramped ones, a trade made for readability.
+
 ## One engine, two shapes
 
 Every screen is a **page**. A page has three parts:
@@ -29,6 +41,9 @@ of existing blocks, not new drawing code.
 | Big | number in the 22 px digit font plus a caption | detector result |
 | Bar | stacked bar (solid, empty, dots, hatch) with a legend | the share of each mark |
 | Steps | one cell per step, current one framed | detector progress |
+| Badge | the kind in tracked capitals inside an inverted pill, then the code | an article's identity |
+| Chip | rounded box with an icon and a count; focused = inverted | an article's actions: detector, quiz, map |
+| Row bar | 14 px mini bar before a row's count (square-root scale) | home and category sizes |
 
 Two more surfaces sit on top of pages:
 
@@ -57,7 +72,7 @@ The table below is read from the engine's `#define`s by `tools/docs.py`. Do not 
 | `SOFT_H` | 12 px | softkey bar |
 | `LEFT` | 2 px | left text margin |
 | `RIGHT` | 123 px | last text column (scrollbar right of it) |
-| `LEADING` | 10 px | body line pitch |
+| `LEADING` | 11 px | body line pitch |
 | `ROW_H` | 12 px | list row |
 | `HEADING_H` | 13 px | section heading bar |
 | `BIG_H` | 24 px | big-number result line |
@@ -69,7 +84,7 @@ The table below is read from the engine's `#define`s by `tools/docs.py`. Do not 
 | Key | Documents | Lists | With softkeys |
 |---|---|---|---|
 | Up / Down | next link in view takes the focus, else the text moves one line | next row (wraps) | scroll |
-| Left / Right | previous / next section; its heading moves into the header | four rows up / down | left / right softkey |
+| Left / Right | previous / next section, whose heading and icon move into the header; on a row of chips, the next chip | four rows up / down | left / right softkey |
 | Hold Up / Down | same as Left / Right | same | same |
 | OK | open the focused link | open the row | centre softkey (hold = its long action) |
 | Back | one step back, restoring the scroll and the focused row | same | same |

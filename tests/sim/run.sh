@@ -9,6 +9,8 @@ out="$root/build/sim/cov"
 mkdir -p "$out"
 find "$out" -name '*.profraw' -delete
 python3 tests/sim/packs.py build/sim/packs >/dev/null
+tests/sim/fetch.sh
+python3 tools/fonts.py --check # app/ui/fonts.c is what the pinned u8g2 gives
 if [ "$(uname)" = Darwin ]; then
   cc=(clang); cov=(xcrun llvm-cov); prof=(xcrun llvm-profdata)
 else

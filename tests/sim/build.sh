@@ -18,6 +18,6 @@ strip_flag="-Wl,--gc-sections"
 [ "$(uname)" = Darwin ] && strip_flag="-Wl,-dead_strip"
 "$cc" -std=c11 -Wall -Wextra -Werror -Wno-unused-parameter -g "$@" \
   -I"$root/tests/sim/include" -I"$u8g2" -I"$root/app" \
-  "$root/tests/sim/pocketsim.c" "$root/app/ui/page.c" "$root/app/ui/ui_app.c" \
+  "$root/tests/sim/pocketsim.c" "$root/app/ui/page.c" "$root/app/ui/ui_app.c" "$root/app/ui/fonts.c" \
   "$root/app/core/pkp.c" "$root/app/core/pocket.c" "$root/tests/sim/canvas.c" \
   "$obj"/*.o "$strip_flag" -o "$root/build/sim/pocketsim"
