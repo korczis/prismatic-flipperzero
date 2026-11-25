@@ -33,4 +33,6 @@ typed when data can give it.
   *Tools*), and fails on any drifted region.
 - CI job *Knowledge pack* fails when `docs/data/pack-stats.json` differs from the report of
   the pack it just built.
+- The wiki is rendered from README and docs by `tools/wiki.py` (`just wiki`); it is never
+  edited by hand. The Pages explorer is rebuilt from the pack on every push to main.
 - Prose accuracy beyond derived regions is a review finding, not a machine check.

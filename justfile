@@ -85,3 +85,9 @@ site:
 # Serve the built explorer locally
 site-serve port="4790":
     python3 -m http.server {{port}} --bind 127.0.0.1 --directory site/dist
+
+# Regenerate the GitHub wiki from README and docs, and push it
+wiki:
+    rm -rf build/wiki && git clone -q git@github.com:korczis/prismatic-flipperzero.wiki.git build/wiki
+    python3 tools/wiki.py build/wiki
+    cd build/wiki && git add -A && (git diff --cached --quiet || git commit -q -m "docs(wiki): regenerate from $(git -C ../.. rev-parse --short HEAD)") && git push -q origin HEAD
