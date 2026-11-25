@@ -12,6 +12,7 @@ hub-detect       | kompendium | right,ok | Hub | Detect: every detector, or a ra
 hub-act          | kompendium | down,ok | Hub | Act: what to do, and pairs to tell apart, with their share of the pack
 hub-train        | kompendium | down,right,ok | Hub | Train: two kinds of question and objects to quiz
 chapters         | kompendium | ok,ok | Categories | The book's chapters with square-root share bars
+chapters-marquee | kompendium | ok,ok,down,tick10,tick6 | Categories | Rest on a cut name and it scrolls, after a pause, like a feature phone's list
 chapter-list     | kompendium | ok,ok,ok | Objects | One chapter's objects, paged by forty
 kinds            | kompendium | ok,down,ok | Kinds | Every kind of object with its count
 kind-list        | kompendium | ok,down,ok,down,ok | Filter | All objects of one kind

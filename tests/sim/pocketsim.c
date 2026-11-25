@@ -9,7 +9,7 @@
  * tests can assert on content and tools/sim.py can turn frames into PNGs. A pack path of "-"
  * starts with no pack; "!<path>" opens a pack whose open fails, to show the error path.
  * The steps "eject" and "insert" make every later pack read fail or work again: an SD card
- * pulled while the app runs.
+ * pulled while the app runs. "tickN" passes N idle ticks of 250 ms (the label marquee).
  */
 #define _POSIX_C_SOURCE 200809L /* strdup, strtok on glibc under -std=c11 */
 #include "../../app/ui/ui_app.h"
@@ -129,6 +129,17 @@ int main(int argc, char** argv) {
     for(char* tok = strtok(keys, ","); tok; tok = strtok(NULL, ",")) {
         PageKey key;
         PagePress press;
+        if(strncmp(tok, "tick", 4) == 0) {
+            /* "tick" or "tickN": N idle ticks of 250 ms, as the device's input loop gives them */
+            int ticks = tok[4] ? atoi(tok + 4) : 1;
+            bool redraw = false;
+            for(int t = 0; t < ticks; t++)
+                redraw = ui_app_tick(app) || redraw;
+            char name[24];
+            snprintf(name, sizeof(name), "%s%s", tok, redraw ? "" : "-idle");
+            frame(app, canvas, argv[2], n++, name);
+            continue;
+        }
         if(strcmp(tok, "eject") == 0 || strcmp(tok, "insert") == 0) {
             /* the cache is cleared too, so every later read reaches the missing card */
             ejected = tok[0] == 'e';

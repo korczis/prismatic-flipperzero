@@ -127,6 +127,9 @@ void page_add_node(Page* page, const char* label, uint8_t kind, uint32_t target)
 
 void page_draw(Page* page, Canvas* canvas);
 PageAction page_input(Page* page, PageKey key, PagePress press);
+/* Call about every 250 ms while idle: a focused row whose label is cut scrolls it by characters
+ * after a pause (a feature-phone marquee). Returns true when the page needs a redraw. */
+bool page_tick(Page* page);
 
 /* Test and simulator hooks: the visible text, one block line per entry. */
 uint16_t page_visible_lines(const Page* page, char out[][64], uint16_t cap);

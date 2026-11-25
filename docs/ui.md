@@ -157,7 +157,9 @@ These rules are taken from earlier small-screen designs:
 - **No wall of text.** After three lines, a paragraph breaks at its next sentence end and
   leaves a 3 px gap, so a long definition reads as short blocks.
 - **Details on demand.** The map's side boxes hold a few characters. The full name of the
-  focused box appears in the header.
+  focused box appears in the header. In lists, a name that does not fit scrolls by characters
+  once the focus has rested on it for 2.5 s, rests at its end and starts over, as feature
+  phones did; the pause keeps a moving label from distracting someone still scanning the list.
 - **Body text at 11 px pitch** in helvR08, four lines under the header. Shorter lines with a
   real x-height read better than more cramped lines (Duchnicky and Kolers, 1983).
 - **No scores.** The detector shows the operator's own marks as a number, a bar and a legend,
@@ -174,7 +176,7 @@ reviewer, and each finding is recorded here with what was done.
 | # | Finding | Decision |
 |---|---|---|
 | 1 | Home tiles: label, count and hint compete | Kept the tiles; counts became bare numbers, and the hint moved to the status line with its unit. |
-| 2 | Truncated names in lists lose their identity | Open. A focused row that grows to two lines needs focus-dependent layout; planned. |
+| 2 | Truncated names in lists lose their identity | Done: a focused row whose name is cut scrolls it by characters after 2.5 s of rest, pauses at the end and starts over (the feature-phone marquee); `page_tick` drives it from the app's idle loop. |
 | 3 | Page position reads like a count | Kept: paged lists already say `p1/31`; plain `1/6` is a position among rows. |
 | 4 | Bare hub counts | Each hub row now carries a share bar, and the status line says what it counts. |
 | 5 | Chips look like decoration | Kept: chips carry icons and invert on focus; words do not fit three chips in 124 px. |
@@ -182,7 +184,7 @@ reviewer, and each finding is recorded here with what was done.
 | 7 | Map shows four neighbours | Kept: the bounded graph is the point; the focused name is already in the header. |
 | 8 | `?` is ambiguous | Done: the detector's centre softkey says `Unsure`. |
 | 9 | The result bar reads as a score | Kept: the bar is the composition of four kinds of mark with a legend, and the note says it is not a score. |
-| 10 | Quiz position is not shown | Open: needs a session counter. |
+| 10 | Quiz position is not shown | Done: the quiz header counts the session's right answers ("3 of 4") once there is one. |
 | 11 | Trainer verdict competes with text | Kept: the verdict is the header (`Correct`, `Not quite`) and the first caption line. |
 | 12 | No-pack guidance buried | Done: Home says "No knowledge pack yet. Info says how to add one." |
 

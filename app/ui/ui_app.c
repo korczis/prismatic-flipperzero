@@ -100,6 +100,8 @@ struct UiApp {
     uint32_t marker_first;
 
     PkpQuiz quiz;
+    uint16_t quiz_asked; /* this session's answers, shown in the quiz header */
+    uint16_t quiz_right;
 };
 
 /* ------------------------------------------------------------------ helpers */
@@ -662,6 +664,19 @@ static void render_detect_result(UiApp* app) {
     restore(app);
 }
 
+/* "3 of 4": the session's right answers of all given, once there is one. */
+static void quiz_score(UiApp* app) {
+    char pos[16]; /* two 16-bit counts: "65535 of 65535" fits */
+    if(app->quiz_asked == 0) return;
+    snprintf(pos, sizeof(pos), "%u of %u", app->quiz_right, app->quiz_asked);
+    page_set_position(app->page, pos);
+}
+
+static void score(UiApp* app, uint8_t pick) {
+    app->quiz_asked++;
+    app->quiz_right += pocket_quiz_correct(&app->quiz, pick);
+}
+
 static void render_quiz(UiApp* app) {
     page_reset(app->page, "Quiz");
     if(pkp_quiz(app->pack, top(app)->aux, &app->quiz) != PKP_OK) {
@@ -680,6 +695,7 @@ static void render_quiz(UiApp* app) {
         page_add(app->page, PageParagraph, str(app, app->quiz.prompt), 0);
         page_set_softkeys(app->page, NULL, "Choose", NULL);
     }
+    quiz_score(app);
 }
 
 static void render_quiz_options(UiApp* app) {
@@ -705,6 +721,7 @@ static void render_quiz_result(UiApp* app) {
     bool ok = pocket_quiz_correct(&app->quiz, f->pick);
     page_reset(app->page, ok ? "Correct" : "Not quite");
     page_set_title_icon(app->page, ok ? UiIconCorrect : UiIconWrong);
+    quiz_score(app);
     if(app->quiz.kind == PKP_QUIZ_TRAINER) {
         page_add(
             app->page,
@@ -1023,6 +1040,7 @@ static void open_target(UiApp* app, uint32_t target, bool long_press) {
         app->depth--; /* the result replaces the question and its options */
         top(app)->screen = ScrQuizResult;
         top(app)->pick = (uint8_t)T_ARG(target);
+        score(app, top(app)->pick);
         top(app)->sel = 0;
         top(app)->top = 0;
         render(app);
@@ -1049,6 +1067,7 @@ static void softkey(UiApp* app, uint32_t slot, bool long_press) {
         if(app->quiz.kind == PKP_QUIZ_TRAINER) {
             f->screen = ScrQuizResult;
             f->pick = slot == 0 ? 0 : 1;
+            score(app, f->pick);
             render(app);
         } else {
             push(app, (Frame){.screen = ScrQuizOptions, .aux = f->aux, .obj = f->obj});
@@ -1155,6 +1174,10 @@ const char* ui_app_screen_name(const UiApp* app) {
         [ScrKinds] = "Kinds",
     };
     return names[app->stack[app->depth - 1].screen];
+}
+
+bool ui_app_tick(UiApp* app) {
+    return page_tick(app->page);
 }
 
 Page* ui_app_page(UiApp* app) {

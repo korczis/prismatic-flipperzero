@@ -32,6 +32,8 @@ void ui_app_set_pack(UiApp* app, PkpReader* pack, PkpStatus status, uint32_t ope
 void ui_app_draw(UiApp* app, Canvas* canvas);
 /* Returns false when the app should exit (Back on Home). */
 bool ui_app_input(UiApp* app, PageKey key, PagePress press);
+/* Idle time, about every 250 ms; returns true when the screen needs a redraw. */
+bool ui_app_tick(UiApp* app);
 Page* ui_app_page(UiApp* app);
 /* The screen on top, by name ("Home", "Article", ...): for tests and the screen atlas. */
 const char* ui_app_screen_name(const UiApp* app);

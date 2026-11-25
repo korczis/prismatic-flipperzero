@@ -49,6 +49,8 @@ Generated from the repository's history by [`tools/docs.py`](../tools/docs.py). 
 | `3908db4` | 09:45 | feat(ui): information architecture of four hubs on a tile grid |
 | `641a0a5` | 10:08 | feat(ui): screen atlas of every screen, reviewed; cache measured; docs |
 | `a3e2211` | 10:14 | feat(site): the device page, every screen of the app from the atlas |
+| `69840eb` | 10:25 | test(acceptance): a new object, only the pack recompiled, the same FAP, on the device |
+| `aec317c` | 10:26 | fix(atlas): compare frames by decoded pixels, not PNG bytes |
 <!-- docs:end timeline -->
 
 ## What made it fast

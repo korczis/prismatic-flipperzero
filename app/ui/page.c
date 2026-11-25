@@ -19,22 +19,24 @@
 #define CONTENTS  0xFFFFFFFEu /* the engine's own "Contents" menu entry */
 
 /* Geometry: docs/ui.md explains every number. */
-#define SCREEN_W  128
-#define SCREEN_H  64
-#define HEADER_H  13 /* title baseline 9, rule at y 11, body from y 13 */
-#define SOFT_H    12
-#define LEFT      2
-#define RIGHT     123 /* last text column; the scrollbar is 125..127 */
-#define LEADING   11 /* body (helvR08) line pitch */
-#define CAPTION_H 10 /* caption (haxrcorp4089) line pitch */
-#define CHIP_H    15
-#define ROW_H     12
-#define HEADING_H 13
-#define BIG_H     24
-#define BAR_H     21
-#define TILE_H    19
-#define TILE_W    64
-#define GAP       3
+#define SCREEN_W      128
+#define SCREEN_H      64
+#define HEADER_H      13 /* title baseline 9, rule at y 11, body from y 13 */
+#define SOFT_H        12
+#define LEFT          2
+#define RIGHT         123 /* last text column; the scrollbar is 125..127 */
+#define LEADING       11 /* body (helvR08) line pitch */
+#define CAPTION_H     10 /* caption (haxrcorp4089) line pitch */
+#define CHIP_H        15
+#define ROW_H         12
+#define HEADING_H     13
+#define BIG_H         24
+#define BAR_H         21
+#define TILE_H        19
+#define TILE_W        64
+#define MARQUEE_START 10 /* ticks still before a cut label starts to move (2.5 s at 250 ms) */
+#define MARQUEE_END   6 /* ticks it rests at its end */
+#define GAP           3
 
 typedef struct {
     uint8_t style;
@@ -98,6 +100,11 @@ struct Page {
     uint8_t nodes_n; /* neighbours, without the centre */
     uint8_t node_window; /* first neighbour shown */
     int8_t node_focus; /* 0 centre, 1..4 top, right, bottom, left */
+    /* the focused row's label, when cut, scrolls by characters after a pause (page_tick) */
+    int16_t marquee_block;
+    uint8_t marquee; /* characters scrolled off the left */
+    uint8_t marquee_room; /* characters that must go for the rest to fit */
+    uint8_t marquee_wait; /* ticks left in a pause */
 };
 
 enum {
@@ -141,6 +148,8 @@ void page_reset(Page* p, const char* title) {
     p->hints = false;
     p->top = 0;
     p->focus = -1;
+    p->marquee_block = -1;
+    p->marquee_room = 0;
     p->want = false;
     p->want_top = 0;
     p->title_icon = 0;
@@ -741,38 +750,82 @@ static void draw_bar_block(Canvas* canvas, const char* text, size_t n, int y) {
     draw_legend(canvas, &spec, y + 10);
 }
 
-static void draw_row(Canvas* canvas, const Page* p, const Block* blk, int y, bool focused) {
+/* The width a row leaves for its label after its icon, right-hand text and bar. */
+static int row_label_room(Canvas* canvas, const Page* p, const Block* blk, int* x) {
     char buf[256];
-    int x = LEFT + 1;
-    if(focused) {
-        canvas_draw_rbox(canvas, 0, y, RIGHT + 1, ROW_H, 2);
-        canvas_set_color(canvas, ColorWhite);
-    }
-    if(blk->icon) {
-        draw_icon(canvas, blk->icon, x + 1, y + 3);
-        x += 12;
-    }
     int rw = 0;
+    *x = LEFT + 1 + (blk->icon ? 12 : 0);
     set_role(canvas, RoleCaption);
     if(blk->right_len) {
         memcpy(buf, p->text + blk->right_off, blk->right_len);
         buf[blk->right_len] = '\0';
-        rw = canvas_string_width(canvas, buf);
-        canvas_draw_str(canvas, RIGHT - 2 - rw, y + 9, buf);
-        rw += 4;
+        rw = canvas_string_width(canvas, buf) + 4;
+    }
+    if(blk->bar) rw += 18;
+    return RIGHT - 2 - rw - *x;
+}
+
+static void draw_row(Canvas* canvas, const Page* p, const Block* blk, int y, bool focused) {
+    char buf[256];
+    int x, room = row_label_room(canvas, p, blk, &x), rw = RIGHT - 2 - room - x;
+    if(focused) {
+        canvas_draw_rbox(canvas, 0, y, RIGHT + 1, ROW_H, 2);
+        canvas_set_color(canvas, ColorWhite);
+    }
+    if(blk->icon) draw_icon(canvas, blk->icon, LEFT + 2, y + 3);
+    set_role(canvas, RoleCaption);
+    if(blk->right_len) {
+        memcpy(buf, p->text + blk->right_off, blk->right_len);
+        buf[blk->right_len] = '\0';
+        canvas_draw_str(canvas, RIGHT - 2 - canvas_string_width(canvas, buf), y + 9, buf);
     }
     if(blk->bar) {
-        /* a mini bar chart: a dotted 18 px track, filled by the row's share of the largest */
-        int bx = RIGHT - 2 - rw - 14, fill = blk->bar * 14 / 100;
+        /* a mini bar chart: a dotted 14 px track, filled by the row's share of the largest */
+        int bx = RIGHT - 2 - rw + 4, fill = blk->bar * 14 / 100;
         for(int dx = 0; dx < 14; dx += 2)
             canvas_draw_dot(canvas, bx + dx, y + 6);
         canvas_draw_box(canvas, bx, y + 4, (size_t)(fill ? fill : 1), 5);
-        rw += 18;
     }
+    size_t shift = focused ? p->marquee : 0;
     set_role(canvas, RoleBody);
-    fit(canvas, p->text + blk->off, blk->len, RIGHT - 2 - rw - x, buf, sizeof(buf));
+    fit(canvas, p->text + blk->off + shift, blk->len - shift, room, buf, sizeof(buf));
     canvas_draw_str(canvas, x, y + 9, buf);
     canvas_set_color(canvas, ColorBlack);
+}
+
+/* How many characters the focused row's label must lose for the rest to fit; a new focus
+ * starts the marquee over. */
+static void measure_marquee(Page* p, Canvas* canvas) {
+    if(p->focus != p->marquee_block) {
+        p->marquee_block = p->focus;
+        p->marquee = 0;
+        p->marquee_wait = MARQUEE_START;
+    }
+    p->marquee_room = 0;
+    if(p->focus < 0 || p->blocks[p->focus].style != PageRow) return;
+    const Block* blk = &p->blocks[p->focus];
+    char buf[256];
+    int x, room = row_label_room(canvas, p, blk, &x);
+    size_t n = blk->len < sizeof(buf) - 1 ? blk->len : sizeof(buf) - 1, k = 0;
+    set_role(canvas, RoleBody);
+    memcpy(buf, p->text + blk->off, n);
+    buf[n] = '\0';
+    while(k < n && canvas_string_width(canvas, buf + k) > room)
+        k++;
+    p->marquee_room = (uint8_t)(k < 255 ? k : 255);
+}
+
+bool page_tick(Page* p) {
+    if(p->marquee_room == 0 || p->overlay != OverlayNone) return false;
+    if(p->marquee_wait) {
+        p->marquee_wait--;
+        if(p->marquee_wait > 0 || p->marquee < p->marquee_room) return false;
+        p->marquee = 0; /* rested at the end: back to the start, and pause again */
+        p->marquee_wait = MARQUEE_START;
+        return true;
+    }
+    if(++p->marquee >= p->marquee_room) p->marquee_wait = MARQUEE_END;
+    return true;
 }
 
 /* "N/M caption": the number in the big font, the caption beside it. */
@@ -1313,6 +1366,7 @@ void page_draw(Page* p, Canvas* canvas) {
         draw_header(canvas, p);
         return;
     }
+    measure_marquee(p, canvas);
     int y = HEADER_H, bottom = body_bottom(p);
     for(int16_t i = p->top; i < (int16_t)p->lines_n && y < bottom; i++) {
         draw_line(canvas, p, &p->lines[i], y);

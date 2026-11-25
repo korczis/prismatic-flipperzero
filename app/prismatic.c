@@ -160,9 +160,17 @@ int32_t prismatic_app(void* p) {
 
     InputEvent event;
     bool running = true;
-    while(running && furi_message_queue_get(app.input, &event, FuriWaitForever) == FuriStatusOk) {
+    while(running) {
         PageKey key;
         PagePress press;
+        if(furi_message_queue_get(app.input, &event, 250) != FuriStatusOk) {
+            /* idle for 250 ms: let a cut label scroll */
+            furi_mutex_acquire(app.mutex, FuriWaitForever);
+            bool redraw = ui_app_tick(app.ui);
+            furi_mutex_release(app.mutex);
+            if(redraw) view_port_update(app.view_port);
+            continue;
+        }
         if(event.key == InputKeyMAX) break; /* the loader asked us to quit */
         if(!to_page(&event, &key, &press)) continue;
         furi_mutex_acquire(app.mutex, FuriWaitForever);

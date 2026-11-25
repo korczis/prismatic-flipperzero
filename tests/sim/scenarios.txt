@@ -52,3 +52,5 @@ hub-detect           | ui  | right,ok,ok,back,down,ok | # Detect;# Detectors;~ M
 hub-train            | ui  | down,right,ok,down,down,ok,ok | # Train;~ Pick the term of four;~ Manipulative or benign;# Quiz [1/18];technique - 
 back-long-home       | ui  | ok,ok,ok,ok,back:long,back:long,back | # A long category;# Prismatic Pocket [1/6];EXIT
 eject-random         | ui  | eject,ok,down,down,down,ok,insert,back,back:long,right,ok,eject,down,ok,insert | This object could not be;# Detector
+marquee              | ui  | ok,ok,down,down,ok,tick10,tick,tick30,tick6,tick,down,tick,ok:long,tick20,back,back,back,tick | == 06 tick10-idle;== 07 tick;# A long category;== 12 tick-idle;[Actions];== 14 tick20-idle
+quiz-score           | ui  | down,right,ok,ok,ok,ok,back,down,ok,left | # Which term?;# Correct [1 of 1];# Manipulative? [1 of 1];# Not quite [1 of 2]
