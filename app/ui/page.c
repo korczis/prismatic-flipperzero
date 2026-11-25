@@ -32,6 +32,8 @@
 #define HEADING_H 13
 #define BIG_H     24
 #define BAR_H     21
+#define TILE_H    19
+#define TILE_W    64
 #define GAP       3
 
 typedef struct {
@@ -45,6 +47,8 @@ typedef struct {
     uint16_t line_first; /* set by layout: the block's first and last line */
     uint16_t line_last;
     uint8_t bar; /* rows: share of the largest value in a list, 0..100 */
+    uint16_t hint_off; /* status-line text while focused; hint_len 0 = none */
+    uint8_t hint_len;
 } Block;
 
 typedef struct {
@@ -69,6 +73,7 @@ struct Page {
     bool dirty;
     bool truncated;
     bool list; /* every selectable block is a row: lists wrap and page by rows */
+    bool hints; /* some block has a hint: the bottom line is a status line */
     int16_t top;
     int16_t focus; /* block index of the focused selectable block, or -1 */
     uint32_t want_target; /* focus to restore after layout */
@@ -133,6 +138,7 @@ void page_reset(Page* p, const char* title) {
     p->dirty = true;
     p->truncated = false;
     p->list = false;
+    p->hints = false;
     p->top = 0;
     p->focus = -1;
     p->want = false;
@@ -204,8 +210,8 @@ static int32_t put_text(Page* p, const char* text, size_t n) {
         static const char note[] = "(more in the pack than fits on one page)";
         p->truncated = true;
         memcpy(p->text + p->text_len, note, sizeof(note) - 1);
-        p->blocks[p->blocks_n++] =
-            (Block){PageNote, 0, p->text_len, (uint16_t)(sizeof(note) - 1), 0, 0, 0, 0, 0, 0};
+        p->blocks[p->blocks_n++] = (Block){
+            PageNote, 0, p->text_len, (uint16_t)(sizeof(note) - 1), 0, 0, 0, 0, 0, 0, 0, 0};
         p->text_len += (uint16_t)(sizeof(note) - 1);
         return -1;
     }
@@ -223,7 +229,7 @@ void page_add(Page* p, PageStyle style, const char* text, uint32_t target) {
     int32_t at = put_text(p, text, n);
     if(at < 0) return;
     p->blocks[p->blocks_n++] =
-        (Block){(uint8_t)style, 0, (uint16_t)at, (uint16_t)n, 0, 0, target, 0, 0, 0};
+        (Block){(uint8_t)style, 0, (uint16_t)at, (uint16_t)n, 0, 0, target, 0, 0, 0, 0, 0};
     p->dirty = true;
 }
 
@@ -235,9 +241,27 @@ void page_add_row(Page* p, uint8_t icon, const char* label, const char* right, u
     int32_t rat = rn ? put_text(p, right, rn) : 0;
     if(rat < 0) return;
     p->blocks[p->blocks_n++] = (Block){
-        PageRow, icon, (uint16_t)at, (uint16_t)n, (uint16_t)rat, (uint8_t)rn, target, 0, 0, 0};
+        PageRow, icon, (uint16_t)at, (uint16_t)n, (uint16_t)rat, (uint8_t)rn, target, 0, 0, 0, 0, 0};
     p->list = true;
     p->dirty = true;
+}
+
+void page_add_tile(Page* p, uint8_t icon, const char* label, const char* caption, uint32_t target) {
+    page_add_row(p, icon, label, caption, target);
+    if(p->blocks_n && p->blocks[p->blocks_n - 1].target == target) {
+        p->blocks[p->blocks_n - 1].style = PageTile;
+    }
+}
+
+void page_set_hint(Page* p, const char* hint) {
+    size_t n = strlen(hint);
+    if(p->blocks_n == 0 || n == 0) return;
+    if(n > 255) n = 255;
+    int32_t at = put_text(p, hint, n);
+    if(at < 0) return;
+    p->blocks[p->blocks_n - 1].hint_off = (uint16_t)at;
+    p->blocks[p->blocks_n - 1].hint_len = (uint8_t)n;
+    p->hints = true;
 }
 
 void page_add_row_bar(
@@ -265,7 +289,8 @@ void page_add_icon(Page* p, PageStyle style, uint8_t icon, const char* text, uin
 }
 
 static bool selectable(const Block* b) {
-    return b->style == PageLink || b->style == PageRow || b->style == PageChip;
+    return b->style == PageLink || b->style == PageRow || b->style == PageChip ||
+           b->style == PageTile;
 }
 
 uint16_t page_block_count(const Page* p) {
@@ -283,7 +308,7 @@ static bool has_softkeys(const Page* p) {
 }
 
 static int body_bottom(const Page* p) {
-    return has_softkeys(p) ? SCREEN_H - SOFT_H : SCREEN_H;
+    return has_softkeys(p) || p->hints ? SCREEN_H - SOFT_H : SCREEN_H;
 }
 
 static int body_height(const Page* p) {
@@ -429,7 +454,12 @@ static int16_t max_top(const Page* p) {
     int h = 0, vh = body_height(p);
     for(int16_t i = (int16_t)p->lines_n - 1; i >= 0; i--) {
         h += p->lines[i].height;
-        if(h > vh) return (int16_t)(i + 1);
+        if(h > vh) {
+            /* start on a row's first line, never on a tile or chip beside it */
+            while(p->lines[i + 1].height == 0)
+                i++;
+            return (int16_t)(i + 1);
+        }
     }
     return 0;
 }
@@ -447,9 +477,17 @@ static int16_t last_visible(const Page* p, int16_t top) {
 
 static void reveal(Page* p, int16_t b) {
     int16_t first = first_line_of(p, b), last = last_line_of(p, b), mt = max_top(p);
-    if(first < p->top) p->top = first;
-    while(last > last_visible(p, p->top) && p->top < first && p->top < mt)
+    /* rows of tiles or chips scroll whole: a zero-height line sits beside its row's first */
+    if(first < p->top) {
+        p->top = first;
+        while(p->top > 0 && p->lines[p->top].height == 0)
+            p->top--;
+    }
+    while(last > last_visible(p, p->top) && p->top < first && p->top < mt) {
         p->top++;
+        while(p->top < mt && p->lines[p->top].height == 0)
+            p->top++;
+    }
 }
 
 static int chip_width(const Page* p, Canvas* canvas, uint16_t b) {
@@ -473,6 +511,17 @@ static void layout_chip(Page* p, Canvas* canvas, uint16_t b, bool next_same) {
     if(!next_same) push_gap(p, b, 2);
 }
 
+/* Tiles pair up: the first of a pair takes the row's height, the second sits beside it at x 64. */
+static void layout_tile(Page* p, uint16_t b, bool next_same) {
+    uint16_t k = 0;
+    while(k < b && p->blocks[b - k - 1].style == PageTile)
+        k++;
+    bool second = k % 2 == 1;
+    push_line(p, b, 0, 0, second ? 0 : TILE_H, LINE_FIRST | LINE_LAST | LINE_BODY);
+    p->lines[p->lines_n - 1].off = second ? TILE_W : 0;
+    if(!next_same) push_gap(p, b, 1);
+}
+
 static void layout(Page* p, Canvas* canvas) {
     p->lines_n = 0;
     for(uint16_t b = 0; b < p->blocks_n; b++) {
@@ -493,6 +542,9 @@ static void layout(Page* p, Canvas* canvas) {
             break;
         case PageChip:
             layout_chip(p, canvas, b, next_same);
+            break;
+        case PageTile:
+            layout_tile(p, b, next_same);
             break;
         case PageBar:
             push_line(p, b, 0, 0, BAR_H, LINE_FIRST | LINE_LAST | LINE_BODY);
@@ -623,21 +675,63 @@ static void draw_bar(Canvas* canvas, const BarSpec* b, int y) {
     }
 }
 
-/* One swatch per segment with its value and label, in the segment's fill. */
+/* One swatch per segment with its value and label, in the segment's fill; when the labels do
+ * not fit one line, the values alone (the page names the segments elsewhere). */
 static void draw_legend(Canvas* canvas, const BarSpec* b, int y) {
-    int x = LEFT;
+    char label[4][24];
+    int width = 0;
     canvas_set_font(canvas, FontSecondary);
     for(int i = 0; i < b->k; i++) {
-        char label[24];
         size_t len = b->name_len[i] < 14 ? b->name_len[i] : 14;
-        int at = snprintf(label, sizeof(label), "%d ", b->v[i]);
-        memcpy(label + at, b->name[i], len);
-        label[(size_t)at + len] = '\0';
+        int at = snprintf(label[i], sizeof(label[i]), "%d ", b->v[i]);
+        memcpy(label[i] + at, b->name[i], len);
+        label[i][(size_t)at + len] = '\0';
+        width += 14 + canvas_string_width(canvas, label[i]);
+    }
+    bool values_only = width - 6 > RIGHT - LEFT;
+    int x = LEFT;
+    for(int i = 0; i < b->k; i++) {
+        if(values_only) snprintf(label[i], sizeof(label[i]), "%d", b->v[i]);
         canvas_draw_frame(canvas, x, y + 2, 6, 6);
         draw_fill(canvas, i, x + 1, y + 3, 4, 4);
-        canvas_draw_str(canvas, x + 8, y + 8, label);
-        x += 8 + canvas_string_width(canvas, label) + 6;
+        canvas_draw_str(canvas, x + 8, y + 8, label[i]);
+        x += 8 + canvas_string_width(canvas, label[i]) + 6;
     }
+}
+
+/* An icon at twice its size: each pixel a 2x2 box. */
+static void draw_icon_2x(Canvas* canvas, uint8_t icon, int x, int y) {
+    if(icon == 0 || icon >= UiIconCount) return;
+    for(int r = 0; r < UI_ICON_H; r++) {
+        uint8_t bits = ui_icon_rows[icon][r];
+        for(int c = 0; c < UI_ICON_W; c++) {
+            if(bits & (1u << c)) canvas_draw_box(canvas, x + 2 * c, y + 2 * r, 2, 2);
+        }
+    }
+}
+
+/* A tile: inverted when focused, otherwise open, with dotted rules between the cells. */
+static void
+    draw_tile(Canvas* canvas, const Page* p, const Block* blk, int x, int y, bool focused) {
+    char buf[40];
+    int w = TILE_W - 2, h = TILE_H - 1;
+    if(focused) {
+        canvas_draw_rbox(canvas, x, y, (size_t)w, (size_t)h, 3);
+        canvas_set_color(canvas, ColorWhite);
+    } else {
+        for(int d = x + 2; d < x + w - 1; d += 2)
+            canvas_draw_dot(canvas, d, y + h);
+        for(int d = y + 2; d < y + h - 1; d += 2)
+            canvas_draw_dot(canvas, x + w, d);
+    }
+    draw_icon_2x(canvas, blk->icon, x + 3, y + 1);
+    set_role(canvas, RoleTitle);
+    fit(canvas, p->text + blk->off, blk->len, w - 23, buf, sizeof(buf));
+    canvas_draw_str(canvas, x + 22, y + 8, buf);
+    set_role(canvas, RoleCaption);
+    fit(canvas, p->text + blk->right_off, blk->right_len, w - 23, buf, sizeof(buf));
+    canvas_draw_str(canvas, x + 22, y + 16, buf);
+    canvas_set_color(canvas, ColorBlack);
 }
 
 static void draw_bar_block(Canvas* canvas, const char* text, size_t n, int y) {
@@ -803,6 +897,9 @@ static void draw_line(Canvas* canvas, const Page* p, const Line* l, int y) {
         return;
     case PageBar:
         draw_bar_block(canvas, p->text + blk->off, blk->len, y);
+        return;
+    case PageTile:
+        draw_tile(canvas, p, blk, l->off, y - (l->height ? 0 : TILE_H), focused);
         return;
     case PageSteps:
         draw_steps(canvas, p->text + blk->off, blk->len, y);
@@ -1187,6 +1284,22 @@ static void draw_graph(Canvas* canvas, const Page* p) {
     }
 }
 
+/* The status line: a dotted rule, then the focused block's hint in the caption face. */
+static void draw_status(Canvas* canvas, const Page* p, int y) {
+    char buf[80];
+    for(int x = 0; x < SCREEN_W; x += 2)
+        canvas_draw_dot(canvas, x, y + 1);
+    const Block* blk = p->focus >= 0 ? &p->blocks[p->focus] : NULL;
+    set_role(canvas, RoleCaption);
+    fit(canvas,
+        blk ? p->text + blk->hint_off : "",
+        blk ? blk->hint_len : 0,
+        SCREEN_W - 2 * LEFT,
+        buf,
+        sizeof(buf));
+    canvas_draw_str(canvas, LEFT, SCREEN_H - 2, buf);
+}
+
 void page_draw(Page* p, Canvas* canvas) {
     canvas_clear(canvas);
     canvas_set_color(canvas, ColorBlack);
@@ -1204,10 +1317,11 @@ void page_draw(Page* p, Canvas* canvas) {
     /* clear what spilled over the edges, then draw the chrome on top */
     canvas_set_color(canvas, ColorWhite);
     canvas_draw_box(canvas, 0, 0, SCREEN_W, HEADER_H);
-    if(has_softkeys(p)) canvas_draw_box(canvas, 0, bottom, SCREEN_W, SCREEN_H - bottom);
+    if(bottom < SCREEN_H) canvas_draw_box(canvas, 0, bottom, SCREEN_W, SCREEN_H - bottom);
     canvas_set_color(canvas, ColorBlack);
     draw_header(canvas, p);
     draw_scrollbar(canvas, p);
+    if(!has_softkeys(p) && p->hints) draw_status(canvas, p, bottom);
     for(int k = 0; k < 3; k++)
         draw_softkey(canvas, k, p->softkey[k]);
     if(p->overlay != OverlayNone) draw_overlay(canvas, p);
@@ -1236,11 +1350,37 @@ static void chip_run(const Page* p, int16_t b, int16_t* first, int16_t* last) {
         (*last)++;
 }
 
+/* The run of consecutive tiles around block b. */
+static void tile_run(const Page* p, int16_t b, int16_t* first, int16_t* last) {
+    *first = *last = b;
+    while(*first > 0 && p->blocks[*first - 1].style == PageTile)
+        (*first)--;
+    while(*last + 1 < (int16_t)p->blocks_n && p->blocks[*last + 1].style == PageTile)
+        (*last)++;
+}
+
 static void step(Page* p, int dir) {
     int16_t mt = max_top(p);
     if(p->list) {
-        int16_t n = next_selectable(p, p->focus, dir);
+        int16_t from = p->focus;
+        if(from >= 0 && p->blocks[from].style == PageTile) {
+            /* Up/Down move by a row of the grid, then leave it from its edge */
+            int16_t first, last, n = (int16_t)(from + 2 * dir);
+            tile_run(p, from, &first, &last);
+            if(n >= first && n <= last) {
+                p->focus = n;
+                reveal(p, n);
+                return;
+            }
+            from = dir > 0 ? last : first;
+        }
+        int16_t n = next_selectable(p, from, dir);
         if(n < 0) n = next_selectable(p, dir > 0 ? -1 : (int16_t)p->blocks_n, dir); /* wrap */
+        if(n >= 0 && dir < 0 && p->blocks[n].style == PageTile) {
+            int16_t first, last;
+            tile_run(p, n, &first, &last);
+            n = (int16_t)(first + (last - first) / 2 * 2); /* the left tile of the last row */
+        }
         if(n >= 0) {
             p->focus = n;
             if(dir < 0 && first_line_of(p, n) > last_visible(p, p->top)) p->top = mt;
@@ -1300,6 +1440,13 @@ static void jump(Page* p, int dir) {
             return;
         }
         /* past the last chip, Left/Right jump sections as anywhere else */
+    }
+    if(p->focus >= 0 && p->blocks[p->focus].style == PageTile) {
+        /* Left/Right move inside a row of the grid and stop at its edge */
+        int16_t first, last, n = (int16_t)(p->focus + dir);
+        tile_run(p, p->focus, &first, &last);
+        if(n >= first && n <= last && (n - first) / 2 == (p->focus - first) / 2) p->focus = n;
+        return;
     }
     if(p->list) {
         for(int k = 0; k < 4; k++) {
@@ -1400,6 +1547,7 @@ PageAction page_input(Page* p, PageKey key, PagePress press) {
     if(p->overlay != OverlayNone) return overlay_input(p, key, press);
     if(key == PageKeyBack) {
         if(press == PagePressShort) act.kind = PageActBack;
+        if(press == PagePressLong) act.kind = PageActHome;
         return act;
     }
     if(p->dirty) return act; /* not laid out yet: nothing on screen to act on */
@@ -1489,8 +1637,10 @@ uint16_t page_visible_lines(const Page* p, char out[][64], uint16_t cap) {
     for(int16_t i = p->top; i <= last && n < cap; i++) {
         const Line* l = &p->lines[i];
         const Block* blk = &p->blocks[l->block];
+        if(!(l->flags & LINE_BODY)) continue; /* a gap */
         bool whole = blk->style == PageRow || blk->style == PageBig || blk->style == PageBar ||
-                     blk->style == PageSteps || blk->style == PageBadge || blk->style == PageChip;
+                     blk->style == PageSteps || blk->style == PageBadge ||
+                     blk->style == PageChip || blk->style == PageTile;
         const char* s = p->text + (whole ? blk->off : l->off);
         size_t len = whole ? blk->len : l->len;
         if(len == 0) continue;
@@ -1505,7 +1655,23 @@ uint16_t page_visible_lines(const Page* p, char out[][64], uint16_t cap) {
                 out[n][k++] = s[c];
             }
         }
+        if(blk->style == PageTile) { /* "[Label] caption" */
+            size_t rn = blk->right_len < 62 - k - 1 ? blk->right_len : 62 - k - 1;
+            out[n][k++] = ' ';
+            memcpy(out[n] + k, p->text + blk->right_off, rn);
+            k += rn;
+        }
         out[n][k] = '\0';
+        n++;
+    }
+    if(!has_softkeys(p) && p->hints && n <= cap) {
+        /* the status line: "~ hint" of the focused block */
+        const Block* f = p->focus >= 0 ? &p->blocks[p->focus] : NULL;
+        size_t hn = f && f->hint_len < 60 ? f->hint_len : f ? 60 : 0;
+        out[n][0] = '~';
+        out[n][1] = ' ';
+        if(hn) memcpy(out[n] + 2, p->text + f->hint_off, hn);
+        out[n][2 + hn] = '\0';
         n++;
     }
     if(has_softkeys(p)) {

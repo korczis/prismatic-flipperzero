@@ -38,6 +38,7 @@ typedef enum {
     PageSteps, /* progress cells: text "done/total" */
     PageBadge, /* kind as an inverted pill, then a caption: text "KIND\tcaption" */
     PageChip, /* selectable: icon + short text; consecutive chips share one row */
+    PageTile, /* selectable: big icon, label, caption; consecutive tiles form a 2-column grid */
 } PageStyle;
 
 typedef enum {
@@ -60,6 +61,7 @@ typedef enum {
     PageActOpen, /* open `target` of the focused block */
     PageActSoftkey, /* softkey `target` (0..2) pressed; `long_press` for a held OK */
     PageActBack,
+    PageActHome, /* Back held: straight to the first screen */
 } PageActKind;
 
 typedef struct {
@@ -81,6 +83,17 @@ void page_set_position(Page* page, const char* position);
 void page_add(Page* page, PageStyle style, const char* text, uint32_t target);
 /* A row: icon (0 = none, see ui_icons.h), label, right-aligned text (may be NULL). */
 void page_add_row(Page* page, uint8_t icon, const char* label, const char* right, uint32_t target);
+/* A tile of a two-column grid (Home): a 16 px icon, a bold label and a caption under it. The d-pad
+ * moves in two dimensions inside the grid; Up/Down past its edge leave it. */
+void page_add_tile(
+    Page* page,
+    uint8_t icon,
+    const char* label,
+    const char* caption,
+    uint32_t target);
+/* A one-line explanation of the block just added, shown in a status line at the bottom while that
+ * block has the focus (details on demand). */
+void page_set_hint(Page* page, const char* hint);
 /* A row with a mini bar chart before its count: `value` of `max` (a share of the largest). */
 void page_add_row_bar(
     Page* page,

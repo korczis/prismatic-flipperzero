@@ -24,6 +24,8 @@
 #define T_PAGE      (8u << 24) /* argument: 0 previous, 1 next */
 #define T_OPTION    (9u << 24) /* argument: quiz option */
 #define T_MAP       (10u << 24) /* argument: object at the centre of a map */
+#define T_OF_KIND   (11u << 24) /* argument: object kind */
+#define KIND_CAP    32u
 #define T_KIND(t)   ((t) & 0xFF000000u)
 #define T_ARG(t)    ((t) & 0x00FFFFFFu)
 
@@ -42,6 +44,8 @@ typedef enum {
     ScrInfo,
     ScrAbout,
     ScrMap,
+    ScrHub,
+    ScrKinds,
 } Screen;
 
 enum {
@@ -54,11 +58,17 @@ enum {
     HomeQuizExample,
     HomeInfo,
     HomeAbout,
+    HomeKinds,
+    HomeAll,
+    HomeQuizzable,
+    HomeRandom,
+    HomeRandomDetect,
+    HomeHub, /* HomeHub + n: hub n of the hubs table */
 };
 
 typedef struct {
     uint8_t screen;
-    uint8_t filter; /* capability bit for ScrFilter */
+    uint8_t filter; /* capability bit for ScrFilter; 0: objects of kind `cat` */
     uint16_t cat;
     uint16_t page;
     uint16_t obj;
@@ -79,6 +89,7 @@ struct UiApp {
     uint32_t scan_ms;
     uint16_t cap_count[5];
     uint32_t quiz_kind_count[3];
+    uint16_t kind_count[KIND_CAP];
 
     Frame stack[STACK];
     uint8_t depth;
@@ -215,50 +226,169 @@ static const char* num(char* buf, size_t cap, uint32_t n) {
 
 /* ------------------------------------------------------------------ lists */
 
+/* What one home entry leads to, counted from the pack: zero hides the entry. */
+static uint32_t entry_count(UiApp* app, uint32_t entry) {
+    uint32_t total = pkp_count(app->pack, PKP_SEC_OBJECTS), kinds = 0;
+    for(uint32_t k = 0; k < KIND_CAP; k++)
+        kinds += app->kind_count[k] != 0;
+    const uint32_t counts[] = {
+        [HomeBrowse] = pkp_count(app->pack, PKP_SEC_CATEGORIES),
+        [HomeDetect] = app->cap_count[cap_index(PKP_CAP_DETECT)],
+        [HomeApply] = app->cap_count[cap_index(PKP_CAP_APPLY)],
+        [HomeCompare] = app->cap_count[cap_index(PKP_CAP_COMPARE)],
+        [HomeQuizTerm] = app->quiz_kind_count[PKP_QUIZ_DEFINITION],
+        [HomeQuizExample] = app->quiz_kind_count[PKP_QUIZ_TRAINER],
+        [HomeKinds] = kinds,
+        [HomeAll] = total,
+        [HomeQuizzable] = app->cap_count[cap_index(PKP_CAP_QUIZ)],
+        [HomeRandom] = total,
+        [HomeRandomDetect] = app->cap_count[cap_index(PKP_CAP_DETECT)],
+    };
+    return entry < sizeof(counts) / sizeof(counts[0]) ? counts[entry] : 0;
+}
+
+/* The information architecture: four hubs, each a short menu of entries. Labels and hints are
+ * the only words here; every count comes from the pack, and an entry with nothing behind it is
+ * left out. */
+typedef struct {
+    uint8_t icon;
+    uint32_t entry;
+    const char* label;
+    const char* unit; /* the count's format, "%lu"; "" for none */
+    const char* hint;
+    uint8_t share; /* a bar of the count's share: ShareNone, ShareObjects, ShareQuestions */
+} HubEntry;
+
+enum {
+    ShareNone,
+    ShareObjects,
+    ShareQuestions,
+};
+
+typedef struct {
+    uint8_t icon;
+    const char* name;
+    uint32_t count_entry; /* the count its home tile shows */
+    const char* hint; /* the status line: a format of the tile's count */
+    HubEntry entries[5];
+} Hub;
+
+static const Hub hubs[] = {
+    {UiIconBrowse,
+     "Library",
+     HomeAll,
+     "%lu objects to read",
+     {{UiIconFolder, HomeBrowse, "By chapter", "%lu", "Chapters in book order", ShareNone},
+      {UiIconArticle, HomeKinds, "By kind", "%lu", "One list per kind", ShareNone},
+      {UiIconBrowse, HomeAll, "Everything", "%lu", "All, in pack order", ShareObjects},
+      {UiIconMap, HomeRandom, "Surprise me", "", "A random article", ShareNone}}},
+    {UiIconDetect,
+     "Detect",
+     HomeDetect,
+     "%lu: mark what you saw",
+     {{UiIconDetect, HomeDetect, "Detectors", "%lu", "Objects with markers", ShareObjects},
+      {UiIconAlert, HomeRandomDetect, "Random detector", "", "Markers of a random one", ShareNone}}},
+    {UiIconApply,
+     "Act",
+     HomeApply,
+     "%lu with steps to take",
+     {{UiIconApply, HomeApply, "What to do", "%lu", "Objects with steps", ShareObjects},
+      {UiIconCompare, HomeCompare, "Confusables", "%lu", "Pairs to tell apart", ShareObjects}}},
+    {UiIconQuiz,
+     "Train",
+     HomeQuizTerm,
+     "%lu questions to try",
+     {{UiIconQuiz, HomeQuizTerm, "Which term?", "%lu", "Pick the term of four", ShareQuestions},
+      {UiIconTrainer,
+       HomeQuizExample,
+       "Manipulative?",
+       "%lu",
+       "Manipulative or benign",
+       ShareQuestions},
+      {UiIconArticle,
+       HomeQuizzable,
+       "Quiz an object",
+       "%lu",
+       "Quiz a chosen object",
+       ShareObjects}}},
+};
+#define HUB_COUNT (sizeof(hubs) / sizeof(hubs[0]))
+
 static void render_home(UiApp* app) {
-    char n[12];
+    char count[12], hint[64];
     page_reset(app->page, "Prismatic Pocket");
     page_set_title_icon(app->page, UiIconAbout);
     if(app->pack_status == PKP_OK) {
-        /* each entry with its count and a bar: its share of every object in the pack */
-        uint32_t total = pkp_count(app->pack, PKP_SEC_OBJECTS);
-        const struct {
-            uint8_t icon;
-            const char* label;
-            uint32_t value;
-            uint32_t entry;
-        } rows[] = {
-            {UiIconBrowse, "Browse", total, HomeBrowse},
-            {UiIconDetect, "Detectors", app->cap_count[cap_index(PKP_CAP_DETECT)], HomeDetect},
-            {UiIconApply, "What to do", app->cap_count[cap_index(PKP_CAP_APPLY)], HomeApply},
-            {UiIconCompare, "Confusables", app->cap_count[cap_index(PKP_CAP_COMPARE)], HomeCompare},
-            {UiIconQuiz, "Which term?", app->quiz_kind_count[PKP_QUIZ_DEFINITION], HomeQuizTerm},
-            {UiIconTrainer,
-             "Manipulative?",
-             app->quiz_kind_count[PKP_QUIZ_TRAINER],
-             HomeQuizExample},
-        };
-        for(size_t k = 0; k < sizeof(rows) / sizeof(rows[0]); k++) {
-            page_add_row_bar(
+        for(uint32_t h = 0; h < HUB_COUNT; h++) {
+            uint32_t n = entry_count(app, hubs[h].count_entry);
+            page_add_tile(
                 app->page,
-                rows[k].icon,
-                rows[k].label,
-                num(n, sizeof(n), rows[k].value),
-                rows[k].value,
-                total,
-                T_HOME | rows[k].entry);
+                hubs[h].icon,
+                hubs[h].name,
+                num(count, sizeof(count), n),
+                T_HOME | (HomeHub + h));
+            snprintf(hint, sizeof(hint), hubs[h].hint, (unsigned long)n);
+            page_set_hint(app->page, hint);
         }
     } else {
         page_add(app->page, PageNote, "No knowledge pack: see Pack & device.", 0);
     }
-    page_add_row(app->page, UiIconInfo, "Pack & device", NULL, T_HOME | HomeInfo);
-    page_add_row(app->page, UiIconAbout, "About", NULL, T_HOME | HomeAbout);
+    page_add_tile(app->page, UiIconInfo, "Info", "pack, RAM", T_HOME | HomeInfo);
+    page_set_hint(app->page, "Pack, cache, memory");
+    page_add_tile(app->page, UiIconAbout, "About", "v" PRISMATIC_VERSION, T_HOME | HomeAbout);
+    page_set_hint(app->page, "Keys; hold Back: Home");
+    restore(app);
+}
+
+static void render_hub(UiApp* app) {
+    const Hub* h = &hubs[top(app)->aux];
+    char right[16];
+    const uint32_t of[] = {
+        [ShareNone] = 0,
+        [ShareObjects] = pkp_count(app->pack, PKP_SEC_OBJECTS),
+        [ShareQuestions] = pkp_count(app->pack, PKP_SEC_QUIZ),
+    };
+    page_reset(app->page, h->name);
+    page_set_title_icon(app->page, h->icon);
+    for(int e = 0; e < 5 && h->entries[e].label; e++) {
+        const HubEntry* he = &h->entries[e];
+        uint32_t n = entry_count(app, he->entry);
+        if(n == 0) continue;
+        snprintf(right, sizeof(right), he->unit, (unsigned long)n);
+        page_add_row_bar(
+            app->page, he->icon, he->label, right, n, of[he->share], T_HOME | he->entry);
+        page_set_hint(app->page, he->hint);
+    }
+    restore(app);
+}
+
+/* Every kind of object in the pack, with how many there are. */
+static void render_kinds(UiApp* app) {
+    char n[12], name[24];
+    uint32_t largest = 0, kinds = pkp_count(app->pack, PKP_SEC_KINDS);
+    page_reset(app->page, "By kind");
+    page_set_title_icon(app->page, UiIconArticle);
+    for(uint32_t k = 0; k < KIND_CAP; k++)
+        if(app->kind_count[k] > largest) largest = app->kind_count[k];
+    for(uint32_t k = 1; k <= kinds && k < KIND_CAP; k++) { /* kinds count from 1 */
+        if(app->kind_count[k] == 0) continue;
+        pkp_kind_name(app->pack, (uint8_t)k, name, sizeof(name));
+        page_add_row_bar(
+            app->page,
+            UiIconArticle,
+            name,
+            num(n, sizeof(n), app->kind_count[k]),
+            app->kind_count[k],
+            largest,
+            T_OF_KIND | k);
+    }
     restore(app);
 }
 
 static void render_categories(UiApp* app) {
     char n[12];
-    page_reset(app->page, "Browse");
+    page_reset(app->page, "Chapters");
+    page_set_title_icon(app->page, UiIconFolder);
     uint32_t largest = 0;
     PkpCategory c;
     for(uint32_t i = 0; i < pkp_count(app->pack, PKP_SEC_CATEGORIES); i++) {
@@ -293,7 +423,7 @@ static void render_objects(UiApp* app) {
     Frame* f = top(app);
     PkpCategory c;
     if(pkp_category(app->pack, f->cat, &c) != PKP_OK) {
-        page_reset(app->page, "Browse");
+        page_reset(app->page, "Chapters");
         page_add(app->page, PageNote, "This category could not be read.", 0);
         return;
     }
@@ -313,15 +443,20 @@ static void render_objects(UiApp* app) {
 /* Objects with one capability, paged, in pack order (category, title). */
 static void render_filter(UiApp* app) {
     Frame* f = top(app);
-    static const char* const names[] = {"All", "Detectors", "What to do", "Quiz", "Confusables"};
-    uint32_t total = app->cap_count[cap_index(f->filter)];
+    static const char* const names[] = {
+        "Everything", "Detectors", "What to do", "Quiz", "Confusables"};
+    char kind[24];
+    bool by_kind = f->filter == 0;
+    if(by_kind) pkp_kind_name(app->pack, (uint8_t)f->cat, kind, sizeof(kind));
+    uint32_t total = by_kind ? app->kind_count[f->cat] : app->cap_count[cap_index(f->filter)];
     uint32_t pages = (total + PAGE_ROWS - 1) / PAGE_ROWS;
-    page_reset(app->page, names[cap_index(f->filter)]);
+    page_reset(app->page, by_kind ? kind : names[cap_index(f->filter)]);
     paging(app, f->page, pages, true);
     uint32_t skip = (uint32_t)f->page * PAGE_ROWS, shown = 0, seen = 0;
     for(uint32_t i = 0; i < pkp_count(app->pack, PKP_SEC_OBJECTS) && shown < PAGE_ROWS; i++) {
         PkpObject o;
-        if(pkp_object(app->pack, i, &o) != PKP_OK || !(o.caps & f->filter)) continue;
+        if(pkp_object(app->pack, i, &o) != PKP_OK) continue;
+        if(by_kind ? o.kind != f->cat : !(o.caps & f->filter)) continue;
         if(seen++ < skip) continue;
         page_add_row(app->page, 0, str(app, o.title), NULL, T_OBJECT | i);
         shown++;
@@ -744,6 +879,12 @@ static void render(UiApp* app) {
     case ScrMap:
         render_map(app);
         break;
+    case ScrHub:
+        render_hub(app);
+        break;
+    case ScrKinds:
+        render_kinds(app);
+        break;
     default:
         render_about(app);
         break;
@@ -777,26 +918,69 @@ static void start_quiz(UiApp* app, int32_t q, uint16_t obj) {
     push(app, (Frame){.screen = ScrQuiz, .aux = q < 0 ? UINT32_MAX : (uint32_t)q, .obj = obj});
 }
 
+/* An object index from a random start, the first at or after it with capability `cap`. */
+static uint16_t random_object(UiApp* app, uint8_t cap) {
+    uint32_t n = pkp_count(app->pack, PKP_SEC_OBJECTS);
+    uint32_t start = app->platform.random(app->platform.ctx) % n;
+    for(uint32_t k = 0; k < n; k++) {
+        PkpObject o;
+        uint32_t i = (start + k) % n;
+        if(pkp_object(app->pack, i, &o) == PKP_OK && (o.caps & cap)) return (uint16_t)i;
+    }
+    return (uint16_t)start; /* nothing readable: the article screen says so */
+}
+
 static void home(UiApp* app, uint32_t entry) {
-    static const uint8_t filters[] = {0, 0, PKP_CAP_DETECT, PKP_CAP_APPLY, PKP_CAP_COMPARE};
-    if(entry == HomeTop) {
+    static const uint8_t filters[] = {
+        [HomeDetect] = PKP_CAP_DETECT,
+        [HomeApply] = PKP_CAP_APPLY,
+        [HomeCompare] = PKP_CAP_COMPARE,
+        [HomeAll] = PKP_CAP_BROWSE,
+        [HomeQuizzable] = PKP_CAP_QUIZ,
+    };
+    switch(entry) {
+    case HomeTop:
         app->depth = 1;
         top(app)->sel = 0;
         top(app)->top = 0;
         render(app);
-    } else if(entry == HomeBrowse)
+        break;
+    case HomeBrowse:
         push(app, (Frame){.screen = ScrCategories});
-    else if(entry <= HomeCompare)
+        break;
+    case HomeKinds:
+        push(app, (Frame){.screen = ScrKinds});
+        break;
+    case HomeDetect:
+    case HomeApply:
+    case HomeCompare:
+    case HomeAll:
+    case HomeQuizzable:
         push(app, (Frame){.screen = ScrFilter, .filter = filters[entry]});
-    else if(entry == HomeInfo)
+        break;
+    case HomeInfo:
         push(app, (Frame){.screen = ScrInfo});
-    else if(entry == HomeAbout)
+        break;
+    case HomeAbout:
         push(app, (Frame){.screen = ScrAbout});
-    else
+        break;
+    case HomeRandom:
+        push(app, (Frame){.screen = ScrArticle, .obj = random_object(app, PKP_CAP_BROWSE)});
+        break;
+    case HomeRandomDetect:
+        start_detect(app, random_object(app, PKP_CAP_DETECT));
+        break;
+    case HomeQuizTerm:
+    case HomeQuizExample:
         start_quiz(
             app,
             quiz_random(app, entry == HomeQuizTerm ? PKP_QUIZ_DEFINITION : PKP_QUIZ_TRAINER),
             0);
+        break;
+    default:
+        push(app, (Frame){.screen = ScrHub, .aux = entry - HomeHub});
+        break;
+    }
 }
 
 static void open_target(UiApp* app, uint32_t target, bool long_press) {
@@ -825,6 +1009,9 @@ static void open_target(UiApp* app, uint32_t target, bool long_press) {
         break;
     case T_CATEGORY:
         push(app, (Frame){.screen = ScrObjects, .cat = (uint16_t)T_ARG(target)});
+        break;
+    case T_OF_KIND:
+        push(app, (Frame){.screen = ScrFilter, .filter = 0, .cat = (uint16_t)T_ARG(target)});
         break;
     case T_PAGE:
         f->page = (uint16_t)(f->page + (T_ARG(target) ? 1 : -1));
@@ -908,6 +1095,7 @@ void ui_app_set_pack(UiApp* app, PkpReader* pack, PkpStatus status, uint32_t ope
             for(uint8_t bit = 1; bit <= PKP_CAP_COMPARE; bit <<= 1) {
                 if(o.caps & bit) app->cap_count[cap_index(bit)]++;
             }
+            if(o.kind < KIND_CAP) app->kind_count[o.kind]++;
         }
         for(uint32_t i = 0; i < pkp_count(pack, PKP_SEC_QUIZ); i++) {
             PkpQuiz q;
@@ -937,6 +1125,9 @@ bool ui_app_input(UiApp* app, PageKey key, PagePress press) {
         break;
     case PageActSoftkey:
         softkey(app, act.target, act.long_press);
+        break;
+    case PageActHome:
+        if(app->depth > 1) home(app, HomeTop);
         break;
     default:
         break;
