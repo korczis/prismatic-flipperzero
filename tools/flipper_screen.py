@@ -8,6 +8,7 @@ is captured as a sequence of genuine device frames, never drawn on the host.
 
   tools/flipper_screen.py capture out.png [--port P] [--scale 4]
   tools/flipper_screen.py walk out_dir ok,back,... [--port P]   frame before and after each key
+  tools/flipper_screen.py cli "loader info" [--port P]          one CLI command, its output
 
 Needs pyserial: the uFBT toolchain's python has it (just screenshot uses that one).
 Protocol: github.com/flipperdevices/flipperzero-protobuf (flipper.proto, gui.proto).
@@ -185,6 +186,32 @@ class Rpc:
             self.s.close()
 
 
+def cli(port, command, timeout=10.0):
+    """Run one CLI command and return what it printed before the next prompt."""
+    import serial  # deferred: only the device path needs pyserial
+
+    s = serial.Serial(port, 230400, timeout=0.2)
+    try:
+        end, got = time.time() + timeout, b""
+        s.write(b"\x03\r")
+        while b">: " not in got and time.time() < end:
+            got += s.read(s.in_waiting or 1)
+        s.reset_input_buffer()
+        s.write(command.encode("ascii") + b"\r")
+        got = b""
+        while time.time() < end:
+            got += s.read(s.in_waiting or 1)
+            if got.count(b">: ") >= 1 and got.rstrip().endswith(b">:"):
+                break
+        else:
+            raise TimeoutError(f"no prompt after {command!r} within {timeout}s")
+        text = got.decode("ascii", "replace").replace("\r", "")
+        lines = text.split("\n")
+        return "\n".join(line for line in lines[1:] if line.strip() and line.strip() != ">:")
+    finally:
+        s.close()
+
+
 def find_port():
     ports = sorted(glob.glob("/dev/cu.usbmodemflip_*") + glob.glob("/dev/serial/by-id/*Flipper*"))
     if not ports:
@@ -200,16 +227,24 @@ def main(argv):
     w = sub.add_parser("walk")
     w.add_argument("out_dir")
     w.add_argument("keys")
+    k = sub.add_parser("cli")
+    k.add_argument("command")
+    k.add_argument("--port")
     for p in (c, w):
         p.add_argument("--port")
         p.add_argument("--scale", type=int, default=4)
+        p.add_argument("--settle", type=float, default=0.4,
+                       help="seconds of quiet before a frame counts as the screen")
     args = ap.parse_args(argv)
+    if args.cmd == "cli":
+        print(cli(args.port or find_port(), args.command))
+        return 0
 
     rpc = Rpc(args.port or find_port())
     try:
         rpc.send(20)
         if args.cmd == "capture":
-            Path(args.out).write_bytes(png(frame_to_rows(rpc.frame()), args.scale))
+            Path(args.out).write_bytes(png(frame_to_rows(rpc.frame(settle=args.settle)), args.scale))
             print(args.out)
             return 0
         out = Path(args.out_dir)
@@ -219,12 +254,12 @@ def main(argv):
             if k not in KEYS:
                 sys.exit(f"unknown key {k!r}; keys: {', '.join(KEYS)}")
         shot = out / "00-start.png"
-        shot.write_bytes(png(frame_to_rows(rpc.frame()), args.scale))
+        shot.write_bytes(png(frame_to_rows(rpc.frame(settle=args.settle)), args.scale))
         print(shot)
         for n, k in enumerate(steps, 1):
             rpc.press(k)
             shot = out / f"{n:02d}-{k}.png"
-            shot.write_bytes(png(frame_to_rows(rpc.frame()), args.scale))
+            shot.write_bytes(png(frame_to_rows(rpc.frame(settle=args.settle)), args.scale))
             print(shot)
         return 0
     finally:

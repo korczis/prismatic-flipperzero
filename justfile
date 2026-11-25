@@ -66,8 +66,8 @@ screenshot out="build/screen.png":
     tools/device.sh screenshot {{out}}
 
 # Press keys on the device and save a real frame after each (keys: up,down,left,right,ok,back)
-walk dir keys:
-    tools/device.sh walk {{dir}} {{keys}}
+walk dir keys settle="0.4":
+    tools/device.sh walk {{dir}} {{keys}} --settle {{settle}}
 
 # The one verification entry point (CI and majordomus finish use it too)
 verify:

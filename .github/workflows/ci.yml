@@ -20,6 +20,7 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
 
 env:
+  KOMPENDIUM_REPO: korczis/kompendium-epistemicke-anihilace
   UFBT_VERSION: "0.2.6"
   MAJORDOMUS_VERSION: v1.2.0
   LANG: C.UTF-8
@@ -87,6 +88,68 @@ jobs:
           path: build/${{ matrix.sdk }}/
           if-no-files-found: error
 
+  native:
+    name: Portable core (sanitizers, fuzz, differential, coverage)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Pinned Kompendium source
+        run: |
+          commit=$(python3 -c 'import json;print(json.load(open("knowledge/sources.json"))["source"]["commit"])')
+          git clone --filter=blob:none --no-checkout "https://github.com/${KOMPENDIUM_REPO}.git" "$RUNNER_TEMP/kompendium"
+          git -C "$RUNNER_TEMP/kompendium" fetch --quiet origin "$commit"
+          echo "KOMPENDIUM_DIR=$RUNNER_TEMP/kompendium" >> "$GITHUB_ENV"
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: LLVM coverage tools
+        run: sudo apt-get install -y --no-install-recommends llvm clang
+      - name: Native tests
+        env:
+          CC: clang
+          LLVM_COV: llvm-cov
+          LLVM_PROFDATA: llvm-profdata
+        run: tests/native/run.sh
+
+  pack:
+    name: Knowledge pack (extract, compile twice, compare)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Pinned Kompendium source
+        run: |
+          commit=$(python3 -c 'import json;print(json.load(open("knowledge/sources.json"))["source"]["commit"])')
+          git clone --filter=blob:none --no-checkout "https://github.com/${KOMPENDIUM_REPO}.git" "$RUNNER_TEMP/kompendium"
+          git -C "$RUNNER_TEMP/kompendium" fetch --quiet origin "$commit"
+          echo "KOMPENDIUM_DIR=$RUNNER_TEMP/kompendium" >> "$GITHUB_ENV"
+      - name: Build the pack
+        run: python3 tools/pocket.py build
+      - name: Same input, same bytes
+        run: |
+          python3 tools/pocket.py compile --out "$RUNNER_TEMP/again.pkp" --report "$RUNNER_TEMP/again.json"
+          cmp build/packs/kompendium.pkp "$RUNNER_TEMP/again.pkp"
+      - name: Pack summary
+        run: |
+          {
+            echo "### Knowledge pack"
+            echo '```json'
+            cat build/packs/kompendium.report.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: pack
+          path: |
+            build/packs/kompendium.pkp
+            build/packs/kompendium.report.json
+            build/packs/kompendium.extract.json
+          if-no-files-found: error
+
   governance:
     name: Majordomus governance
     runs-on: ubuntu-latest
@@ -108,7 +171,7 @@ jobs:
   release:
     name: Prerelease
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [tools, fap, governance]
+    needs: [tools, fap, governance, native, pack]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -117,13 +180,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          pattern: fap-*
           path: build/artifacts
       - name: Tag matches VERSION
         run: test "${GITHUB_REF_NAME}" = "v$(cat VERSION)"
       - name: Assemble assets from the tested builds
         run: |
           for d in build/artifacts/fap-*; do mkdir -p "build/${d##*/fap-}"; cp "$d"/* "build/${d##*/fap-}/"; done
+          mkdir -p build/packs && cp build/artifacts/pack/* build/packs/
           tools/release.sh
       - name: Publish prerelease
         env:

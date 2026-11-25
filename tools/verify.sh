@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # The one verification entry point: local, CI and `majordomus finish --verify-command`.
 # Every step must pass; nothing here masks an exit code.
-#   tools/verify.sh            all SDKs whose zip is installed (official is required)
+#   tools/verify.sh            all SDKs whose zip is installed (official is required); needs the
+#                              Kompendium source (sibling checkout or KOMPENDIUM_DIR)
 #   VERIFY_SKIP_GOVERNANCE=1   CI's build job, where the governance job runs doctor
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -19,6 +20,15 @@ else echo "shellcheck not installed; skipped (CI runs it)"; fi
 step "tool tests and line coverage (every executable line in tools/*.py)"
 python3 tests/tools/coverage_gate.py
 tests/tools/coverage_gate_selftest.sh
+
+step "knowledge pack: extract, compile twice, compare bytes"
+python3 tools/pocket.py build >/dev/null
+python3 tools/pocket.py compile --out build/packs/again.pkp --report build/packs/again.json >/dev/null
+cmp build/packs/kompendium.pkp build/packs/again.pkp
+echo "pack deterministic: $(shasum -a 256 build/packs/kompendium.pkp | cut -d' ' -f1)"
+
+step "portable core: sanitizers, fuzz, differential, line coverage"
+tests/native/run.sh
 
 step "native lint"
 (cd app && ufbt -s lint)

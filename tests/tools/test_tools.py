@@ -230,6 +230,10 @@ class FakeFlipper:
         if not self.rpc:
             if data in (b"\r", b"\x03\r"):
                 self.out += b"\r\n>: "
+            elif data == b"loader info\r":
+                self.out += b"loader info\r\nNo application is running\r\n\r\n>: "
+            elif data == b"hang\r":
+                pass
             elif data == b"start_rpc_session\r":
                 self.out += b"start_rpc_session\r\n"
                 self.rpc = True
@@ -319,6 +323,17 @@ class FlipperScreenTest(unittest.TestCase):
         self.assertEqual(len(rpc.frame(timeout=1.0, settle=0.1)), 1024)
         rpc.close()
         self.assertTrue(rpc.s.closed)
+
+    def test_cli_runs_one_command(self):
+        rc, out, _ = self.run_main(["cli", "loader info", "--port", "/dev/fake"])
+        self.assertEqual(rc, 0)
+        self.assertEqual(out.strip(), "No application is running")
+        with mock.patch.dict(sys.modules, {"serial": types.SimpleNamespace(Serial=FakeFlipper)}):
+            with self.assertRaises(TimeoutError):
+                fs.cli("/dev/fake", "hang", timeout=0.3)
+        with mock.patch.object(fs, "find_port", lambda: "/dev/fake"):
+            rc, out, _ = self.run_main(["cli", "loader info"])
+        self.assertEqual(rc, 0)
 
     def test_find_port(self):
         with mock.patch.object(fs.glob, "glob", lambda pat: ["/dev/cu.usbmodemflip_X1"]

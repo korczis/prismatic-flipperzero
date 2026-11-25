@@ -27,5 +27,15 @@ PY
   n=$((n + 1))
 done < <(python3 "$root/tools/sdk.py" list)
 [ "$n" -gt 0 ] || { echo "release: nothing built" >&2; exit 12; }
-(cd "$out" && shasum -a 256 ./*.fap ./*.json | sed 's# \./# #' > SHA256SUMS && shasum -a 256 -c SHA256SUMS)
+if [ -f "$root/build/packs/kompendium.pkp" ]; then
+  cp "$root/build/packs/kompendium.pkp" "$out/kompendium-${version}.pkp"
+  cp "$root/build/packs/kompendium.report.json" "$out/kompendium-${version}.report.json"
+fi
+(
+  cd "$out"
+  shopt -s nullglob
+  assets=(*.fap *.json *.pkp)
+  shasum -a 256 "${assets[@]}" > SHA256SUMS
+  shasum -a 256 -c SHA256SUMS
+)
 ls -l "$out"

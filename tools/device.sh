@@ -7,6 +7,7 @@
 #   tools/device.sh deploy-pack [pack]  copy a knowledge pack to SD:/apps_data/prismatic/
 #   tools/device.sh screenshot <png>    one real frame from the RPC screen stream
 #   tools/device.sh walk <dir> <keys>   frames before and after each key, e.g. right,back
+#   tools/device.sh cli "<command>"     one Flipper CLI command (loader info, uptime, ...)
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 lock="$root/build/.device.lock"
@@ -38,11 +39,16 @@ py="${pys[0]}"
 cmd="${1:-}"; shift || true
 case "$cmd" in
   launch)
+    # Build, install over the storage CLI and start with the loader. Not `ufbt launch`: an
+    # app started over RPC is closed when any later RPC session (a screenshot) ends.
     sdk="${1:-official}"
-    python3 "$root/tools/sdk.py" check "$sdk" >/dev/null || { echo "device: SDK $sdk missing" >&2; exit 12; }
-    export "$(python3 "$root/tools/sdk.py" env "$sdk")"
-    cd "$root/app" && timeout 120 ufbt launch
+    "$root/tools/build.sh" "$sdk"
+    timeout 60 "$py" "$root/tools/flipper_screen.py" cli "loader close" >/dev/null || true  # nothing running is fine
+    timeout 120 "$py" "$HOME/.ufbt/current/scripts/storage.py" -p auto \
+      send "$root/build/$sdk/prismatic.fap" /ext/apps/Tools/prismatic.fap
+    timeout 60 "$py" "$root/tools/flipper_screen.py" cli "loader open /ext/apps/Tools/prismatic.fap"
     ;;
+  cli) timeout 60 "$py" "$root/tools/flipper_screen.py" cli "$@" ;;
   deploy)
     sdk="${1:-official}"
     fap="$root/build/$sdk/prismatic.fap"

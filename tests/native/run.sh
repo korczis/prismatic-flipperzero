@@ -39,7 +39,7 @@ echo "== line coverage of app/core"
 if command -v xcrun >/dev/null 2>&1; then
   cov=(xcrun llvm-cov); prof=(xcrun llvm-profdata)
 else
-  v="$(ls /usr/bin/llvm-cov* 2>/dev/null | sort -V | tail -n 1)"
+  v="$(find /usr/bin -maxdepth 1 -name 'llvm-cov*' 2>/dev/null | sort -V | tail -n 1)"
   cov=("${LLVM_COV:-${v:-llvm-cov}}"); prof=("${LLVM_PROFDATA:-${v/llvm-cov/llvm-profdata}}")
 fi
 "${CLANG:-clang}" "${flags[@]}" -O0 -fprofile-instr-generate -fcoverage-mapping "${src[@]}" \

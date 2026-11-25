@@ -20,11 +20,14 @@ docs/evidence/fonts). The IR and the pack are build outputs, never committed.
 """
 
 import hashlib
+import io
 import json
+import os
 import re
 import struct
 import subprocess
 import sys
+import tarfile
 import tomllib
 import unicodedata
 import zlib
@@ -73,20 +76,21 @@ class PocketError(Exception):
 
 
 class Git:
-    """Read files of one commit; nothing from the working tree."""
+    """Files of one commit, read once with `git archive`; nothing from the working tree."""
 
-    def __init__(self, source, commit):
-        self.source, self.commit = str(source), commit
+    def __init__(self, source, commit, prefixes):
+        tar = subprocess.run(["git", "-C", str(source), "archive", commit, *prefixes],
+                             check=True, capture_output=True).stdout
+        with tarfile.open(fileobj=io.BytesIO(tar)) as t:
+            self.blobs = {m.name: t.extractfile(m).read().decode("utf-8")
+                          for m in t.getmembers() if m.isfile()}
 
     def files(self, prefix):
-        out = subprocess.run(["git", "-C", self.source, "ls-tree", "-r", "--name-only",
-                              self.commit, prefix], check=True, capture_output=True,
-                             text=True).stdout
-        return sorted(line for line in out.splitlines() if line)
+        root = prefix.rstrip("/") + "/"
+        return sorted(name for name in self.blobs if name.startswith(root))
 
     def read(self, path):
-        return subprocess.run(["git", "-C", self.source, "show", f"{self.commit}:{path}"],
-                              check=True, capture_output=True, text=True).stdout
+        return self.blobs[path]
 
 
 # ---------------------------------------------------------------- markdown
@@ -380,7 +384,8 @@ def category_titles(git, spec):
 def extract(source_dir):
     spec = json.loads(SOURCES.read_text())
     src = spec["source"]
-    git = Git(source_dir, src["commit"])
+    git = Git(source_dir, src["commit"],
+              spec["pages"]["roots"] + [c["path"] for c in spec["catalogs"]])
     prov = {"repository": src["repository"], "commit": src["commit"]}
     report = {"pages": 0, "accepted": 0, "rejected": [], "overlays_merged": 0,
               "catalog_entries": 0, "catalog_merged": 0, "catalog_standalone": 0,
@@ -715,7 +720,9 @@ def dumps(obj):
 
 
 def default_source():
-    return ROOT.parent / "kompendium-epistemicke-anihilace"
+    """KOMPENDIUM_DIR when set (CI checks the source out there), else the sibling checkout."""
+    env = os.environ.get("KOMPENDIUM_DIR")
+    return Path(env) if env else ROOT.parent / "kompendium-epistemicke-anihilace"
 
 
 def pack_report(name, data):
