@@ -50,6 +50,7 @@ def build(ir, out):
             "definition": o["definition"], "aliases": o.get("aliases", []),
             **{role: o[role] for role in pocket.ITEM_ROLES},
             "chapters": o["chapters"], "examples": o.get("examples", []),
+            "rubric": o.get("rubric", []),
             "relations": [{"type": r["type"], "to": index[r["target"]]} for r in o["relations"]],
             "provenance": o["provenance"],
         }

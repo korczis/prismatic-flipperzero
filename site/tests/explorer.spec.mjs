@@ -271,3 +271,33 @@ test('the device: every screen from the atlas, filter, full-size frames, keys, d
   await page.locator('#screens [data-screen=""]').click();
   await expect(page).toHaveURL(/#\/device$/);
 });
+
+test('assess: an application graded scale by scale, the code built live and kept in the URL', async ({ page }) => {
+  await page.goto('/#/explore?cap=assess');
+  await ready(page);
+  await expect(page.locator('[data-nav="assess"].bg-gray-100')).toHaveCount(1);
+  const first = page.locator('[data-result]').first();
+  await first.click();
+  await expect(page.locator('#assess')).toBeVisible();
+  const o = await page.evaluate(() => fetch(`data/o/${location.hash.match(/o\/(\d+)/)[1]}.json`).then((r) => r.json()));
+  await expect(page.locator('[data-grade-result]')).toHaveText('Choose a grade on every scale.');
+  // one grade per scale: the second grade of the first scale, the last of every other
+  const picks = o.rubric.map((axis, a) => (a === 0 ? 1 : axis.levels.length - 1));
+  for (const [a, l] of picks.entries()) {
+    await page.locator(`[data-grade="${a}:${l}"]`).click();
+    await expect(page.locator(`[data-grade="${a}:${l}"]`)).toHaveAttribute('aria-pressed', 'true');
+  }
+  const code = picks.map((l, a) => o.rubric[a].levels[l][0]).join('');
+  await expect(page.locator('[data-grade-code]')).toHaveText(code);
+  await expect(page).toHaveURL(new RegExp(`g=${picks.join('%2C')}`));
+  // the graded claim is a link: a reload restores it
+  await page.reload();
+  await ready(page);
+  await expect(page.locator('[data-grade-code]')).toHaveText(code);
+  await page.locator('#assess h3').click(); // a click that is not a grade changes nothing
+  await expect(page.locator('[data-grade-code]')).toHaveText(code);
+  // regrading after the reload: the first scale's top grade replaces the second
+  await page.locator('[data-grade="0:0"]').click();
+  const regraded = [o.rubric[0].levels[0][0], ...picks.slice(1).map((l, a) => o.rubric[a + 1].levels[l][0])].join('');
+  await expect(page.locator('[data-grade-code]')).toHaveText(regraded);
+});

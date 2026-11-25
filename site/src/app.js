@@ -47,7 +47,7 @@
     };
     return `<span class="text-xs font-medium mr-1 px-2.5 py-0.5 rounded-md ${tones[tone] || tones.gray}">${esc(text)}</span>`;
   }
-  const CAP_TONE = { detect: 'orange', apply: 'green', compare: 'purple', quiz: 'blue', browse: 'gray' };
+  const CAP_TONE = { detect: 'orange', apply: 'green', compare: 'purple', quiz: 'blue', browse: 'gray', assess: 'purple' };
   const capBadges = (caps) => caps.filter((c) => c !== 'browse').map((c) => badge(c, CAP_TONE[c])).join('');
 
   /* The page header's Pro breadcrumb (static nav#crumbs); returns '' so views can inline it. */
@@ -272,7 +272,7 @@
   }
 
   function explore(params) {
-    markActive(params.get('cap') === 'detect' ? 'detect' : params.get('cap') === 'apply' ? 'apply' : 'explore');
+    markActive(['detect', 'apply', 'assess'].includes(params.get('cap')) ? params.get('cap') : 'explore');
     const hits = [];
     DB.objects.forEach((o, i) => { if (matches(o, i, params)) hits.push(i); });
     const page = Math.max(0, +(params.get('page') || 0));
@@ -320,6 +320,30 @@
 
   /* ------------------------------------------------------------------ article */
 
+  /* An assessment, interactive: one grade per scale, the code built as you choose, every
+   * choice in the URL (?g=<level>,<level>), so a graded claim is a link. Nothing is computed:
+   * the reader chooses, the page records and explains. */
+  function assessCard(i, o, params) {
+    const picks = (params.get('g') || '').split(',').map((x) => (x === '' ? -1 : Number(x)));
+    const chosen = o.rubric.map((axis, a) => axis.levels[picks[a]]);
+    const done = chosen.every(Boolean);
+    const scales = o.rubric.map((axis, a) => `
+      <h4 class="mt-4 mb-2 text-sm font-semibold text-gray-500 uppercase dark:text-gray-400">${esc(axis.name)}</h4>
+      <div class="grid gap-2 sm:grid-cols-2">${axis.levels.map(([code, label, meaning], l) => {
+        const on = picks[a] === l;
+        return `<button type="button" data-grade="${a}:${l}" aria-pressed="${on}" class="text-left p-3 rounded-lg border ${on ? 'border-primary-600 bg-primary-50 dark:bg-gray-700' : 'border-gray-200 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-700'}">
+          <span class="font-bold text-gray-900 dark:text-white">${esc(code)}</span> <span class="text-gray-800 dark:text-gray-200">${esc(label)}</span>
+          ${meaning ? `<span class="block mt-1 text-sm text-gray-500 dark:text-gray-400">${esc(meaning)}</span>` : ''}</button>`;
+      }).join('')}</div>`).join('');
+    const result = done ? `
+      <div class="mt-5 p-4 rounded-lg bg-gray-50 dark:bg-gray-900" data-grade-result>
+        <span class="text-3xl font-bold text-gray-900 dark:text-white" data-grade-code>${esc(chosen.map((x) => x[0]).join(''))}</span>
+        <span class="ml-2 text-gray-500 dark:text-gray-400">${esc(o.code)}</span>
+        <ul class="mt-2 text-sm text-gray-700 dark:text-gray-300">${chosen.map((x, a) => `<li><b>${esc(o.rubric[a].name)}:</b> ${esc(x[0])} ${esc(x[1])}${x[2] ? ` (${esc(x[2])})` : ''}</li>`).join('')}</ul>
+      </div>` : '<p class="mt-4 text-sm text-gray-500 dark:text-gray-400" data-grade-result>Choose a grade on every scale.</p>';
+    return `<h3 class="text-xl font-bold text-gray-900 dark:text-white">Assess</h3>${scales}${result}`;
+  }
+
   async function article(i) {
     markActive('explore');
     const o = await object(i);
@@ -355,6 +379,7 @@
             ${o.aliases.length ? `<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Also: ${esc(o.aliases.join(' · '))}</p>` : ''}
             <p class="mt-3 text-lg text-gray-700 dark:text-gray-300">${esc(o.definition)}</p>
             ${o.caps.includes('quiz') ? `<a href="#/quiz?obj=${i}" class="inline-block mt-4 text-white bg-primary-700 hover:bg-primary-800 focus:ring-4 focus:ring-primary-300 font-medium rounded-lg text-sm px-4 py-2.5">Take the quiz</a>` : ''}`)}
+          ${o.rubric && o.rubric.length ? `<section id="assess" class="p-4 bg-white rounded-lg shadow sm:p-6 dark:bg-gray-800">${assessCard(i, o, route().params)}</section>` : ''}
           ${roles}
           ${examples ? card(`<h3 class="text-xl font-bold text-gray-900 dark:text-white">Examples from the catalogue</h3>${examples}`) : ''}
           ${chapters ? card(`<h3 class="text-xl font-bold text-gray-900 dark:text-white mb-1">Chapters</h3>${chapters}`) : ''}
@@ -369,6 +394,21 @@
         </div>
       </div>`;
     if (o.relations.length) Viz.afterPaint(() => renderNeighbours(i, o, groups));
+    const assess = document.getElementById('assess');
+    if (assess) {
+      assess.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-grade]');
+        if (!b) return;
+        const [a, l] = b.getAttribute('data-grade').split(':').map(Number);
+        const params = route().params;
+        const picks = (params.get('g') || '').split(',');
+        while (picks.length < o.rubric.length) picks.push('');
+        picks[a] = String(l);
+        params.set('g', picks.join(','));
+        history.replaceState(null, '', `#/o/${i}?${params}`);
+        assess.innerHTML = assessCard(i, o, params);
+      });
+    }
     window.scrollTo(0, 0);
   }
 
