@@ -36,6 +36,7 @@ sim-result       | kompendium | down,right,ok,down,down,ok,ok,down,ok,down,down,
 sim-outcome      | kompendium | down,right,ok,down,down,ok,ok,down,ok,down,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,ok,down,down,down,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,ok,down,down,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,ok,down,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,ok,down,ok | SimOutcome | The outcome by the source's rules, and every decision with its trust change
 score            | kompendium | down,ok,down,down,down,ok,ok,down,ok,down | Score | A scorecard from the Prismatic Platform: each answer's weight, the note it carries
 score-result     | kompendium | down,ok,down,down,down,ok,ok,down,ok,down,ok,ok,down,ok,ok,ok,down,ok | ScoreResult | The score, its band, and what moved it, with each red flag's evidence
+calc             | kompendium | down,ok,down,down,down,down,ok,ok,down,ok,down,down,down,down,ok,down,down,ok | Calc | A calculator from the Prismatic Platform: add sources, the belief and its status stay in view
 quiz             | kompendium | down,right,ok,ok | Quiz | Which term? The definition with the name masked
 quiz-options     | kompendium | down,right,ok,ok,ok | QuizOptions | Distractors are the objects the page calls confusable
 quiz-result      | kompendium | down,right,ok,ok,ok,ok | QuizResult | The answer, the definition, a link to the article

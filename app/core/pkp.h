@@ -70,7 +70,8 @@ typedef enum {
     PKP_ITEM_SCORE_QUESTION, /* one question; its choices follow */
     PKP_ITEM_SCORE_CHOICE, /* "weight|label|note" */
     PKP_ITEM_SCORE_BAND, /* "max|code|label|meaning", ascending */
-    PKP_ITEM_LAST = PKP_ITEM_SCORE_BAND,
+    PKP_ITEM_CALC, /* a calculator: "algorithm|prior|confirm|reject|c1,c2,..." in percent */
+    PKP_ITEM_LAST = PKP_ITEM_CALC,
 } PkpItemType;
 
 enum {

@@ -163,7 +163,8 @@ def entry_count(entry, stats):
               "HomeApply": caps["apply"], "HomeCompare": caps["compare"],
               "HomeQuizTerm": quiz["definition"], "HomeQuizExample": quiz["trainer"],
               "HomeQuizzable": caps["quiz"], "HomeAssess": caps.get("assess", 0),
-              "HomeSimulate": caps.get("simulate", 0), "HomeScore": caps.get("score", 0)}
+              "HomeSimulate": caps.get("simulate", 0), "HomeScore": caps.get("score", 0),
+              "HomeCalc": stats["kinds"].get("algorithm", 0)}
     return fmt(counts[entry]) if entry in counts else ""
 
 

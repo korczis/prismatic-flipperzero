@@ -30,6 +30,7 @@ flowchart LR
   h2 --> h2e1["Confusables<br/><small>Pairs to tell apart</small>"]
   h2 --> h2e2["Assess<br/><small>Grade a source, a claim, a finding</small>"]
   h2 --> h2e3["Score a case<br/><small>Answer, see the score and its band</small>"]
+  h2 --> h2e4["Calculators<br/><small>Change the inputs, watch the result</small>"]
   home --> h3["Train"]
   h3 --> h3e0["Which term?<br/><small>Pick the term of four</small>"]
   h3 --> h3e1["Manipulative?<br/><small>Manipulative or benign</small>"]
@@ -91,6 +92,16 @@ the header keeps the running score, and the status line shows the note an answer
 flag and its evidence). The result is the score, its band and what it means, and every answer
 that moved it with its note. The base, weights, clamp and bands are the source's, as data in
 `knowledge/applications.toml`; a new scorecard needs no code.
+
+### Calculators
+
+Act > Calculators holds the Prismatic Platform's portable algorithms with their parameters as
+data. The first is its Bayesian fusion of independent sources (`CorrelationEngine.bayesian_fusion`):
+add sources at a confidence, move the prior, take the last source back or start over, and the
+belief stays in view in the header with its status (confirmed at 90% or above, rejected at 10%
+or below, as the platform's hypothesis lifecycle says) in the status line. The device computes
+what the source's code computes; its documentation's example (0.8, 0.7, 0.9 giving 0.976) does
+not match that code, which gives 0.988, and the device follows the code.
 
 ### Crisis simulations
 

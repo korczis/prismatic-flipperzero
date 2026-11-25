@@ -581,6 +581,30 @@ class PackTest(unittest.TestCase):
                 pocket.validate(ir)
         o["scorecard"] = card
 
+    def test_calculators(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "apps.toml"
+            path.write_text(
+                '[[calculator]]\nid = "applications/b"\ntitle = "B"\ndefinition = "D"\n'
+                'algorithm = "bayes"\nprior = 50\nconfirm = 90\nreject = 10\n'
+                'choices = [30, 80]\n'
+                'provenance = { repository = "r", commit = "c", path = "p" }\n')
+            (o,) = pocket.load_applications(path)
+        self.assertEqual(o["kind"], "algorithm")
+        ir = tiny_ir(5)
+        ir["objects"].append(o)
+        got = next(x for x in pocket.decode(pocket.encode(ir))["objects"] if x["id"] == o["id"])
+        self.assertIn({"type": pocket.ITEM_TYPES["calc"], "text": "bayes|50|90|10|30,80"},
+                      got["items"])
+        calc = o["calculator"]
+        for broken in ({**calc, "algorithm": "kelly"}, {**calc, "prior": 0},
+                       {**calc, "choices": []}, {**calc, "choices": [101]},
+                       {**calc, "confirm": "x"}):
+            o["calculator"] = broken
+            with self.assertRaisesRegex(pocket.PocketError, "a calculator needs"):
+                pocket.validate(ir)
+        o["calculator"] = calc
+
     def test_too_many_objects(self):
         ir = tiny_ir(1)
         base = ir["objects"][0]

@@ -10,6 +10,7 @@
 #include "../../app/core/pocket.h"
 #include "../../app/core/progress.h"
 #include "../../app/core/session.h"
+#include "../../app/core/bayes.h"
 #include "../../app/core/scorecard.h"
 #include "../../app/core/simulate.h"
 
@@ -766,6 +767,30 @@ static void test_scorecard(void) {
     CHECK(score_clamp(42, 0, 100) == 42);
 }
 
+/* Bayesian fusion as the source's code computes it: 0.8, 0.7, 0.9 from 0.5 give 0.9882 (the
+ * source's docstring says 0.976, which its own code does not produce). */
+static void test_bayes(void) {
+    static const uint8_t three[] = {80, 70, 90};
+    double p = bayes_fuse(0.5, three, 3);
+    CHECK(p > 0.98823 && p < 0.98824);
+    CHECK(bayes_fuse(0.5, three, 0) == 0.5);
+    CHECK(bayes_update(0.0, 0.0) == 0.0); /* a zero denominator leaves the belief */
+    static const uint8_t against[] = {10};
+    CHECK(bayes_fuse(0.5, against, 1) < 0.11);
+    CHECK(strcmp(bayes_status(95, 90, 10), "confirmed") == 0);
+    CHECK(strcmp(bayes_status(5, 90, 10), "rejected") == 0);
+    CHECK(strcmp(bayes_status(50, 90, 10), "tentative") == 0);
+    CalcSpec spec;
+    CHECK(calc_parse("bayes|50|90|10|10,30,95", &spec));
+    CHECK(strcmp(spec.algorithm, "bayes") == 0 && spec.prior == 50 && spec.n_choices == 3);
+    CHECK(spec.choices[2] == 95);
+    CHECK(!calc_parse("bayes|50|90", &spec));
+    CHECK(!calc_parse("bayes|500|90|10|50", &spec));
+    CHECK(!calc_parse("bayes|50|90|10|", &spec));
+    CHECK(!calc_parse("bayes|50|90|10|x", &spec));
+    CHECK(!calc_parse("bayes|50|90|10|100", &spec));
+}
+
 int main(int argc, char** argv) {
     if(argc != 3) {
         fprintf(stderr, "usage: test_pkp test|dump|walk <path>\n");
@@ -788,6 +813,7 @@ int main(int argc, char** argv) {
         test_session();
         test_simulate();
         test_scorecard();
+        test_bayes();
         printf("native: %s (%d failure(s))\n", failures ? "FAIL" : "PASS", failures);
         rc = failures ? 1 : 0;
     }

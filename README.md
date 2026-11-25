@@ -49,9 +49,9 @@ stale.
 <!-- docs:begin modules -->
 | Module | What it does for you | Ways in |
 |---|---|---|
-| **Library** | 2 240 objects to read | **By chapter** 66 &middot; Chapters in book order<br>**By kind** 10 &middot; One list per kind<br>**Everything** 2 240 &middot; All, in pack order<br>**Surprise me** 2 240 &middot; A random article |
+| **Library** | 2 241 objects to read | **By chapter** 66 &middot; Chapters in book order<br>**By kind** 11 &middot; One list per kind<br>**Everything** 2 241 &middot; All, in pack order<br>**Surprise me** 2 241 &middot; A random article |
 | **Detect** | 1 212: mark what you saw | **Detectors** 1 212 &middot; Objects with markers<br>**Random detector** 1 212 &middot; Markers of a random one |
-| **Act** | 1 547 with steps to take | **What to do** 1 547 &middot; Objects with steps<br>**Confusables** 1 128 &middot; Pairs to tell apart<br>**Assess** 5 &middot; Grade a source, a claim, a finding<br>**Score a case** 2 &middot; Answer, see the score and its band |
+| **Act** | 1 548 with steps to take | **What to do** 1 548 &middot; Objects with steps<br>**Confusables** 1 128 &middot; Pairs to tell apart<br>**Assess** 5 &middot; Grade a source, a claim, a finding<br>**Score a case** 2 &middot; Answer, see the score and its band<br>**Calculators** 1 &middot; Change the inputs, watch the result |
 | **Train** | 1 671 questions to try | **Which term?** 1 671 &middot; Pick the term of four<br>**Manipulative?** 1 185 &middot; Manipulative or benign<br>**Review** &middot; Due again: boxes 1 to 5<br>**Crisis simulations** 9 &middot; Decide, see what follows<br>**Quiz an object** 1 671 &middot; Quiz a chosen object |
 <!-- docs:end modules -->
 
@@ -110,6 +110,8 @@ for other reasons.
 - **Scorecards.** The Prismatic Platform's deterministic risk ratings, question by question:
   a deal's executive frame (A to F) and whether an owner is a nominee, each answer's weight and
   red flag shown, the score and its band explained.
+- **Calculators.** The Prismatic Platform's Bayesian fusion of independent sources: add
+  sources, move the prior, and watch the belief and its status change.
 - **Crisis simulations.** The Prismatic Platform's tabletop exercises, step by step: decide,
   see the consequence and what it did to trust, and get the outcome by the source's rules.
 - **Saved sessions.** Only when you press Save, a detector's marks go into a JSON Lines file on
@@ -167,6 +169,7 @@ flowchart LR
   h2 --> h2e1["Confusables<br/><small>Pairs to tell apart</small>"]
   h2 --> h2e2["Assess<br/><small>Grade a source, a claim, a finding</small>"]
   h2 --> h2e3["Score a case<br/><small>Answer, see the score and its band</small>"]
+  h2 --> h2e4["Calculators<br/><small>Change the inputs, watch the result</small>"]
   home --> h3["Train"]
   h3 --> h3e0["Which term?<br/><small>Pick the term of four</small>"]
   h3 --> h3e1["Manipulative?<br/><small>Manipulative or benign</small>"]
@@ -220,12 +223,13 @@ somewhere else than it says, or when a committed frame differs from the fresh re
   <tr><td align="center" width="50%"><img src="docs/evidence/atlas/27-assess-result.png" width="384" alt="The grade: the codes together, each grade's meaning, then what to do with it"><br><sub>The grade: the codes together, each grade's meaning, then what to do with it</sub></td><td align="center" width="50%"><img src="docs/evidence/atlas/28-sim-step.png" width="384" alt="A crisis simulation from the Prismatic Platform: the situation, your options and their risk"><br><sub>A crisis simulation from the Prismatic Platform: the situation, your options and their risk</sub></td></tr>
   <tr><td align="center" width="50%"><img src="docs/evidence/atlas/29-sim-result.png" width="384" alt="The consequence of a decision, and trust before and after it"><br><sub>The consequence of a decision, and trust before and after it</sub></td><td align="center" width="50%"><img src="docs/evidence/atlas/30-sim-outcome.png" width="384" alt="The outcome by the source's rules, and every decision with its trust change"><br><sub>The outcome by the source's rules, and every decision with its trust change</sub></td></tr>
   <tr><td align="center" width="50%"><img src="docs/evidence/atlas/31-score.png" width="384" alt="A scorecard from the Prismatic Platform: each answer's weight, the note it carries"><br><sub>A scorecard from the Prismatic Platform: each answer's weight, the note it carries</sub></td><td align="center" width="50%"><img src="docs/evidence/atlas/32-score-result.png" width="384" alt="The score, its band, and what moved it, with each red flag's evidence"><br><sub>The score, its band, and what moved it, with each red flag's evidence</sub></td></tr>
-  <tr><td align="center" width="50%"><img src="docs/evidence/atlas/33-quiz.png" width="384" alt="Which term? The definition with the name masked"><br><sub>Which term? The definition with the name masked</sub></td><td align="center" width="50%"><img src="docs/evidence/atlas/34-quiz-options.png" width="384" alt="Distractors are the objects the page calls confusable"><br><sub>Distractors are the objects the page calls confusable</sub></td></tr>
-  <tr><td align="center" width="50%"><img src="docs/evidence/atlas/35-quiz-result.png" width="384" alt="The answer, the definition, a link to the article"><br><sub>The answer, the definition, a link to the article</sub></td><td align="center" width="50%"><img src="docs/evidence/atlas/36-trainer.png" width="384" alt="Manipulative or benign? A catalogue example"><br><sub>Manipulative or benign? A catalogue example</sub></td></tr>
-  <tr><td align="center" width="50%"><img src="docs/evidence/atlas/37-trainer-result.png" width="384" alt="Why, and a good response, from the catalogue"><br><sub>Why, and a good response, from the catalogue</sub></td><td align="center" width="50%"><img src="docs/evidence/atlas/38-review-empty.png" width="384" alt="Review: questions come back by their Leitner box; here nothing is due"><br><sub>Review: questions come back by their Leitner box; here nothing is due</sub></td></tr>
-  <tr><td align="center" width="50%"><img src="docs/evidence/atlas/39-forget.png" width="384" alt="Forgetting your progress asks first; Back keeps it"><br><sub>Forgetting your progress asks first; Back keeps it</sub></td><td align="center" width="50%"><img src="docs/evidence/atlas/40-sessions.png" width="384" alt="Saved sessions, newest first: only those you chose to save"><br><sub>Saved sessions, newest first: only those you chose to save</sub></td></tr>
-  <tr><td align="center" width="50%"><img src="docs/evidence/atlas/41-info.png" width="384" alt="Pack & device: what the pack is and where it came from"><br><sub>Pack & device: what the pack is and where it came from</sub></td><td align="center" width="50%"><img src="docs/evidence/atlas/42-info-cache.png" width="384" alt="Measured here: open time, scan time, the read cache's hits"><br><sub>Measured here: open time, scan time, the read cache's hits</sub></td></tr>
-  <tr><td align="center" width="50%"><img src="docs/evidence/atlas/43-about.png" width="384" alt="About: what the app is and the keys"><br><sub>About: what the app is and the keys</sub></td><td align="center" width="50%"><img src="docs/evidence/atlas/44-no-pack.png" width="384" alt="No pack: Info and About still work and say what to do"><br><sub>No pack: Info and About still work and say what to do</sub></td></tr>
+  <tr><td align="center" width="50%"><img src="docs/evidence/atlas/33-calc.png" width="384" alt="A calculator from the Prismatic Platform: add sources, the belief and its status stay in view"><br><sub>A calculator from the Prismatic Platform: add sources, the belief and its status stay in view</sub></td><td align="center" width="50%"><img src="docs/evidence/atlas/34-quiz.png" width="384" alt="Which term? The definition with the name masked"><br><sub>Which term? The definition with the name masked</sub></td></tr>
+  <tr><td align="center" width="50%"><img src="docs/evidence/atlas/35-quiz-options.png" width="384" alt="Distractors are the objects the page calls confusable"><br><sub>Distractors are the objects the page calls confusable</sub></td><td align="center" width="50%"><img src="docs/evidence/atlas/36-quiz-result.png" width="384" alt="The answer, the definition, a link to the article"><br><sub>The answer, the definition, a link to the article</sub></td></tr>
+  <tr><td align="center" width="50%"><img src="docs/evidence/atlas/37-trainer.png" width="384" alt="Manipulative or benign? A catalogue example"><br><sub>Manipulative or benign? A catalogue example</sub></td><td align="center" width="50%"><img src="docs/evidence/atlas/38-trainer-result.png" width="384" alt="Why, and a good response, from the catalogue"><br><sub>Why, and a good response, from the catalogue</sub></td></tr>
+  <tr><td align="center" width="50%"><img src="docs/evidence/atlas/39-review-empty.png" width="384" alt="Review: questions come back by their Leitner box; here nothing is due"><br><sub>Review: questions come back by their Leitner box; here nothing is due</sub></td><td align="center" width="50%"><img src="docs/evidence/atlas/40-forget.png" width="384" alt="Forgetting your progress asks first; Back keeps it"><br><sub>Forgetting your progress asks first; Back keeps it</sub></td></tr>
+  <tr><td align="center" width="50%"><img src="docs/evidence/atlas/41-sessions.png" width="384" alt="Saved sessions, newest first: only those you chose to save"><br><sub>Saved sessions, newest first: only those you chose to save</sub></td><td align="center" width="50%"><img src="docs/evidence/atlas/42-info.png" width="384" alt="Pack & device: what the pack is and where it came from"><br><sub>Pack & device: what the pack is and where it came from</sub></td></tr>
+  <tr><td align="center" width="50%"><img src="docs/evidence/atlas/43-info-cache.png" width="384" alt="Measured here: open time, scan time, the read cache's hits"><br><sub>Measured here: open time, scan time, the read cache's hits</sub></td><td align="center" width="50%"><img src="docs/evidence/atlas/44-about.png" width="384" alt="About: what the app is and the keys"><br><sub>About: what the app is and the keys</sub></td></tr>
+  <tr><td align="center" width="50%"><img src="docs/evidence/atlas/45-no-pack.png" width="384" alt="No pack: Info and About still work and say what to do"><br><sub>No pack: Info and About still work and say what to do</sub></td></tr>
 </table>
 
 Rendered by `tools/atlas.py` from `tests/sim/atlas.txt`: the real pack, the firmware's own u8g2 and fonts, the same app code as the FAP. Every screen of the app has a frame, and CI fails when one is missing or stale ([rule](.ai/repo/rules/project/ui-atlas.v1.md)); `tools/parity.sh` recorded the device drawing identical frames ([evidence](docs/evidence/parity/manifest.json)).
@@ -318,20 +322,20 @@ numbers disagree with the build.
 <!-- docs:begin pack-stats -->
 | | |
 |---|---:|
-| Knowledge objects | **2 240** |
+| Knowledge objects | **2 241** |
 | Categories | **66** |
 | Typed relations (links between objects) | **37 567** |
 | Objects with a detector (observable markers) | **1 212** |
-| Objects with what-to-do steps | **1 547** |
+| Objects with what-to-do steps | **1 548** |
 | Objects with confusables to rule out | **1 128** |
 | Quiz questions | **2 856** |
 |   of which: recognise the term from its definition | **1 671** |
 |   of which: manipulative or benign? (catalogue examples) | **1 185** |
 | Markers (indicators) | **4 246** |
-| Actions and escalation steps | **4 566** |
+| Actions and escalation steps | **4 567** |
 | Chapters | **16 807** |
 
-Pack `kompendium.pkp`: 20 705 500 bytes, sha256 `bffea4050c10337d…`, rebuilt byte-for-byte identical by CI from the pinned source.
+Pack `kompendium.pkp`: 20 706 184 bytes, sha256 `641489c56b6748d0…`, rebuilt byte-for-byte identical by CI from the pinned source.
 <!-- docs:end pack-stats -->
 
 <details>
@@ -341,8 +345,8 @@ Pack `kompendium.pkp`: 20 705 500 bytes, sha256 `bffea4050c10337d…`, rebuilt b
 | Kind | Objects | Share |
 |---|---:|---|
 | `article` | 552 | `██████` 24.6 % |
-| `technique` | 503 | `█████` 22.5 % |
-| `pattern` | 420 | `████` 18.8 % |
+| `technique` | 503 | `█████` 22.4 % |
+| `pattern` | 420 | `████` 18.7 % |
 | `concept` | 289 | `███` 12.9 % |
 | `fallacy` | 147 | `██` 6.6 % |
 | `scenario` | 129 | `█` 5.8 % |
@@ -350,6 +354,7 @@ Pack `kompendium.pkp`: 20 705 500 bytes, sha256 `bffea4050c10337d…`, rebuilt b
 | `countermeasure` | 50 | `█` 2.2 % |
 | `signature` | 33 | `█` 1.5 % |
 | `exercise` | 30 | `█` 1.3 % |
+| `algorithm` | 1 | `█` 0.0 % |
 <!-- docs:end pack-kinds -->
 
 </details>

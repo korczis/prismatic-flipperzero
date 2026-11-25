@@ -19,5 +19,5 @@ strip_flag="-Wl,--gc-sections"
 "$cc" -std=c11 -Wall -Wextra -Werror -Wno-unused-parameter -g "$@" \
   -I"$root/tests/sim/include" -I"$u8g2" -I"$root/app" \
   "$root/tests/sim/pocketsim.c" "$root/app/ui/page.c" "$root/app/ui/ui_app.c" "$root/app/ui/fonts.c" \
-  "$root/app/core/pkp.c" "$root/app/core/pocket.c" "$root/app/core/cache.c" "$root/app/core/progress.c" "$root/app/core/session.c" "$root/app/core/simulate.c" "$root/app/core/scorecard.c" "$root/tests/sim/canvas.c" \
+  "$root/app/core/pkp.c" "$root/app/core/pocket.c" "$root/app/core/cache.c" "$root/app/core/progress.c" "$root/app/core/session.c" "$root/app/core/simulate.c" "$root/app/core/scorecard.c" "$root/app/core/bayes.c" "$root/tests/sim/canvas.c" \
   "$obj"/*.o "$strip_flag" -o "$root/build/sim/pocketsim"

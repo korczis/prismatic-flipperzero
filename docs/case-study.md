@@ -63,6 +63,7 @@ Generated from the repository's history by [`tools/docs.py`](../tools/docs.py). 
 | `aa9bd09` | 13:09 | feat(sessions): save a detector's marks as JSON Lines, only when asked |
 | `5e934ff` | 13:11 | fix(sessions): drop an unreachable empty-list note; restore covers an empty page |
 | `3761ede` | 13:25 | feat(simulate): the Prismatic Platform's crisis simulations, as data, offline |
+| `56fadfc` | 13:35 | feat(score): the Prismatic Platform's scorecards as data: executive frame, nominee risk |
 <!-- docs:end timeline -->
 
 ## What made it fast
@@ -141,20 +142,20 @@ The pack this session produced:
 <!-- docs:begin pack-stats -->
 | | |
 |---|---:|
-| Knowledge objects | **2 240** |
+| Knowledge objects | **2 241** |
 | Categories | **66** |
 | Typed relations (links between objects) | **37 567** |
 | Objects with a detector (observable markers) | **1 212** |
-| Objects with what-to-do steps | **1 547** |
+| Objects with what-to-do steps | **1 548** |
 | Objects with confusables to rule out | **1 128** |
 | Quiz questions | **2 856** |
 |   of which: recognise the term from its definition | **1 671** |
 |   of which: manipulative or benign? (catalogue examples) | **1 185** |
 | Markers (indicators) | **4 246** |
-| Actions and escalation steps | **4 566** |
+| Actions and escalation steps | **4 567** |
 | Chapters | **16 807** |
 
-Pack `kompendium.pkp`: 20 705 500 bytes, sha256 `bffea4050c10337d…`, rebuilt byte-for-byte identical by CI from the pinned source.
+Pack `kompendium.pkp`: 20 706 184 bytes, sha256 `641489c56b6748d0…`, rebuilt byte-for-byte identical by CI from the pinned source.
 <!-- docs:end pack-stats -->
 
 ## What it would have taken otherwise

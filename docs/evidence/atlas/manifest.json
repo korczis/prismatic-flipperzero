@@ -27,7 +27,8 @@
   "SimResult",
   "SimOutcome",
   "Score",
-  "ScoreResult"
+  "ScoreResult",
+  "Calc"
  ],
  "frames": [
   {
@@ -319,12 +320,21 @@
    "screen": "ScoreResult"
   },
   {
+   "name": "calc",
+   "pack": "kompendium",
+   "keys": "down,ok,down,down,down,down,ok,ok,down,ok,down,down,down,down,ok,down,down,ok",
+   "view": "Calc",
+   "caption": "A calculator from the Prismatic Platform: add sources, the belief and its status stay in view",
+   "file": "33-calc.png",
+   "screen": "Calc"
+  },
+  {
    "name": "quiz",
    "pack": "kompendium",
    "keys": "down,right,ok,ok",
    "view": "Quiz",
    "caption": "Which term? The definition with the name masked",
-   "file": "33-quiz.png",
+   "file": "34-quiz.png",
    "screen": "Quiz"
   },
   {
@@ -333,7 +343,7 @@
    "keys": "down,right,ok,ok,ok",
    "view": "QuizOptions",
    "caption": "Distractors are the objects the page calls confusable",
-   "file": "34-quiz-options.png",
+   "file": "35-quiz-options.png",
    "screen": "QuizOptions"
   },
   {
@@ -342,7 +352,7 @@
    "keys": "down,right,ok,ok,ok,ok",
    "view": "QuizResult",
    "caption": "The answer, the definition, a link to the article",
-   "file": "35-quiz-result.png",
+   "file": "36-quiz-result.png",
    "screen": "QuizResult"
   },
   {
@@ -351,7 +361,7 @@
    "keys": "down,right,ok,down,ok",
    "view": "Quiz",
    "caption": "Manipulative or benign? A catalogue example",
-   "file": "36-trainer.png",
+   "file": "37-trainer.png",
    "screen": "Quiz"
   },
   {
@@ -360,7 +370,7 @@
    "keys": "down,right,ok,down,ok,left",
    "view": "QuizResult",
    "caption": "Why, and a good response, from the catalogue",
-   "file": "37-trainer-result.png",
+   "file": "38-trainer-result.png",
    "screen": "QuizResult"
   },
   {
@@ -369,7 +379,7 @@
    "keys": "down,right,ok,ok,ok,ok,restart,restart,down,right,ok,down,down,ok,ok,ok,down,down,ok",
    "view": "Quiz",
    "caption": "Review: questions come back by their Leitner box; here nothing is due",
-   "file": "38-review-empty.png",
+   "file": "39-review-empty.png",
    "screen": "Quiz"
   },
   {
@@ -378,7 +388,7 @@
    "keys": "down,right,ok,ok,ok,ok,back:long,down,down,ok,right,right,right,right,right,down,ok",
    "view": "Forget",
    "caption": "Forgetting your progress asks first; Back keeps it",
-   "file": "39-forget.png",
+   "file": "40-forget.png",
    "screen": "Forget"
   },
   {
@@ -387,7 +397,7 @@
    "keys": "ok,ok,down,ok,down,ok,down,ok,right,right,left,down,down,ok,back:long,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,up,ok",
    "view": "Sessions",
    "caption": "Saved sessions, newest first: only those you chose to save",
-   "file": "40-sessions.png",
+   "file": "41-sessions.png",
    "screen": "Sessions"
   },
   {
@@ -396,7 +406,7 @@
    "keys": "down,down,ok",
    "view": "Info",
    "caption": "Pack & device: what the pack is and where it came from",
-   "file": "41-info.png",
+   "file": "42-info.png",
    "screen": "Info"
   },
   {
@@ -405,7 +415,7 @@
    "keys": "down,down,ok,right,right,right",
    "view": "Info",
    "caption": "Measured here: open time, scan time, the read cache's hits",
-   "file": "42-info-cache.png",
+   "file": "43-info-cache.png",
    "screen": "Info"
   },
   {
@@ -414,7 +424,7 @@
    "keys": "down,down,right,ok",
    "view": "About",
    "caption": "About: what the app is and the keys",
-   "file": "43-about.png",
+   "file": "44-about.png",
    "screen": "About"
   },
   {
@@ -423,7 +433,7 @@
    "keys": "",
    "view": "Home",
    "caption": "No pack: Info and About still work and say what to do",
-   "file": "44-no-pack.png",
+   "file": "45-no-pack.png",
    "screen": "Home"
   }
  ]

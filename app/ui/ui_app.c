@@ -1,6 +1,7 @@
 #include "ui_app.h"
 
 #include "../core/pocket.h"
+#include "../core/bayes.h"
 #include "../core/scorecard.h"
 #include "../core/simulate.h"
 #include "../version.h"
@@ -38,6 +39,8 @@
 #define T_SIM_NEXT     (19u << 24) /* the next step, or the outcome after the last */
 #define T_SCORE        (20u << 24) /* start (or restart) the frame object's scorecard */
 #define T_SCORE_PICK   (21u << 24) /* argument: the choice made on the current question */
+#define T_CALC         (22u << 24) /* argument: a calculator action (CALC_*) */
+#define T_CALC_OPEN    (23u << 24) /* open the frame object's calculator */
 #define MAX_QUESTIONS  12u
 #define MAX_BANDS      8u
 #define MAX_STEPS      12u
@@ -75,13 +78,22 @@
     X(SimResult)    \
     X(SimOutcome)   \
     X(Score)        \
-    X(ScoreResult)
+    X(ScoreResult)  \
+    X(Calc)
 
 typedef enum {
 #define SCREEN_ENUM(name) Scr##name,
     SCREENS(SCREEN_ENUM)
 #undef SCREEN_ENUM
 } Screen;
+
+enum {
+    CALC_PRIOR_DOWN,
+    CALC_PRIOR_UP,
+    CALC_UNDO,
+    CALC_RESET,
+    CALC_ADD, /* CALC_ADD + k: add a source at the k-th choice */
+};
 
 enum {
     HomeTop = 0, /* "Home" in a context menu: back to the first screen */
@@ -102,6 +114,7 @@ enum {
     HomeAssess,
     HomeSimulate,
     HomeScore,
+    HomeCalc,
     HomeForget,
     HomeForgetNow,
     HomeSessions,
@@ -134,6 +147,7 @@ struct UiApp {
     uint16_t cap_count[8];
     uint32_t quiz_kind_count[3];
     uint16_t kind_count[KIND_CAP];
+    uint8_t calc_kind; /* the kind "algorithm", which calculators are */
 
     Frame stack[STACK];
     uint8_t depth;
@@ -167,6 +181,11 @@ struct UiApp {
     uint32_t sc_band_item;
     uint8_t sc_bands;
     char sc_band_text[160];
+    /* a calculator: its spec, the prior and the sources added, in percent */
+    CalcSpec calc;
+    uint8_t calc_prior;
+    uint8_t calc_src[CALC_MAX_SOURCES];
+    uint8_t calc_n;
 
     PkpQuiz quiz;
     uint16_t quiz_asked; /* this session's answers, shown in the quiz header */
@@ -321,6 +340,7 @@ static uint32_t entry_count(UiApp* app, uint32_t entry) {
         [HomeAssess] = app->cap_count[cap_index(PKP_CAP_ASSESS)],
         [HomeSimulate] = app->cap_count[cap_index(PKP_CAP_SIMULATE)],
         [HomeScore] = app->cap_count[cap_index(PKP_CAP_SCORE)],
+        [HomeCalc] = app->kind_count[app->calc_kind],
     };
     return entry < sizeof(counts) / sizeof(counts[0]) ? counts[entry] : 0;
 }
@@ -378,6 +398,12 @@ static const Hub hubs[] = {
        "Score a case",
        "%lu",
        "Answer, see the score and its band",
+       ShareNone},
+      {UiIconCompare,
+       HomeCalc,
+       "Calculators",
+       "%lu",
+       "Change the inputs, watch the result",
        ShareNone}}},
     {UiIconQuiz,
      "Train",
@@ -926,6 +952,81 @@ static void render_score_result(UiApp* app) {
     restore(app);
 }
 
+/* ------------------------------------------------------------------ calculators */
+
+/* The object's calculator item, parsed; false when it has none or it is unreadable. */
+static bool calc_of(UiApp* app, const PkpObject* o, CalcSpec* spec) {
+    for(uint32_t k = 0; k < o->items_count; k++) {
+        PkpItem it;
+        if(pkp_item(app->pack, o->items_first + k, &it) == PKP_OK && it.type == PKP_ITEM_CALC)
+            return calc_parse(str(app, it.text), spec);
+    }
+    return false;
+}
+
+/* A Bayes calculator: the belief and its status on top, then the actions as rows. */
+static void render_calc(UiApp* app) {
+    char line[96];
+    page_reset(app->page, "Bayes update");
+    page_set_title_icon(app->page, UiIconCompare);
+    if(strcmp(app->calc.algorithm, "bayes") != 0) {
+        page_add(app->page, PageNote, "This calculator could not be read.", 0);
+        restore(app);
+        return;
+    }
+    double p = 100.0 * bayes_fuse(app->calc_prior / 100.0, app->calc_src, app->calc_n);
+    const char* status = bayes_status(p, app->calc.confirm, app->calc.reject);
+    /* the result stays in view: the belief in the header, the state in the status line */
+    char pos[12], hint[96];
+    snprintf(pos, sizeof(pos), "%.1f%%", p);
+    page_set_position(app->page, pos);
+    int at = snprintf(hint, sizeof(hint), "%s; from %u%%:", status, app->calc_prior);
+    for(uint8_t k = 0; k < app->calc_n && at < (int)sizeof(hint) - 5; k++)
+        at += snprintf(hint + at, sizeof(hint) - (size_t)at, " %u", app->calc_src[k]);
+    snprintf(line, sizeof(line), "%.1f %% %s", p, status);
+    page_add(app->page, PageBig, line, 0);
+    int belief = (int)(p + 0.5);
+    snprintf(line, sizeof(line), "%d belief,%d doubt", belief, 100 - belief);
+    page_add(app->page, PageBar, line, 0);
+    for(uint8_t k = 0; k < app->calc.n_choices; k++) {
+        snprintf(line, sizeof(line), "Add a source at %u%%", app->calc.choices[k]);
+        page_add_row(app->page, UiIconDetect, line, NULL, T_CALC | (CALC_ADD + k));
+        page_set_hint(app->page, hint);
+    }
+    static const char* const more[] = {
+        "Prior -10", "Prior +10", "Remove the last source", "Start over"};
+    for(uint32_t k = 0; k < 4; k++) {
+        page_add_row(app->page, 0, more[k], NULL, T_CALC | (CALC_PRIOR_DOWN + k));
+        page_set_hint(app->page, hint);
+    }
+    restore(app);
+}
+
+static void start_calc(UiApp* app, uint16_t obj) {
+    PkpObject o;
+    memset(&app->calc, 0, sizeof(app->calc));
+    if(pkp_object(app->pack, obj, &o) != PKP_OK || !calc_of(app, &o, &app->calc))
+        app->calc.algorithm[0] = '\0';
+    app->calc_prior = app->calc.prior;
+    app->calc_n = 0;
+    push(app, (Frame){.screen = ScrCalc, .obj = obj});
+}
+
+/* One action of the calculator; the focus stays on the row pressed. */
+static void calc_action(UiApp* app, uint32_t action) {
+    if(action >= CALC_ADD && app->calc_n < CALC_MAX_SOURCES)
+        app->calc_src[app->calc_n++] = app->calc.choices[action - CALC_ADD];
+    if(action == CALC_PRIOR_DOWN && app->calc_prior > 10) app->calc_prior -= 10;
+    if(action == CALC_PRIOR_UP && app->calc_prior < 90) app->calc_prior += 10;
+    if(action == CALC_UNDO && app->calc_n) app->calc_n--;
+    if(action == CALC_RESET) {
+        app->calc_n = 0;
+        app->calc_prior = app->calc.prior;
+    }
+    top(app)->sel = T_CALC | action;
+    render(app);
+}
+
 static void render_article(UiApp* app) {
     Frame* f = top(app);
     PkpObject o;
@@ -953,6 +1054,9 @@ static void render_article(UiApp* app) {
     if(o.caps & PKP_CAP_SIMULATE)
         page_add_icon(app->page, PageChip, UiIconTrainer, "Run", T_SIMULATE);
     if(o.caps & PKP_CAP_SCORE) page_add_icon(app->page, PageChip, UiIconCorrect, "Score", T_SCORE);
+    CalcSpec calc;
+    bool has_calc = calc_of(app, &o, &calc);
+    if(has_calc) page_add_icon(app->page, PageChip, UiIconCompare, "Calculate", T_CALC_OPEN);
     if(o.caps & PKP_CAP_QUIZ) page_add_icon(app->page, PageChip, UiIconQuiz, "Quiz", T_QUIZ);
     if(o.rel_count) {
         snprintf(line, sizeof(line), "%u", o.rel_count);
@@ -1002,6 +1106,7 @@ static void render_article(UiApp* app) {
     if(o.caps & PKP_CAP_ASSESS) page_add_menu(app->page, "Assess", T_ASSESS);
     if(o.caps & PKP_CAP_SIMULATE) page_add_menu(app->page, "Run the simulation", T_SIMULATE);
     if(o.caps & PKP_CAP_SCORE) page_add_menu(app->page, "Score it", T_SCORE);
+    if(has_calc) page_add_menu(app->page, "Calculate", T_CALC_OPEN);
     if(markers && look_alikes(app, &o, NULL))
         page_add_menu(app->page, "Compare with a look-alike", T_PICK | f->obj);
     if(o.caps & PKP_CAP_QUIZ) page_add_menu(app->page, "Take the quiz", T_QUIZ);
@@ -1617,6 +1722,9 @@ static void render(UiApp* app) {
     case ScrScoreResult:
         render_score_result(app);
         break;
+    case ScrCalc:
+        render_calc(app);
+        break;
     default:
         render_about(app);
         break;
@@ -1799,6 +1907,9 @@ static void home(UiApp* app, uint32_t entry) {
     case HomeScore:
         push(app, (Frame){.screen = ScrFilter, .filter = filters[entry]});
         break;
+    case HomeCalc:
+        push(app, (Frame){.screen = ScrFilter, .filter = 0, .cat = app->calc_kind});
+        break;
     case HomeInfo:
         push(app, (Frame){.screen = ScrInfo});
         break;
@@ -1887,6 +1998,12 @@ static void open_target(UiApp* app, uint32_t target, bool long_press) {
         break;
     case T_SCORE:
         start_score(app, f->obj);
+        break;
+    case T_CALC_OPEN:
+        start_calc(app, f->obj);
+        break;
+    case T_CALC:
+        calc_action(app, T_ARG(target));
         break;
     case T_SCORE_PICK:
         app->sc_pick[f->aux] = (uint8_t)T_ARG(target);
@@ -2018,6 +2135,14 @@ void ui_app_set_pack(UiApp* app, PkpReader* pack, PkpStatus status, uint32_t ope
             if(pkp_quiz(pack, i, &q) == PKP_OK && q.kind < 3) app->quiz_kind_count[q.kind]++;
         }
         app->scan_ms = app->platform.tick_ms(app->platform.ctx) - t0;
+    }
+    /* calculators are objects of the kind "algorithm" */
+    for(uint32_t k = 1; status == PKP_OK && k <= pkp_count(pack, PKP_SEC_KINDS) && k < KIND_CAP;
+        k++) {
+        char name[16];
+        if(pkp_kind_name(pack, (uint8_t)k, name, sizeof(name)) == PKP_OK &&
+           strcmp(name, "algorithm") == 0)
+            app->calc_kind = (uint8_t)k;
     }
     /* the quiz progress: the better of the file and its temporary copy; one more session */
     static uint8_t copy[PROGRESS_MAX_FILE];

@@ -247,3 +247,23 @@ provenance = { repository = "https://gitlab.com/korczis/prismatic-platform", com
   [[scorecard.question]]
   text = "Is the ownership exactly 100% or 1%?"
   choices = [["No", 0, ""], ["Yes", 25, "100% or minimal 1% ownership (common in nominee arrangements)."]]
+
+# Calculators: a portable algorithm on the device, its parameters here.
+
+[[calculator]]
+id = "applications/bayes-update"
+title = "Bayesian update: what independent sources do to a belief"
+code = "BAYES"
+algorithm = "bayes"
+definition = "Prismatic fuses the confidences of independent sources by Bayes' rule, one source at a time: each confidence c updates the belief p to c*p / (c*p + (1-c)(1-p)), starting from 0.5. Below 0.5 a source counts against the finding."
+actions = [
+  "When multiple independent sources agree on a finding, the combined confidence is higher than any individual source.",
+]
+validation = [
+  "A finding at 0.9 or above is confirmed, at 0.1 or below rejected, otherwise tentative (the hypothesis lifecycle of apps/prismatic_ir_pvm/lib/ir/hypothesis.ex).",
+]
+prior = 50
+confirm = 90
+reject = 10
+choices = [10, 30, 60, 70, 80, 90, 95]
+provenance = { repository = "https://gitlab.com/korczis/prismatic-platform", commit = "49adc18f7bac", path = "apps/prismatic_osint_core/lib/prismatic_osint_core/intelligence/correlation_engine.ex" }

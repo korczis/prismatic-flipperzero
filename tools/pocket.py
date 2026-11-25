@@ -58,7 +58,7 @@ ITEM_ROLES = ["indicators", "actions", "escalation", "alternatives", "validation
 ITEM_TYPES = {"indicators": 1, "actions": 2, "escalation": 3, "alternatives": 4,
               "validation": 5, "heading": 6, "text": 7, "example": 8, "axis": 9, "level": 10,
               "sim_start": 11, "sim_step": 12, "sim_option": 13, "score_setup": 14,
-              "score_question": 15, "score_choice": 16, "score_band": 17}
+              "score_question": 15, "score_choice": 16, "score_band": 17, "calc": 18}
 RELATIONS = ["related_to", "contrasts_with", "confused_with", "specializes", "generalizes",
              "requires", "supports", "contradicts", "mitigated_by", "illustrated_by"]
 CAPS = {"browse": 1, "detect": 2, "apply": 4, "quiz": 8, "compare": 16, "assess": 32,
@@ -66,6 +66,7 @@ CAPS = {"browse": 1, "detect": 2, "apply": 4, "quiz": 8, "compare": 16, "assess"
 SCENARIOS = Path("knowledge") / "scenarios.json"  # under ROOT
 SIMULATIONS_CATEGORY = "Simulations"
 SIM_IMPACTS = ("positive", "neutral", "negative", "critical")
+CALCULATORS = ("bayes",)  # algorithms the device implements (app/core/bayes.c)
 APPLICATIONS = Path("knowledge") / "applications.toml"  # under ROOT
 WORKING_FIELDS = ("links", "confused_links", "related_terms", "catalog_id", "ea_code")
 APPLICATIONS_CATEGORY = "Applications"
@@ -407,6 +408,15 @@ def load_applications(path=None):
         for k in WORKING_FIELDS:  # an application has no page links to resolve
             del o[k]
         objects.append(o)
+    for a in data.get("calculator", []):
+        o = empty_object(a["id"], "algorithm", a["title"], APPLICATIONS_CATEGORY, a["provenance"])
+        o.update(code=a.get("code", ""), definition=a["definition"], actions=a.get("actions", []),
+                 validation=a.get("validation", []), validation_status="sourced_algorithm",
+                 calculator={k: a[k] for k in ("algorithm", "prior", "confirm", "reject",
+                                               "choices")})
+        for k in WORKING_FIELDS:
+            del o[k]
+        objects.append(o)
     for a in data.get("scorecard", []):
         o = empty_object(a["id"], "protocol", a["title"], APPLICATIONS_CATEGORY, a["provenance"])
         o.update(code=a.get("code", ""), definition=a["definition"], actions=a.get("actions", []),
@@ -527,6 +537,12 @@ def validate(ir):
                     or [b[0] for b in bands] != sorted(b[0] for b in bands)):
                 errors.append(f"{oid}: a scorecard needs questions of 2-6 [label, weight, note] "
                               "and ascending bands up to its max")
+        calc = o.get("calculator")
+        if calc and (calc.get("algorithm") not in CALCULATORS or not all(
+                isinstance(v, int) and 0 < v < 100
+                for v in [calc["prior"], calc["confirm"], calc["reject"], *calc["choices"]])
+                or not 1 <= len(calc["choices"]) <= 8):
+            errors.append(f"{oid}: a calculator needs a known algorithm and percentages 1-99")
         sim = o.get("simulation")
         for step in (sim or {}).get("steps", []):
             ops = step.get("options", [])
@@ -589,7 +605,8 @@ def derive_quiz(objects):
     quiz = []
     for i, o in enumerate(objects):
         if (len(o["definition"]) >= 60 and o["kind"] != "article" and not o.get("rubric")
-                and not o.get("simulation") and not o.get("scorecard")):
+                and not o.get("simulation") and not o.get("scorecard")
+                and not o.get("calculator")):
             pool = [r["target"] for r in o["relations"]] + by_cat[o["category"]] + ids
             picks, titles = [], {fold(o["title"]).lower()}
             for cand in pool:
@@ -668,6 +685,11 @@ def object_items(o):
                 yield ITEM_TYPES["score_choice"], f"{weight}|{label}|{note}"
         for top, code, label, meaning in card["bands"]:
             yield ITEM_TYPES["score_band"], f"{top}|{code}|{label}|{meaning}"
+    calc = o.get("calculator")
+    if calc:
+        yield ITEM_TYPES["calc"], "|".join(
+            [calc["algorithm"], str(calc["prior"]), str(calc["confirm"]), str(calc["reject"]),
+             ",".join(str(c) for c in calc["choices"])])
     for axis in o.get("rubric", []):
         yield ITEM_TYPES["axis"], axis["name"]
         for code, label, meaning in axis["levels"]:

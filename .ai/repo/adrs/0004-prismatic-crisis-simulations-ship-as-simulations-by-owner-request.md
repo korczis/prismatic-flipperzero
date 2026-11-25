@@ -38,6 +38,12 @@ into a knowledge object with the capability `simulate`; the outcome rule is port
 training exercise, not guidance for a real emergency. "AI-powered" is not taken to mean a model
 on the device: there is none; the device runs the platform's own data and rules offline.
 
+Under the same request, the platform's Bayesian fusion
+(`apps/prismatic_osint_core/lib/prismatic_osint_core/intelligence/correlation_engine.ex`) ships
+as a calculator: the algorithm is ported to C (`app/core/bayes.c`), its prior, status thresholds
+(from `apps/prismatic_ir_pvm/lib/ir/hypothesis.ex`) and source choices are data. The port follows
+the code, whose result for the docstring's example differs from the docstring (0.988, not 0.976).
+
 ## Consequences
 
 - `tools/verify.sh` runs `tools/prismatic_import.py --check`, which fails when the committed JSON

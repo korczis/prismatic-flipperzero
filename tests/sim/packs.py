@@ -104,6 +104,11 @@ def ir():
                                   "bands": [[30, "LO", "Low", "below thirty"],
                                             [70, "MID", "Middle", ""],
                                             [100, "HI", "High", "above seventy"]]}))
+    # a calculator, in the last category after the card so the card stays first there
+    objects.append(obj("zcalc", "Zeta calculator", "F score", kind="algorithm",
+                       definition="Short.",
+                       calculator={"algorithm": "bayes", "prior": 50, "confirm": 90, "reject": 10,
+                                   "choices": [10, 90]}))
     return {"schema": pocket.SCHEMA,
             "pack": {"id": "ui", "title": "UI test pack", "version": "1",
                      "source_repository": "r", "source_commit": "c"},

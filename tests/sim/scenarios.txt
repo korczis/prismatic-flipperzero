@@ -46,7 +46,7 @@ map-hub              | ui  | ok,ok,down,ok,down,down,ok,ok:long,down,down,ok,rig
 map-eject            | ui  | ok,ok,down,ok,down,down,ok,ok:long,down,down,eject,ok,insert | This object could not be
 paragraph-split      | ui  | ok,ok,down,ok,down,down,ok,down,down,down,down,down,down,down,down | The hub links to many;neighbours at a time.;More neighbours rotate
 home-grid            | ui  | right,right,left,left,down,right,down,left,up,ok | >Detect;>Library;>Act;>Train;>About;>Info;# Act;~ Objects with steps
-home-hints           | ui  | right,down,down | ~ 54 objects to read;~ 47: mark what you saw;~ 18 questions to try;~ Keys; hold Back: Home
+home-hints           | ui  | right,down,down | ~ 55 objects to read;~ 47: mark what you saw;~ 18 questions to try;~ Keys; hold Back: Home
 hub-library          | ui  | ok,down,ok,up,ok,ok,back,back,back,down,ok,back,down,ok | # Library;~ Chapters in book order;# By kind;>technique;>article;# article;>Bare article;# Everything [p1/2];~ A random article
 hub-detect           | ui  | right,ok,ok,back,down,ok | # Detect;# Detectors;~ Markers of a random one;[No|Unsure|Yes]
 hub-train            | ui  | down,right,ok,down,down,down,ok,ok | # Train;~ Pick the term of four;~ Manipulative or benign;# Quiz [1/18];technique - 
@@ -87,3 +87,6 @@ score-low            | ui  | ok,ok,up,ok,ok,down,ok,ok,down,ok,down,down | -60 Y
 score-again          | ui  | ok,ok,up,ok,ok,down,ok,ok,ok,down,down,ok,back | 50 MID Middle;>Score again;# Question 1 of 2 [50];# F score
 score-unreadable     | ui  | ok,ok,up,ok,ok,down,eject,ok,insert | This scorecard could not
 score-lost-result    | ui  | ok,ok,up,ok,ok,down,ok,ok,eject,ok,insert | This scorecard could not
+calc                 | ui  | down,ok,down,down,down,down,ok,ok,down,ok,down,ok,ok,down,ok | # algorithm;>Zeta calculator;# Bayes update [50.0%];# Bayes update [90.0%];~ confirmed;# Bayes update [98.2%];from 40%: 90 90
+calc-prior-undo      | ui  | down,ok,down,down,down,down,ok,ok,down,ok,down,down,ok,ok,ok,ok,ok,down,ok,ok,ok,ok,ok,ok,ok,ok,ok,up,up,up,ok,down,ok,down,down,down,ok,down,ok | # Bayes update [10.0%];~ rejected;from 90%: 10 90;# Bayes update [50.0%];~ tentative
+calc-unreadable      | ui  | down,ok,down,down,down,down,ok,ok,down,eject,ok,insert | This calculator could not
