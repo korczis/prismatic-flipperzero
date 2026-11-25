@@ -927,9 +927,7 @@ static void render_sessions(UiApp* app) {
         page_add_row(app->page, UiIconDetect, label, right, T_OBJECT | v.index[0]);
         page_set_hint(app->page, v.time);
     }
-    if(total == 0)
-        page_add(app->page, PageNote, "Nothing saved. A detector's result offers Save.", 0);
-    restore(app);
+    restore(app); /* an empty list (the file gone meanwhile) gets restore's own note */
 }
 
 /* Two candidates' marks side by side: a count and a bar each, never a ranking. */
