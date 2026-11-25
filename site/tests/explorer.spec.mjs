@@ -230,3 +230,44 @@ test('light system theme and reduced motion', async ({ browser }) => {
   writeFileSync(`${COV}/${process.pid}-light.json`, JSON.stringify(entries));
   await ctx.close();
 });
+
+test('the device: every screen from the atlas, filter, full-size frames, keys, deep link', async ({ page }) => {
+  await page.goto('/#/device');
+  await ready(page);
+  const atlas = await page.evaluate(() => fetch('data/atlas.json').then((r) => r.json()));
+  await expect(page.locator('#atlas [data-frame]')).toHaveCount(atlas.frames.length);
+  // the filter chips are derived: one per screen with frames, each with its count
+  const hubs = atlas.frames.filter((f) => f.screen === 'Hub');
+  await page.locator('#screens [data-screen="Hub"]').click();
+  await expect(page).toHaveURL(/#\/device\?screen=Hub$/);
+  await expect(page.locator('#atlas [data-frame]')).toHaveCount(hubs.length);
+  // a frame opens full size; the arrows step and wrap; Escape closes; the URL follows
+  await page.locator('#atlas [data-frame]').first().click();
+  await expect(page.locator('#lightbox')).toHaveAttribute('data-open', hubs[0].file);
+  await expect(page).toHaveURL(new RegExp(`frame=${hubs[0].file}`));
+  await page.keyboard.press('ArrowRight');
+  await expect(page.locator('#lightbox')).toHaveAttribute('data-open', hubs[1].file);
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('ArrowLeft');
+  await expect(page.locator('#lightbox')).toHaveAttribute('data-open', hubs[hubs.length - 1].file);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#lightbox')).toBeHidden();
+  await expect(page).toHaveURL(/#\/device\?screen=Hub$/);
+  await page.keyboard.press('ArrowRight'); // nothing open: ignored
+  // a deep link to a frame opens it; a click on the backdrop closes it
+  await page.goto(`/#/device?frame=${atlas.frames[2].file}`);
+  await expect(page.locator('#lightbox')).toHaveAttribute('data-open', atlas.frames[2].file);
+  await page.locator('#lightbox').click();
+  await expect(page.locator('#lightbox')).toBeHidden();
+  // an unknown frame falls back to the first; leaving the page drops the key handler
+  await page.goto('/#/device?frame=nope.png');
+  await expect(page.locator('#lightbox')).toHaveAttribute('data-open', atlas.frames[0].file);
+  await page.evaluate(() => { location.hash = '#/'; }); // leave with the frame still open
+  await ready(page);
+  await expect(page.locator('#lightbox')).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await page.locator('[data-device-link]').click();
+  await expect(page.locator('#atlas [data-frame]')).toHaveCount(atlas.frames.length);
+  await page.locator('#screens [data-screen=""]').click();
+  await expect(page).toHaveURL(/#\/device$/);
+});

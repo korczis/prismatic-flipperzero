@@ -35,6 +35,8 @@
 > **Try it without a Flipper.** The [online explorer](https://korczis.github.io/prismatic-flipperzero/)
 > is the same pack in a browser: a drillable map of every category, search, every article with
 > its relation tree, the detector and both quizzes. Object *n* there is object *n* on the device.
+> [The device](https://korczis.github.io/prismatic-flipperzero/#/device) page shows every screen
+> of the app full size, filterable by screen, with the keys that reach it.
 
 ---
 

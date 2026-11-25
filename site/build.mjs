@@ -1,5 +1,5 @@
 // Builds dist/: Tailwind CSS from src, the app, vendor JS from npm, explorer data from
-// tools/explorer.py (build/site/data), device frames and their manifest from docs/evidence.
+// tools/explorer.py (build/site/data), device frames and the screen atlas from docs/evidence.
 import { cpSync, mkdirSync, rmSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
@@ -25,6 +25,9 @@ cpSync(data, join(dist, 'data'), { recursive: true });
 const shots = join(root, 'docs/evidence/pocket');
 cpSync(shots, join(dist, 'screens'), { recursive: true, filter: (p) => !p.endsWith('.json') });
 writeFileSync(join(dist, 'data/gallery.json'), readFileSync(join(shots, 'manifest.json')));
+const atlas = join(root, 'docs/evidence/atlas');
+cpSync(atlas, join(dist, 'atlas'), { recursive: true, filter: (p) => !p.endsWith('.json') });
+writeFileSync(join(dist, 'data/atlas.json'), readFileSync(join(atlas, 'manifest.json')));
 mkdirSync(join(dist, 'assets'), { recursive: true });
 cpSync(join(root, 'docs/assets/prism.svg'), join(dist, 'assets/prism.svg'));
 writeFileSync(join(dist, '.nojekyll'), '');

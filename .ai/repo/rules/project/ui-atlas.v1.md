@@ -19,7 +19,7 @@ tags: [ui, hci, evidence, screenshots]
 - `tools/atlas.py` renders the walks with the host simulator (the firmware's u8g2 and fonts, the
   same app code as the FAP) into `docs/evidence/atlas/`: one PNG per walk, `sheet.png` (all
   frames, for reviews) and `manifest.json` (captions, screens, keys), which the README and the
-  docs render through `tools/docs.py`.
+  docs render through `tools/docs.py` and the Pages explorer shows on its `#/device` page.
 - A UI change is reviewed on the atlas, not on one screen: the contact sheet goes to an
   independent reviewer (another model or a peer) with the frame captions, and the review's
   findings are recorded in `docs/ui.md` with what was done about each.

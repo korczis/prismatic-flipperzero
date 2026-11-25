@@ -100,7 +100,7 @@
         ${card(`
           <h3 class="text-xl font-bold leading-none text-gray-900 dark:text-white mb-3">On the device</h3>
           <div class="grid grid-cols-2 gap-2" id="gallery"></div>
-          <a href="https://github.com/korczis/prismatic-flipperzero#on-a-real-device" class="inline-block mt-3 text-sm text-primary-600 dark:text-primary-400 hover:underline">Real frames from the Flipper's screen →</a>`)}
+          <a href="#/device" class="inline-block mt-3 text-sm text-primary-600 dark:text-primary-400 hover:underline" data-device-link>Every screen of the app →</a>`)}
       </div>
       <div class="grid gap-4 mt-4 sm:grid-cols-2 xl:grid-cols-5">
         ${stat('knowledge objects', DB.objects.length, '#/explore')}
@@ -123,6 +123,73 @@
         `<img class="lcd rounded border border-gray-200 dark:border-gray-700" src="screens/${esc(f.file)}" alt="${esc(f.caption)}" title="${esc(f.caption)}" loading="lazy">`).join('');
     });
     Viz.afterPaint(() => { renderKinds(); renderCaps(); renderTree(); });
+  }
+
+  /* ------------------------------------------------------------------ the device */
+
+  /* Every screen of the app, from the screen atlas (docs/evidence/atlas, rendered pixel-exact by
+   * the host simulator and checked current in CI): filter by screen, open a frame full-viewport,
+   * step with the arrow keys. The filter and the open frame live in the URL. */
+  async function device(params) {
+    markActive('device');
+    crumbs([{ label: 'Overview', href: '#/' }, { label: 'The device' }]);
+    const atlas = await json('data/atlas.json');
+    const screen = params.get('screen') || '';
+    const shown = atlas.frames.filter((f) => !screen || f.screen === screen);
+    const counts = new Map(atlas.screens.map((s) => [s, atlas.frames.filter((f) => f.screen === s).length]));
+    const chip = (label, value, n) => {
+      const on = value === screen;
+      const np = new URLSearchParams(value ? { screen: value } : {});
+      return `<a href="#/device${value ? '?' + np : ''}" data-screen="${esc(value)}" class="px-3 py-1 text-sm rounded-lg ${on ? 'bg-primary-700 text-white' : 'bg-gray-100 text-gray-800 hover:bg-primary-100 dark:bg-gray-700 dark:text-gray-200'}">${esc(label)} <span class="opacity-70">${n}</span></a>`;
+    };
+    const keys = (k) => k ? k.split(',').map((x) => `<kbd class="px-1.5 py-0.5 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">${esc(x)}</kbd>`).join(' ') : '<span class="text-xs text-gray-500">start</span>';
+    view.innerHTML = `
+      ${card(`
+        <h1 class="text-2xl font-bold text-gray-900 sm:text-3xl dark:text-white">Every screen of the app</h1>
+        <p class="mt-2 text-gray-600 dark:text-gray-300">${fmt(atlas.frames.length)} frames of ${fmt(atlas.screens.length)} screens on a 128 x 64 display, drawn by the firmware's own renderer from this pack.
+        Under each frame are the keys that reach it from Home. Click a frame to see it full size; the arrow keys step through them and Escape closes.</p>
+        <div class="flex flex-wrap gap-2 mt-4" id="screens">${chip('All', '', atlas.frames.length)}${atlas.screens.filter((s) => counts.get(s)).map((s) => chip(s, s, counts.get(s))).join('')}</div>`)}
+      <div class="grid gap-4 mt-4 sm:grid-cols-2 xl:grid-cols-4" id="atlas">
+        ${shown.map((f) => `<button type="button" data-frame="${esc(f.file)}" class="text-left p-3 bg-white rounded-lg shadow hover:ring-2 hover:ring-primary-500 dark:bg-gray-800">
+          <img class="lcd w-full rounded" src="atlas/${esc(f.file)}" alt="${esc(f.caption)}" loading="lazy">
+          <div class="mt-2">${badge(f.screen, 'blue')}</div>
+          <p class="mt-1 text-sm text-gray-700 dark:text-gray-300">${esc(f.caption)}</p>
+          <p class="mt-1 leading-6">${keys(f.keys)}</p></button>`).join('')}
+      </div>
+      <div id="lightbox" class="hidden fixed inset-0 z-50 bg-gray-900/95 flex flex-col items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Frame">
+        <img id="lightbox-img" class="lcd w-full max-w-5xl" alt="">
+        <p id="lightbox-caption" class="mt-4 text-center text-gray-100"></p>
+        <p class="mt-2 text-sm text-gray-400">Left / Right: previous / next · Escape: close</p>
+      </div>`;
+    const box = document.getElementById('lightbox');
+    const open = (file) => {
+      const at = shown.findIndex((f) => f.file === file);
+      const f = shown[at < 0 ? 0 : at];
+      document.getElementById('lightbox-img').src = 'atlas/' + f.file;
+      document.getElementById('lightbox-img').alt = f.caption;
+      document.getElementById('lightbox-caption').textContent = `${f.screen} · ${f.caption}`;
+      box.classList.remove('hidden');
+      box.setAttribute('data-open', f.file);
+    };
+    const setFrame = (file) => {
+      const np = new URLSearchParams(params);
+      if (file) np.set('frame', file); else np.delete('frame');
+      history.replaceState(null, '', '#/device' + (np.toString() ? '?' + np : ''));
+      if (file) open(file); else { box.classList.add('hidden'); box.removeAttribute('data-open'); }
+    };
+    view.querySelectorAll('[data-frame]').forEach((b) => b.addEventListener('click', () => setFrame(b.getAttribute('data-frame'))));
+    box.addEventListener('click', () => setFrame(''));
+    const onKey = (e) => {
+      if (!document.body.contains(box)) { document.removeEventListener('keydown', onKey); return; }
+      const cur = box.getAttribute('data-open');
+      if (!cur) return;
+      const at = shown.findIndex((f) => f.file === cur);
+      if (e.key === 'Escape') setFrame('');
+      else if (e.key === 'ArrowRight') setFrame(shown[(at + 1) % shown.length].file);
+      else if (e.key === 'ArrowLeft') setFrame(shown[(at - 1 + shown.length) % shown.length].file);
+    };
+    document.addEventListener('keydown', onKey);
+    if (params.get('frame')) open(params.get('frame'));
   }
 
   function barOption(names, values, t) {
@@ -421,6 +488,7 @@
       else if (parts[0] === 'o') await article(+parts[1]);
       else if (parts[0] === 'detect') await detector(+parts[1]);
       else if (parts[0] === 'quiz') quiz(params);
+      else if (parts[0] === 'device') await device(params);
       else overview();
     } catch (err) {
       crumbs([{ label: 'Overview', href: '#/' }, { label: 'Error' }]);
