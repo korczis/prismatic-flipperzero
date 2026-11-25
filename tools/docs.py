@@ -16,12 +16,13 @@ derived, never typed. Generators:
 """
 
 import json
+import os
 import re
 import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(os.environ.get("POCKET_ROOT") or Path(__file__).resolve().parent.parent)
 STATS = ROOT / "docs" / "data" / "pack-stats.json"
 SCREENS = ROOT / "docs" / "evidence" / "pocket" / "manifest.json"
 REGION = re.compile(r"(<!-- docs:begin (?P<name>[a-z-]+) -->\n)(?P<body>.*?)(<!-- docs:end (?P=name) -->)",

@@ -120,7 +120,8 @@ class DocsTest(unittest.TestCase):
 
     def test_entry_point(self):
         self.write("README.md", [])
-        with mock.patch.object(sys, "argv", ["docs.py", "--check"]):
+        with mock.patch.object(sys, "argv", ["docs.py", "--check"]), \
+                mock.patch.dict("os.environ", {"POCKET_ROOT": str(self.root)}):
             with self.assertRaises(SystemExit) as cm:
                 quiet(runpy.run_path, str(ROOT / "tools" / "docs.py"), None, "__main__")
         self.assertEqual(cm.exception.code, 0)

@@ -9,11 +9,12 @@ wiki page become wiki links, images and every other file point at the file on ma
 _Sidebar.md lists the pages and a footer on each page names its source file.
 """
 
+import os
 import re
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(os.environ.get("POCKET_ROOT") or Path(__file__).resolve().parent.parent)
 REPO = "https://github.com/korczis/prismatic-flipperzero"
 PAGES = [
     ("Home", "README.md"),

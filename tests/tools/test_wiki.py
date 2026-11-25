@@ -32,7 +32,11 @@ class WikiTest(unittest.TestCase):
         self.assertEqual(up, f"[r](Home) [t](Architecture) [u]({wiki.REPO}/blob/main/tools)")
 
     def test_render_and_cli(self):
-        with tempfile.TemporaryDirectory() as d:
+        with tempfile.TemporaryDirectory() as src, tempfile.TemporaryDirectory() as d, \
+                mock.patch.object(wiki, "ROOT", Path(src)):
+            for _, page in wiki.PAGES:
+                (Path(src) / page).parent.mkdir(parents=True, exist_ok=True)
+                (Path(src) / page).write_text(f"# {page}\n\n[x](docs/case-study.md)\n")
             out = io.StringIO()
             with redirect_stdout(out):
                 self.assertEqual(wiki.main([d]), 0)
@@ -42,7 +46,8 @@ class WikiTest(unittest.TestCase):
             self.assertIn("(Case-Study)", (Path(d) / "_Sidebar.md").read_text())
             with redirect_stderr(io.StringIO()):
                 self.assertEqual(wiki.main([]), 2)
-            with mock.patch.object(sys, "argv", ["wiki.py", d]):
+            with mock.patch.object(sys, "argv", ["wiki.py", d]), \
+                    mock.patch.dict("os.environ", {"POCKET_ROOT": src}):
                 with self.assertRaises(SystemExit) as cm:
                     with redirect_stdout(io.StringIO()):
                         runpy.run_path(str(ROOT / "tools" / "wiki.py"), run_name="__main__")
