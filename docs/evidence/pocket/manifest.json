@@ -1,0 +1,67 @@
+{
+ "captured": "2026-11-25",
+ "firmware": "1.5.1",
+ "command": "tools/capture-screens.sh",
+ "frames": [
+  {
+   "file": "01-home.png",
+   "caption": "Home: every count is derived from the pack on the SD card"
+  },
+  {
+   "file": "02-detectors.png",
+   "caption": "Detectors: objects whose page lists observable markers"
+  },
+  {
+   "file": "04-article-link.png",
+   "caption": "Right jumps to the next link; OK opens it"
+  },
+  {
+   "file": "05-detector.png",
+   "caption": "Detector: one marker at a time, No / ? / Yes, hold OK for n/a"
+  },
+  {
+   "file": "06-result.png",
+   "caption": "Result: your own marks back, never a score"
+  },
+  {
+   "file": "07-result-steps.png",
+   "caption": "Then what to rule out first and the next steps"
+  },
+  {
+   "file": "08-quiz-term.png",
+   "caption": "Quiz: which term is this? The name is masked in the definition"
+  },
+  {
+   "file": "09-quiz-options.png",
+   "caption": "Distractors come from the objects the page calls confusable"
+  },
+  {
+   "file": "10-quiz-result.png",
+   "caption": "The answer, with the full definition and a link to the article"
+  },
+  {
+   "file": "11-trainer.png",
+   "caption": "Trainer: manipulative or benign? A catalogue example in context"
+  },
+  {
+   "file": "12-trainer-result.png",
+   "caption": "Why, and a good response, from the catalogue"
+  },
+  {
+   "file": "13-categories.png",
+   "caption": "Browse: the Kompendium's own chapters and collections"
+  },
+  {
+   "file": "14-objects.png",
+   "caption": "A category, paged; Back returns to the same row"
+  },
+  {
+   "file": "15-info.png",
+   "caption": "Pack and device info: source commit, contents"
+  },
+  {
+   "file": "16-info-measured.png",
+   "caption": "Provenance: the source repository and the pinned commit"
+  }
+ ]
+}

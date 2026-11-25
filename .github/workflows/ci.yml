@@ -33,13 +33,16 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the case-study timeline is derived from the history
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
-      - name: Generated sources are in sync
+      - name: Generated sources and derived doc regions are in sync
         run: |
           python3 tools/version.py --check
           python3 tools/icons.py --check
+          python3 tools/docs.py --check
       - name: shellcheck
         run: shellcheck tools/*.sh tests/tools/*.sh .githooks/*
       - name: Tool tests with line coverage (every executable line in tools/*.py)
@@ -133,6 +136,8 @@ jobs:
         run: |
           python3 tools/pocket.py compile --out "$RUNNER_TEMP/again.pkp" --report "$RUNNER_TEMP/again.json"
           cmp build/packs/kompendium.pkp "$RUNNER_TEMP/again.pkp"
+      - name: The docs describe this pack (docs/data/pack-stats.json is its report)
+        run: cmp docs/data/pack-stats.json build/packs/kompendium.report.json
       - name: Pack summary
         run: |
           {

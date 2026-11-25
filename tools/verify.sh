@@ -12,6 +12,7 @@ step() { printf '\n== %s\n' "$*"; }
 step "generated sources are in sync"
 python3 tools/version.py --check
 python3 tools/icons.py --check
+python3 tools/docs.py --check
 
 step "shell scripts"
 if command -v shellcheck >/dev/null 2>&1; then shellcheck tools/*.sh tests/tools/*.sh .githooks/*
@@ -26,6 +27,8 @@ python3 tools/pocket.py build >/dev/null
 python3 tools/pocket.py compile --out build/packs/again.pkp --report build/packs/again.json >/dev/null
 cmp build/packs/kompendium.pkp build/packs/again.pkp
 echo "pack deterministic: $(shasum -a 256 build/packs/kompendium.pkp | cut -d' ' -f1)"
+cmp docs/data/pack-stats.json build/packs/kompendium.report.json \
+  || { echo "docs describe a different pack: tools/docs.py --snapshot build/packs/kompendium.report.json" >&2; exit 1; }
 
 step "portable core: sanitizers, fuzz, differential, line coverage"
 tests/native/run.sh

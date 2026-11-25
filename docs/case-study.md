@@ -1,0 +1,143 @@
+# From zero to a working app: a case study
+
+> One session started from an empty directory and ended with a public repository and a native
+> Flipper Zero application. The app holds an entire book as a searchable, interactive knowledge
+> pack, runs on real hardware and is covered by tests that fail on any untested line. This page
+> records how that went, what made it fast, and what refused to let it be fast in the wrong way.
+
+## The starting point
+
+There was no repository, no app, no SDK pinned and no idea of what the knowledge format would
+look like. There was a Flipper Zero, which turned out to be sitting in DFU recovery mode, a
+public book (the Kompendium) on the same machine, and a Mac with the owner's usual tooling:
+uFBT, Rust, Python, `just`, the GitHub CLI and [Majordomus](https://majordomus.dev).
+
+The brief changed four times during the session, each time getting larger:
+
+1. A Flipper app with a host bridge.
+2. *First Light*: get your own app onto the device before anything else.
+3. *Prismatic Pocket*: a data-driven epistemic engine.
+4. *All of the Kompendium*, as an encyclopedia and interactively, with docs, Pages and a wiki.
+
+A process that needs a stable spec would have stalled at step 2.
+
+## The timeline
+
+Generated from the repository's history by [`tools/docs.py`](../tools/docs.py). Times are local.
+
+<!-- docs:begin timeline -->
+| Commit | Time | What landed |
+|---|---|---|
+| `28da2ca` | 03:41 | chore(repo): bootstrap governed repository with Majordomus layer |
+| `e64127a` | 04:01 | feat(app): first light, a native Prismatic dialog verified on hardware |
+| `67c2cec` | 04:05 | docs(repo): README with real device frames, CI matrix and preview release flow |
+| `f85d96e` | 05:08 | feat(pocket): full Kompendium as a knowledge pack and a generic runtime |
+| `914e20f` | 05:40 | feat(pocket): structured reader, article navigation and CI for the core and pack |
+<!-- docs:end timeline -->
+
+## What made it fast
+
+### 1. Governance from minute one, not at the end
+
+The first commit was not code. It was `majordomus init` and `update`, and the generated
+`AGENTS.md`, `CLAUDE.md` and `GEMINI.md`. Tracked hooks ran `doctor` before every commit and the
+finish contract before every push. That sounds like overhead, but it is what let the work move
+quickly without losing the thread:
+
+- **Refused commit.** The very first commit attempt was refused because the README did not name
+  `AGENTS.md`. That took ten seconds to fix and taught nothing new, but it proved the gate was
+  real before anything depended on it.
+- **Refused finish.** A task `finish` was refused because a file outside the task's declared
+  scope had been touched (the uFBT skeleton). The task was closed as a handover instead of being
+  called complete. The record says what really happened, not what would have looked tidy.
+- Each brief change became a new scoped task, so the history shows where one direction ended
+  and the next began.
+
+### 2. Evidence instead of belief
+
+Every claim in this repository is meant to have a way to check it, and the session kept running
+into reasons why:
+
+- **The device.** The Flipper was in DFU mode. The official repair crashed once and lost USB once
+  before it succeeded on the third attempt. All three outcomes are recorded, not just the last.
+- **The fonts.** A thirty-second probe app showed that the firmware's fonts cannot render a
+  single Czech diacritic: UTF-8 breaks the line. That measurement, not an assumption, is why the
+  compiler folds text to ASCII for the device.
+- **The screen.** Screenshots come from the device's own RPC screen stream. A dedicated tool reads
+  and writes the frames, so the README shows what the hardware actually displays.
+- **Loader vs RPC.** An app started over RPC is closed when any later RPC session ends. This was
+  found by watching the app vanish between two screenshot runs, and `just launch` now starts it
+  with the loader instead.
+
+### 3. A compiler, not a content team
+
+The decisive design choice: the app knows nothing about manipulation. A compiler turns every
+page of the book into typed objects, using a declarative map of which heading plays which role.
+Quick-reference cards merge into their techniques, catalogue entries into their pages, and links
+become typed relations. Quizzes are derived: definitions with the answer masked, distractors
+chosen from the objects a page itself calls confusable. Scaling from one hand-picked object to
+the whole book was a configuration change plus a rerun, not weeks of writing.
+
+### 4. More than one mind on the risky parts
+
+- **Codex**, consulted as an independent reviewer through Majordomus's advisor registry, pointed
+  out three things that changed the design: quick-reference cards duplicate techniques and must
+  merge; prose headings are not reliable fields; and the book deliberately does not publish its
+  trainer utterances. The last point went to the owner, who decided to publish them, and that
+  decision is recorded verbatim in an ADR.
+- **A peer Claude session** working in the same workspace reviewed the binary pack reader
+  adversarially. It found a real bug (the reader looked for the string-pool checksum at the wrong
+  header offset), a real hole (a crafted section layout could move tables out from under the
+  index checksum), and a test that was quietly testing nothing. All three are fixed, and the
+  vacuous test now refuses to pass vacuously.
+- **Gemini** was asked too. Its CLI refused to run (the client is no longer supported), and that
+  is recorded as well.
+
+### 5. Tests that cannot be gamed by omission
+
+The owner's rule is that every changed line ships with a test that runs it. Here that is
+enforced, not encouraged:
+
+- A coverage gate for the Python tools uses `sys.monitoring` with no third-party dependency, and
+  a self-test proves it refuses an untested line.
+- The C core runs under ASan and UBSan, is mutation-fuzzed against the Python reference until
+  the two agree on every accept and reject, and has an llvm-cov gate over every line with code.
+- CI compiles the knowledge pack twice and compares the bytes.
+
+## What the numbers say
+
+The pack this session produced:
+
+<!-- docs:begin pack-stats -->
+| | |
+|---|---:|
+| Knowledge objects | **2 224** |
+| Categories | **64** |
+| Typed relations (links between objects) | **37 567** |
+| Objects with a detector (observable markers) | **1 212** |
+| Objects with what-to-do steps | **1 541** |
+| Objects with confusables to rule out | **1 128** |
+| Quiz questions | **2 856** |
+|   of which: recognise the term from its definition | **1 671** |
+|   of which: manipulative or benign? (catalogue examples) | **1 185** |
+| Markers (indicators) | **4 246** |
+| Actions and escalation steps | **4 558** |
+| Chapters | **16 789** |
+
+Pack `kompendium.pkp`: 20 649 388 bytes, sha256 `6752496025b2cdb6…`, rebuilt byte-for-byte identical by CI from the pinned source.
+<!-- docs:end pack-stats -->
+
+## What it would have taken otherwise
+
+The honest comparison is not "faster than a human team". It is *what the supervision layer
+prevented*:
+
+- A green-looking repository with untested code. The gates refuse it.
+- A README claiming numbers nobody measured. The doc regions are derived and checked.
+- A hardware claim based on a successful upload. Launch, navigation and flows are shown in
+  captured frames.
+- A licence problem shipped silently. The Kompendium's licence conflict was surfaced, and the
+  owner's grant recorded before any text was copied.
+- A design that needed C changes for every new topic. It doesn't, and the compiler is the proof.
+
+Speed came from not having to go back.

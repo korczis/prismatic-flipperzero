@@ -6,3 +6,5 @@ if ! command -v majordomus >/dev/null 2>&1; then
   exit 1
 fi
 MAJORDOMUS_DOCTOR_CONTEXT=commit majordomus doctor || exit $?
+# Derived Markdown regions (numbers, gallery, timeline) must match their sources.
+python3 "$(git rev-parse --show-toplevel)/tools/docs.py" --check || exit $?
