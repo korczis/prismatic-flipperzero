@@ -103,3 +103,11 @@ sim keys pack="build/packs/kompendium.pkp":
 # Device and simulator draw the same pixels for the same keys (app running on the Flipper)
 parity *args:
     tools/parity.sh {{args}}
+
+# Render every screen and view into docs/evidence/atlas (CI checks it is current)
+atlas:
+    tools/atlas.py
+
+# Measure the read cache: the device tour with and without it (docs/evidence/cache)
+cache-bench:
+    tools/cache-bench.sh

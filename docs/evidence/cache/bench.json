@@ -1,0 +1,22 @@
+{
+ "command": "tools/cache-bench.sh",
+ "walk": "tour of tools/capture-screens.sh",
+ "keys": "right,left,ok,ok,back,back,right,ok,ok,ok,down,ok,left,ok,right,ok:long,right,down,back,right,ok:long,ok,back,ok:long,down,down,ok,up,back,back,back,back:long,down,ok",
+ "steps": 34,
+ "cache": {
+  "blocks": 8,
+  "block_bytes": 256
+ },
+ "cached": {
+  "card_reads": 4060,
+  "bytes": 1038520,
+  "hits": 9440,
+  "misses": 4060
+ },
+ "direct": {
+  "card_reads": 9890,
+  "bytes": 967257,
+  "hits": 0,
+  "misses": 0
+ }
+}

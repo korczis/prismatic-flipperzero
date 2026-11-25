@@ -64,7 +64,7 @@ static void frame(UiApp* app, Canvas* canvas, const char* dir, int n, const char
     }
     fclose(out);
     uint16_t k = page_visible_lines(ui_app_page(app), lines, 16);
-    printf("== %02d %s\n", n, name);
+    printf("== %02d %s\n@ %s\n", n, name, ui_app_screen_name(app));
     for(uint16_t i = 0; i < k; i++)
         printf("%s\n", lines[i]);
 }

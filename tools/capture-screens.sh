@@ -22,57 +22,69 @@ walk() { # name keys [settle]
   "$dev" walk "$tmp/$1" "$2" --settle "${3:-1.2}" >/dev/null
 }
 
-walk tour "down,ok,ok,down,ok,left,ok,right,ok:long,right,down,back,right,ok,up,back,ok:long,ok,down,ok,back,back"
-walk learn "down,down,down,down,ok,ok,ok,back,down,ok,left,back,up,up,up,up,up,ok,ok,back,back,up,up,ok"
+# Both walks are designed in the simulator, whose frames tools/parity.sh proves identical; the
+# frame numbers below are those walks' steps (NN-<key>.png).
+walk tour "right,left,ok,ok,back,back,right,ok,ok,ok,down,ok,left,ok,right,ok:long,right,down,back,right,ok:long,ok,back,ok:long,down,down,ok,up,back,back,back,back:long,down,ok"
+walk learn "down,right,ok,ok,ok,ok,back,down,ok,left,back,back:long,down,down,ok,right,right,right,right,back,right,ok"
 
 mkdir -p "$out"
 rm -f "$out"/*.png
 keep() { cp "$tmp/$1" "$out/$2"; }
 keep tour/00-start.png 01-home.png
-keep learn/18-ok.png 02-browse.png
-keep tour/02-ok.png 03-list.png
-keep tour/03-ok.png 04-article.png
-keep tour/04-down.png 05-chips.png
-keep tour/20-ok.png 06-section.png
-keep tour/17-ok-long.png 07-menu.png
-keep tour/18-ok.png 08-contents.png
-keep tour/14-ok.png 09-map.png
-keep tour/15-up.png 10-map-focus.png
-keep tour/05-ok.png 11-detector.png
-keep tour/10-right.png 12-result.png
-keep tour/11-down.png 13-result-legend.png
-keep learn/05-ok.png 14-quiz.png
-keep learn/06-ok.png 15-options.png
-keep learn/07-ok.png 16-answer.png
-keep learn/10-ok.png 17-trainer.png
-keep learn/11-left.png 18-trainer-answer.png
-keep learn/19-ok.png 19-objects.png
-keep learn/24-ok.png 20-info.png
+keep tour/01-right.png 02-home-detect.png
+keep tour/03-ok.png 03-hub-library.png
+keep tour/04-ok.png 04-chapters.png
+keep tour/08-ok.png 05-hub-detect.png
+keep tour/09-ok.png 06-detectors.png
+keep tour/10-ok.png 07-article.png
+keep tour/11-down.png 08-chips.png
+keep tour/12-ok.png 09-detector.png
+keep tour/17-right.png 10-result.png
+keep tour/18-down.png 11-result-legend.png
+keep tour/21-ok-long.png 12-menu.png
+keep tour/22-ok.png 13-contents.png
+keep tour/27-ok.png 14-map.png
+keep tour/28-up.png 15-map-focus.png
+keep tour/34-ok.png 16-hub-act.png
+keep learn/03-ok.png 17-hub-train.png
+keep learn/04-ok.png 18-quiz.png
+keep learn/05-ok.png 19-options.png
+keep learn/06-ok.png 20-answer.png
+keep learn/09-ok.png 21-trainer.png
+keep learn/10-left.png 22-trainer-answer.png
+keep learn/15-ok.png 23-info.png
+keep learn/19-right.png 24-info-cache.png
+keep learn/22-ok.png 25-about.png
 
 firmware="$("$dev" cli "device_info" | awk -F': ' '/^firmware_version/ {gsub(/ /,"",$2); print $2}')"
 python3 - "$out/manifest.json" "$firmware" <<'PY'
 import json, sys, datetime
 captions = [
-    ("01-home.png", "Home: icons, counts and a bar for each share of the pack"),
-    ("02-browse.png", "Browse: the book's chapters, sized by a square-root bar"),
-    ("03-list.png", "A list: position in the header, pages of forty"),
-    ("04-article.png", "An article: bold title, the kind in a pill, its code"),
-    ("05-chips.png", "One Down reaches the action chips: detector, map"),
-    ("06-section.png", "A section: its heading and icon move into the header"),
-    ("07-menu.png", "Hold OK: the page's actions over a stippled page"),
-    ("08-contents.png", "Contents: every section; OK jumps there"),
-    ("09-map.png", "Map of links: confusables dotted, four neighbours at a time"),
-    ("10-map-focus.png", "A focused neighbour's full name in the header; OK walks there"),
-    ("11-detector.png", "Detector: progress cells, one marker at a time, No / ? / Yes"),
-    ("12-result.png", "Result: your marks as a number and a bar, never a score"),
-    ("13-result-legend.png", "The bar's legend, then what to rule out and the next steps"),
-    ("14-quiz.png", "Quiz: which term is this? The name is masked"),
-    ("15-options.png", "Distractors are the objects the page calls confusable"),
-    ("16-answer.png", "The answer, the definition, a link to the article"),
-    ("17-trainer.png", "Trainer: manipulative or benign? A catalogue example"),
-    ("18-trainer-answer.png", "Why, and a good response, from the catalogue"),
-    ("19-objects.png", "A category; Back returns to the same row"),
-    ("20-info.png", "Pack and device: source, contents, measured open and scan times"),
+    ("01-home.png", "Home: six tiles with counts; the status line explains the focused one"),
+    ("02-home-detect.png", "Right moves along a row of the grid; the hint follows the focus"),
+    ("03-hub-library.png", "Library: chapters, kinds, everything, a random article"),
+    ("04-chapters.png", "The book's chapters with square-root share bars"),
+    ("05-hub-detect.png", "Detect: every detector, or a random one"),
+    ("06-detectors.png", "Every object with markers to check, paged by forty"),
+    ("07-article.png", "An article: bold title, the kind in a pill, its code"),
+    ("08-chips.png", "Chips: detector markers and links on the map, one press away"),
+    ("09-detector.png", "Detector: progress cells, one marker at a time: No, Unsure, Yes"),
+    ("10-result.png", "Result: your marks as a number and a bar, never a score"),
+    ("11-result-legend.png", "The bar's legend, then what to rule out and the next steps"),
+    ("12-menu.png", "Hold OK: the page's actions over the dimmed page"),
+    ("13-contents.png", "Contents: every section; OK jumps there"),
+    ("14-map.png", "Map of links: four neighbours at a time, confusables dotted"),
+    ("15-map-focus.png", "A focused neighbour's full name in the header; OK walks there"),
+    ("16-hub-act.png", "Act: what to do, and pairs to tell apart"),
+    ("17-hub-train.png", "Train: two kinds of question and objects to quiz"),
+    ("18-quiz.png", "Quiz: which term is this? The name is masked"),
+    ("19-options.png", "Distractors are the objects the page calls confusable"),
+    ("20-answer.png", "The answer, the definition, a link to the article"),
+    ("21-trainer.png", "Trainer: manipulative or benign? A catalogue example"),
+    ("22-trainer-answer.png", "Why, and a good response, from the catalogue"),
+    ("23-info.png", "Pack and device: source, contents, measured times"),
+    ("24-info-cache.png", "The read cache on the device: hits and misses"),
+    ("25-about.png", "About: what the app is and the keys"),
 ]
 json.dump({"captured": datetime.date.today().isoformat(), "firmware": sys.argv[2],
            "command": "tools/capture-screens.sh",

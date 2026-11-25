@@ -54,6 +54,8 @@ echo "ui scenarios: $n ran"
 "${cov[@]}" export -format=lcov -instr-profile "$out/ui.profdata" build/sim/pocketsim \
   >"$out/coverage.lcov"
 python3 tests/native/coverage_check.py "$out/coverage.lcov" app/ui || fail=1
+# every screen and view has a current frame in the atlas (docs/evidence/atlas)
+python3 tools/atlas.py --check || fail=1
 if [ "$fail" -ne 0 ]; then
   echo "ui: FAIL" >&2
   exit 1

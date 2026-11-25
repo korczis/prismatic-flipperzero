@@ -46,6 +46,12 @@ class FontsTest(unittest.TestCase):
                 out.write_text(out.read_text() + "/* edited */\n")
                 with redirect_stderr(io.StringIO()):
                     self.assertEqual(fonts.main(["--check", *args]), 1)  # drift
+                # without --u8g2 the source is the simulator's fetched u8g2
+                default = Path(d) / "build" / "sim" / "u8g2" / "u8g2_fonts.c"
+                default.parent.mkdir(parents=True)
+                default.write_text(SOURCE)
+                with redirect_stdout(io.StringIO()):
+                    self.assertEqual(fonts.main([]), 0)
             with mock.patch.object(sys, "argv", ["fonts.py", "--check", *args]):
                 with self.assertRaises(SystemExit) as cm:
                     with redirect_stderr(io.StringIO()):

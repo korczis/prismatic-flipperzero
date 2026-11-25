@@ -46,13 +46,29 @@ class DocsTest(unittest.TestCase):
         subprocess.run(["git", "-C", str(root), "-c", "user.email=t@t", "-c", "user.name=t",
                         "commit", "-q", "--allow-empty", "-m", "first | with bar"], check=True)
         self.root = root
-        (root / "docs" / "evidence" / "sim").mkdir(parents=True)
-        (root / "docs" / "evidence" / "sim" / "manifest.json").write_text(json.dumps({
-            "captured": "2026-11-25", "firmware": "simulator", "command": "s",
-            "frames": [{"file": "s.png", "caption": "S"}]}))
+        (root / "docs" / "evidence" / "atlas").mkdir(parents=True)
+        (root / "docs" / "evidence" / "atlas" / "manifest.json").write_text(json.dumps({
+            "command": "tools/atlas.py", "spec": "tests/sim/atlas.txt",
+            "frames": [{"file": "01-home.png", "caption": "Home"}]}))
+        (root / "docs" / "evidence" / "cache").mkdir(parents=True)
+        (root / "docs" / "evidence" / "cache" / "bench.json").write_text(json.dumps({
+            "command": "c.sh", "walk": "tour", "steps": 3,
+            "cache": {"blocks": 8, "block_bytes": 256},
+            "cached": {"card_reads": 40, "bytes": 1100, "hits": 60, "misses": 40},
+            "direct": {"card_reads": 100, "bytes": 1000, "hits": 0, "misses": 0}}))
+        (root / "app" / "ui").mkdir(parents=True)
+        (root / "app" / "ui" / "ui_app.c").write_text(
+            'static const Hub hubs[] = {\n    {UiIconBrowse,\n     "Library",\n     HomeAll,\n'
+            '     "%lu objects",\n     {{UiIconFolder, HomeBrowse, "By chapter", "%lu", "Chapters",'
+            ' ShareNone},\n      {UiIconTrainer,\n       HomeQuizExample,\n       "Manip?",\n'
+            '       "%lu",\n       "Benign or not",\n       ShareQuestions}}},\n};\n'
+            '#define HUB_COUNT 1\n'
+            'page_add_tile(app->page, UiIconInfo, "Info", "device", T_HOME | HomeInfo);\n')
         self.patches = [mock.patch.object(docs, "ROOT", root),
-                        mock.patch.object(docs, "SIM_SCREENS",
-                                          root / "docs/evidence/sim/manifest.json"),
+                        mock.patch.object(docs, "ATLAS",
+                                          root / "docs/evidence/atlas/manifest.json"),
+                        mock.patch.object(docs, "CACHE", root / "docs/evidence/cache/bench.json"),
+                        mock.patch.object(docs, "UI_APP", root / "app/ui/ui_app.c"),
                         mock.patch.object(docs, "STATS", root / "docs/data/pack-stats.json"),
                         mock.patch.object(docs, "SCREENS",
                                           root / "docs/evidence/pocket/manifest.json")]
@@ -80,9 +96,16 @@ class DocsTest(unittest.TestCase):
         gallery = docs.screens()
         self.assertEqual(gallery.count("<tr>"), 2)  # three frames, two per row
         self.assertIn("firmware 1.5.1", gallery)
-        sim = docs.sim_screens()
-        self.assertIn("docs/evidence/sim/s.png", sim)
-        self.assertIn("Rendered 2026-11-25 by `s`", sim)
+        frames = docs.atlas()
+        self.assertIn("docs/evidence/atlas/01-home.png", frames)
+        self.assertIn("Rendered by `tools/atlas.py` from `tests/sim/atlas.txt`", frames)
+        bench = docs.cache_bench()
+        self.assertIn("| Reading the card directly | 100 | 1 000 |", bench)
+        self.assertIn("60 of 100 block requests from memory: 60% fewer card reads for +10%", bench)
+        tree = docs.ia_tree()
+        self.assertIn('home --> h0["Library"]', tree)
+        self.assertIn('h0 --> h0e1["Manip?<br/><small>Benign or not</small>"]', tree)
+        self.assertIn('home --> t0["Info"]', tree)
         self.assertIn("first | with bar", docs.timeline())
         self.assertEqual(docs.fmt(1234567), "1 234 567")
         geometry = docs.ui_geometry()  # the real engine source

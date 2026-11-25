@@ -331,9 +331,9 @@ static void render_home(UiApp* app) {
             page_set_hint(app->page, hint);
         }
     } else {
-        page_add(app->page, PageNote, "No knowledge pack: see Pack & device.", 0);
+        page_add(app->page, PageNote, "No knowledge pack yet. Info says how to add one.", 0);
     }
-    page_add_tile(app->page, UiIconInfo, "Info", "pack, RAM", T_HOME | HomeInfo);
+    page_add_tile(app->page, UiIconInfo, "Info", "device", T_HOME | HomeInfo);
     page_set_hint(app->page, "Pack, cache, memory");
     page_add_tile(app->page, UiIconAbout, "About", "v" PRISMATIC_VERSION, T_HOME | HomeAbout);
     page_set_hint(app->page, "Keys; hold Back: Home");
@@ -623,7 +623,7 @@ static void render_detect(UiApp* app) {
     page_add(app->page, PageSteps, line, 0);
     page_add(app->page, PageParagraph, str(app, it.text), 0);
     page_add(app->page, PageMeta, "Hold OK: does not apply", 0);
-    page_set_softkeys(app->page, "No", "?", "Yes");
+    page_set_softkeys(app->page, "No", "Unsure", "Yes");
 }
 
 static void render_detect_result(UiApp* app) {
@@ -1133,6 +1133,28 @@ bool ui_app_input(UiApp* app, PageKey key, PagePress press) {
         break;
     }
     return true;
+}
+
+const char* ui_app_screen_name(const UiApp* app) {
+    static const char* const names[] = {
+        [ScrHome] = "Home",
+        [ScrCategories] = "Categories",
+        [ScrObjects] = "Objects",
+        [ScrFilter] = "Filter",
+        [ScrArticle] = "Article",
+        [ScrChapter] = "Chapter",
+        [ScrDetect] = "Detect",
+        [ScrDetectResult] = "DetectResult",
+        [ScrQuiz] = "Quiz",
+        [ScrQuizOptions] = "QuizOptions",
+        [ScrQuizResult] = "QuizResult",
+        [ScrInfo] = "Info",
+        [ScrAbout] = "About",
+        [ScrMap] = "Map",
+        [ScrHub] = "Hub",
+        [ScrKinds] = "Kinds",
+    };
+    return names[app->stack[app->depth - 1].screen];
 }
 
 Page* ui_app_page(UiApp* app) {

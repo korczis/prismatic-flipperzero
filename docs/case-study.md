@@ -44,6 +44,9 @@ Generated from the repository's history by [`tools/docs.py`](../tools/docs.py). 
 | `f015e92` | 08:31 | feat(ui): context menu, contents outline, map of links, calmer paragraphs |
 | `152440e` | 08:35 | fix(sim): declare POSIX for strdup under -std=c11 on glibc |
 | `2b265f8` | 09:15 | feat(ui): one type family, kind pill, action chips, section icons, row bars |
+| `ffdc599` | 09:23 | docs(readme): interface gallery from the simulator, device gallery recaptured |
+| `5010087` | 09:31 | feat(core): an LRU block cache in front of every pack read |
+| `3908db4` | 09:45 | feat(ui): information architecture of four hubs on a tile grid |
 <!-- docs:end timeline -->
 
 ## What made it fast

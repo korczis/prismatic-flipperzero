@@ -12,7 +12,7 @@ article-full         | ui  | ok,ok,down,ok,down,ok,down,right,right,left,down,do
 article-links        | ui  | ok,ok,down,ok,down,ok,right,right,right,down,ok,back,right,right,right,down,down,down,ok,back,down,ok | # B short;Bare article;Short.;article;Huge chapter;# Chapters
 chapter              | ui  | ok,ok,down,ok,down,ok,right,right,right,right,right,down,ok,down,down,ok | # Full object with every section;Chapter one;First chapter text.;>Next: Chapter two;Second chapter text.
 huge-page            | ui  | ok,ok,down,ok,down,down,down,ok,right,down,ok,down:long,down,up,up:long | # Huge chapter;Everything;word word;more in the pack than fits
-detector             | ui  | ok,ok,down,ok,down,ok,down,ok,left,ok,right,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down | # Full object with every section [1/3];0/3;[No|?|Yes];[2/3];[3/3];1/3 markers observed;1 seen,1 no,1 ?,0 n/a;Your marks only;# Your observations;Rule out first;Validate;Next steps;When to escalate
+detector             | ui  | ok,ok,down,ok,down,ok,down,ok,left,ok,right,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down | # Full object with every section [1/3];0/3;[No|Unsure|Yes];[2/3];[3/3];1/3 markers observed;1 seen,1 no,1 ?,0 n/a;Your marks only;# Your observations;Rule out first;Validate;Next steps;When to escalate
 detector-na          | ui  | ok,ok,down,ok,down,ok,down,ok,ok:long,ok:long,ok:long | 0/3 markers observed;0 seen,0 no,0 ?,3 n/a
 detector-from-list   | ui  | right,ok,ok,ok,down,ok,ok,ok,ok,ok,ok,ok,ok,ok,ok | # Detectors;Long entry 00;markers observed
 filter-lists         | ui  | down,ok,ok,back,down,ok,ok,back,back,back | # What to do;# Confusables;Full object with every section
@@ -20,7 +20,7 @@ quiz-term            | ui  | down,right,ok,ok,ok,down,down,down,ok,down,down,dow
 quiz-term-right      | ui  | ok,ok,down,ok,down,ok,down,right,ok,ok,ok,back,ok,ok,down,ok,back,ok,ok,down,down,ok,back,ok,ok,down,down,down,ok | # Correct;# Not quite;The term was
 quiz-trainer         | ui  | down,right,ok,down,ok,left,down,down,down,down,ok,right,back,back | # Manipulative?;[Manip.||Benign];This example is;Why;A good response
 info-and-about       | ui  | down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,back,right,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down:long | # Pack & device;Title: UI test pack;Contents;Measured here;Read cache;hits,;Free heap: 123456 B;App v;# About;Keys;github.com
-no-pack              | -   | ok,ok,ok,back,down,ok | No knowledge pack;# Pack & device;No usable pack;None found.
+no-pack              | -   | ok,ok,ok,back,down,ok | No knowledge pack yet;# Pack & device;No usable pack;None found.
 broken-pack          | !ui | ok,ok | No usable pack
 bad-records          | bad | ok,ok,ok,back,down,ok,ok,back,back,down,ok,ok,down,down,down,down,down,down,down,ok,ok,ok,ok,down,down,down,down,ok | A long category;!Long entry 01
 bad-quiz             | bad | down,right,ok,ok,back,down,ok,left | # Which term?;# Manipulative?
@@ -48,7 +48,7 @@ paragraph-split      | ui  | ok,ok,down,ok,down,down,ok,down,down,down,down,down
 home-grid            | ui  | right,right,left,left,down,right,down,left,up,ok | >Detect;>Library;>Act;>Train;>About;>Info;# Act;~ Objects with steps
 home-hints           | ui  | right,down,down | ~ 50 objects to read;~ 46: mark what you saw;~ 18 questions to try;~ Keys; hold Back: Home
 hub-library          | ui  | ok,down,ok,up,ok,ok,back,back,back,down,ok,back,down,ok | # Library;~ Chapters in book order;# By kind;>technique;>article;# article;>Bare article;# Everything [p1/2];~ A random article
-hub-detect           | ui  | right,ok,ok,back,down,ok | # Detect;# Detectors;~ Markers of a random one;[No|?|Yes]
+hub-detect           | ui  | right,ok,ok,back,down,ok | # Detect;# Detectors;~ Markers of a random one;[No|Unsure|Yes]
 hub-train            | ui  | down,right,ok,down,down,ok,ok | # Train;~ Pick the term of four;~ Manipulative or benign;# Quiz [1/18];technique - 
 back-long-home       | ui  | ok,ok,ok,ok,back:long,back:long,back | # A long category;# Prismatic Pocket [1/6];EXIT
 eject-random         | ui  | eject,ok,down,down,down,ok,insert,back,back:long,right,ok,eject,down,ok,insert | This object could not be;# Detector

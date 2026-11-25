@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # Proves the host simulator draws what the device draws: walks the same keys on the Flipper
 # (app and pack already installed, app started) and in tests/sim, and compares every frame.
-#   tools/parity.sh [keys] [--record]   default keys: home, detectors, an article, sections
+#   tools/parity.sh [keys] [--record]   default keys: the home grid, a hub, a list, an article, chips, menu, map, long Back
 # --record writes docs/evidence/parity/manifest.json with the result, firmware, FAP and pack.
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
-keys="${1:-down,ok,ok,down,down,down,right,right,down,back,back,up}"
+keys="${1:-right,down,up,ok,ok,ok,down,right,ok:long,back,ok:long,down,down,ok,up,back,back,back,back:long,down,ok,down,ok}"
 record=0
 if [ "${1:-}" = "--record" ]; then
-  keys="down,ok,ok,down,down,down,right,right,down,back,back,up"
+  keys="right,down,up,ok,ok,ok,down,right,ok:long,back,ok:long,down,down,ok,up,back,back,back,back:long,down,ok,down,ok"
   record=1
 elif [ "${2:-}" = "--record" ]; then
   record=1

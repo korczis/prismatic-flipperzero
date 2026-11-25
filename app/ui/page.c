@@ -686,16 +686,16 @@ static void draw_legend(Canvas* canvas, const BarSpec* b, int y) {
         int at = snprintf(label[i], sizeof(label[i]), "%d ", b->v[i]);
         memcpy(label[i] + at, b->name[i], len);
         label[i][(size_t)at + len] = '\0';
-        width += 14 + canvas_string_width(canvas, label[i]);
+        width += 12 + canvas_string_width(canvas, label[i]);
     }
-    bool values_only = width - 6 > RIGHT - LEFT;
+    bool values_only = width - 4 > RIGHT - LEFT;
     int x = LEFT;
     for(int i = 0; i < b->k; i++) {
         if(values_only) snprintf(label[i], sizeof(label[i]), "%d", b->v[i]);
         canvas_draw_frame(canvas, x, y + 2, 6, 6);
         draw_fill(canvas, i, x + 1, y + 3, 4, 4);
         canvas_draw_str(canvas, x + 8, y + 8, label[i]);
-        x += 8 + canvas_string_width(canvas, label[i]) + 6;
+        x += 8 + canvas_string_width(canvas, label[i]) + 4;
     }
 }
 
@@ -1173,13 +1173,17 @@ static const char* overlay_label(const Page* p, uint8_t i, char* buf, size_t cap
 #define PANEL_ROWS 4
 #define PANEL_ROW  11
 
-/* A panel over a stippled page: title strip, four rows, the selected one inverted. */
+/* A panel over the dimmed page (half its pixels cleared, so it recedes without new noise),
+ * with a drop shadow: title strip, four rows, the selected one inverted. */
 static void draw_overlay(Canvas* canvas, const Page* p) {
     char buf[64], fitted[64];
-    for(int y = 0; y < SCREEN_H; y += 2) {
-        for(int x = y % 4 == 0 ? 0 : 1; x < SCREEN_W; x += 2)
+    canvas_set_color(canvas, ColorWhite);
+    for(int y = 0; y < SCREEN_H; y++) {
+        for(int x = y % 2; x < SCREEN_W; x += 2)
             canvas_draw_dot(canvas, x, y);
     }
+    canvas_set_color(canvas, ColorBlack);
+    canvas_draw_rbox(canvas, PANEL_X + 2, PANEL_Y + 2, PANEL_W, PANEL_H, 3);
     canvas_set_color(canvas, ColorWhite);
     canvas_draw_rbox(canvas, PANEL_X, PANEL_Y, PANEL_W, PANEL_H, 3);
     canvas_set_color(canvas, ColorBlack);

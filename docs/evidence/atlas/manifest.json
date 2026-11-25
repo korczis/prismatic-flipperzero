@@ -1,0 +1,303 @@
+{
+ "command": "tools/atlas.py",
+ "spec": "tests/sim/atlas.txt",
+ "screens": [
+  "Home",
+  "Categories",
+  "Objects",
+  "Filter",
+  "Article",
+  "Chapter",
+  "Detect",
+  "DetectResult",
+  "Quiz",
+  "QuizOptions",
+  "QuizResult",
+  "Info",
+  "About",
+  "Map",
+  "Hub",
+  "Kinds"
+ ],
+ "frames": [
+  {
+   "name": "home",
+   "pack": "kompendium",
+   "keys": "",
+   "view": "Home",
+   "caption": "Home: six tiles with counts; the status line explains the focused one",
+   "file": "01-home.png",
+   "screen": "Home"
+  },
+  {
+   "name": "home-detect",
+   "pack": "kompendium",
+   "keys": "right",
+   "view": "Home",
+   "caption": "Right moves along a row of the grid; the hint follows the focus",
+   "file": "02-home-detect.png",
+   "screen": "Home"
+  },
+  {
+   "name": "home-info",
+   "pack": "kompendium",
+   "keys": "down,down",
+   "view": "Home",
+   "caption": "The third row: Info and About, reached by scrolling whole rows",
+   "file": "03-home-info.png",
+   "screen": "Home"
+  },
+  {
+   "name": "hub-library",
+   "pack": "kompendium",
+   "keys": "ok",
+   "view": "Hub",
+   "caption": "Library: chapters, kinds, everything, a random article",
+   "file": "04-hub-library.png",
+   "screen": "Hub"
+  },
+  {
+   "name": "hub-detect",
+   "pack": "kompendium",
+   "keys": "right,ok",
+   "view": "Hub",
+   "caption": "Detect: every detector, or a random one",
+   "file": "05-hub-detect.png",
+   "screen": "Hub"
+  },
+  {
+   "name": "hub-act",
+   "pack": "kompendium",
+   "keys": "down,ok",
+   "view": "Hub",
+   "caption": "Act: what to do, and pairs to tell apart, with their share of the pack",
+   "file": "06-hub-act.png",
+   "screen": "Hub"
+  },
+  {
+   "name": "hub-train",
+   "pack": "kompendium",
+   "keys": "down,right,ok",
+   "view": "Hub",
+   "caption": "Train: two kinds of question and objects to quiz",
+   "file": "07-hub-train.png",
+   "screen": "Hub"
+  },
+  {
+   "name": "chapters",
+   "pack": "kompendium",
+   "keys": "ok,ok",
+   "view": "Categories",
+   "caption": "The book's chapters with square-root share bars",
+   "file": "08-chapters.png",
+   "screen": "Categories"
+  },
+  {
+   "name": "chapter-list",
+   "pack": "kompendium",
+   "keys": "ok,ok,ok",
+   "view": "Objects",
+   "caption": "One chapter's objects, paged by forty",
+   "file": "09-chapter-list.png",
+   "screen": "Objects"
+  },
+  {
+   "name": "kinds",
+   "pack": "kompendium",
+   "keys": "ok,down,ok",
+   "view": "Kinds",
+   "caption": "Every kind of object with its count",
+   "file": "10-kinds.png",
+   "screen": "Kinds"
+  },
+  {
+   "name": "kind-list",
+   "pack": "kompendium",
+   "keys": "ok,down,ok,down,ok",
+   "view": "Filter",
+   "caption": "All objects of one kind",
+   "file": "11-kind-list.png",
+   "screen": "Filter"
+  },
+  {
+   "name": "detectors",
+   "pack": "kompendium",
+   "keys": "right,ok,ok",
+   "view": "Filter",
+   "caption": "Every object with markers to check",
+   "file": "12-detectors.png",
+   "screen": "Filter"
+  },
+  {
+   "name": "article",
+   "pack": "kompendium",
+   "keys": "right,ok,ok,ok",
+   "view": "Article",
+   "caption": "An article: bold title, the kind in a pill, its code",
+   "file": "13-article.png",
+   "screen": "Article"
+  },
+  {
+   "name": "article-chips",
+   "pack": "kompendium",
+   "keys": "right,ok,ok,ok,down",
+   "view": "Article",
+   "caption": "Chips: detector markers and links on the map, one press away",
+   "file": "14-article-chips.png",
+   "screen": "Article"
+  },
+  {
+   "name": "article-section",
+   "pack": "kompendium",
+   "keys": "right,ok,ok,ok,right",
+   "view": "Article",
+   "caption": "Right jumps a section; its heading moves into the header",
+   "file": "15-article-section.png",
+   "screen": "Article"
+  },
+  {
+   "name": "article-menu",
+   "pack": "kompendium",
+   "keys": "right,ok,ok,ok,ok:long",
+   "view": "Article+menu",
+   "caption": "Hold OK: the page's actions over the dimmed page",
+   "file": "16-article-menu.png",
+   "screen": "Article"
+  },
+  {
+   "name": "article-contents",
+   "pack": "kompendium",
+   "keys": "right,ok,ok,ok,ok:long,ok",
+   "view": "Article+contents",
+   "caption": "Contents: every section, OK jumps there",
+   "file": "17-article-contents.png",
+   "screen": "Article"
+  },
+  {
+   "name": "chapter",
+   "pack": "kompendium",
+   "keys": "right,ok,ok,ok,ok:long,ok,down,down,down,ok,down,ok",
+   "view": "Chapter",
+   "caption": "A chapter of the book, paged, with next and previous",
+   "file": "18-chapter.png",
+   "screen": "Chapter"
+  },
+  {
+   "name": "map",
+   "pack": "kompendium",
+   "keys": "right,ok,ok,ok,ok:long,down,down,ok",
+   "view": "Map",
+   "caption": "Map of links: four neighbours at a time, confusables dotted",
+   "file": "19-map.png",
+   "screen": "Map"
+  },
+  {
+   "name": "map-focus",
+   "pack": "kompendium",
+   "keys": "right,ok,ok,ok,ok:long,down,down,ok,up",
+   "view": "Map",
+   "caption": "A focused neighbour's full name in the header; OK walks there",
+   "file": "20-map-focus.png",
+   "screen": "Map"
+  },
+  {
+   "name": "detect",
+   "pack": "kompendium",
+   "keys": "right,ok,ok,ok,down,ok",
+   "view": "Detect",
+   "caption": "Detector: progress cells, one marker at a time: No, Unsure, Yes",
+   "file": "21-detect.png",
+   "screen": "Detect"
+  },
+  {
+   "name": "detect-result",
+   "pack": "kompendium",
+   "keys": "right,ok,ok,ok,down,ok,left,ok,right,ok:long,right",
+   "view": "DetectResult",
+   "caption": "Result: your marks as a number and a bar, never a score",
+   "file": "22-detect-result.png",
+   "screen": "DetectResult"
+  },
+  {
+   "name": "quiz",
+   "pack": "kompendium",
+   "keys": "down,right,ok,ok",
+   "view": "Quiz",
+   "caption": "Which term? The definition with the name masked",
+   "file": "23-quiz.png",
+   "screen": "Quiz"
+  },
+  {
+   "name": "quiz-options",
+   "pack": "kompendium",
+   "keys": "down,right,ok,ok,ok",
+   "view": "QuizOptions",
+   "caption": "Distractors are the objects the page calls confusable",
+   "file": "24-quiz-options.png",
+   "screen": "QuizOptions"
+  },
+  {
+   "name": "quiz-result",
+   "pack": "kompendium",
+   "keys": "down,right,ok,ok,ok,ok",
+   "view": "QuizResult",
+   "caption": "The answer, the definition, a link to the article",
+   "file": "25-quiz-result.png",
+   "screen": "QuizResult"
+  },
+  {
+   "name": "trainer",
+   "pack": "kompendium",
+   "keys": "down,right,ok,down,ok",
+   "view": "Quiz",
+   "caption": "Manipulative or benign? A catalogue example",
+   "file": "26-trainer.png",
+   "screen": "Quiz"
+  },
+  {
+   "name": "trainer-result",
+   "pack": "kompendium",
+   "keys": "down,right,ok,down,ok,left",
+   "view": "QuizResult",
+   "caption": "Why, and a good response, from the catalogue",
+   "file": "27-trainer-result.png",
+   "screen": "QuizResult"
+  },
+  {
+   "name": "info",
+   "pack": "kompendium",
+   "keys": "down,down,ok",
+   "view": "Info",
+   "caption": "Pack & device: what the pack is and where it came from",
+   "file": "28-info.png",
+   "screen": "Info"
+  },
+  {
+   "name": "info-cache",
+   "pack": "kompendium",
+   "keys": "down,down,ok,right,right,right",
+   "view": "Info",
+   "caption": "Measured here: open time, scan time, the read cache's hits",
+   "file": "29-info-cache.png",
+   "screen": "Info"
+  },
+  {
+   "name": "about",
+   "pack": "kompendium",
+   "keys": "down,down,right,ok",
+   "view": "About",
+   "caption": "About: what the app is and the keys",
+   "file": "30-about.png",
+   "screen": "About"
+  },
+  {
+   "name": "no-pack",
+   "pack": "-",
+   "keys": "",
+   "view": "Home",
+   "caption": "No pack: Info and About still work and say what to do",
+   "file": "31-no-pack.png",
+   "screen": "Home"
+  }
+ ]
+}

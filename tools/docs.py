@@ -25,7 +25,9 @@ from pathlib import Path
 ROOT = Path(os.environ.get("POCKET_ROOT") or Path(__file__).resolve().parent.parent)
 STATS = ROOT / "docs" / "data" / "pack-stats.json"
 SCREENS = ROOT / "docs" / "evidence" / "pocket" / "manifest.json"
-SIM_SCREENS = ROOT / "docs" / "evidence" / "sim" / "manifest.json"
+ATLAS = ROOT / "docs" / "evidence" / "atlas" / "manifest.json"
+CACHE = ROOT / "docs" / "evidence" / "cache" / "bench.json"
+UI_APP = ROOT / "app" / "ui" / "ui_app.c"
 REGION = re.compile(r"(<!-- docs:begin (?P<name>[a-z-]+) -->\n)(?P<body>.*?)(<!-- docs:end (?P=name) -->)",
                     re.S)
 
@@ -90,11 +92,52 @@ def screens():
                    "Captured {captured} on firmware {firmware} with `{command}`.")
 
 
-def sim_screens():
-    return gallery(SIM_SCREENS, "docs/evidence/sim",
-                   "Rendered {captured} by `{command}`: the real pack, the firmware's own u8g2 and "
-                   "fonts, the same app code as the FAP. `tools/parity.sh` recorded the device "
-                   "drawing identical frames ([evidence](docs/evidence/parity/manifest.json)).")
+def atlas():
+    return gallery(ATLAS, "docs/evidence/atlas",
+                   "Rendered by `{command}` from `{spec}`: the real pack, the firmware's own u8g2 "
+                   "and fonts, the same app code as the FAP. Every screen of the app has a frame, "
+                   "and CI fails when one is missing or stale ([rule](.ai/repo/rules/project/"
+                   "ui-atlas.v1.md)); `tools/parity.sh` recorded the device drawing identical "
+                   "frames ([evidence](docs/evidence/parity/manifest.json)).")
+
+
+def cache_bench():
+    """The read cache, measured: the same walk with and without it."""
+    b = json.loads(CACHE.read_text())
+    c, d = b["cached"], b["direct"]
+    asked = c["hits"] + c["misses"]
+    fewer = round(100 * (d["card_reads"] - c["card_reads"]) / d["card_reads"])
+    more = round(100 * (c["bytes"] - d["bytes"]) / d["bytes"])
+    return "\n".join([
+        "| The same walk | Card reads | Bytes from the card |",
+        "|---|---:|---:|",
+        f"| Reading the card directly | {fmt(d['card_reads'])} | {fmt(d['bytes'])} |",
+        f"| Through the cache ({b['cache']['blocks']} x {b['cache']['block_bytes']} B) "
+        f"| {fmt(c['card_reads'])} | {fmt(c['bytes'])} |",
+        "",
+        f"The cache served {fmt(c['hits'])} of {fmt(asked)} block requests from memory: "
+        f"{fewer}% fewer card reads for {more:+d}% bytes, since a miss reads a whole block. "
+        f"Walk: {b['steps']} key presses ({b['walk']}); measured by `{b['command']}`.",
+    ]) + "\n"
+
+
+def ia_tree():
+    """The information architecture as a Mermaid tree, read from the hubs table in ui_app.c."""
+    src = UI_APP.read_text()
+    table = src[src.index("static const Hub hubs[]"):src.index("#define HUB_COUNT")]
+    out = ["```mermaid", "flowchart LR", '  home(["Home"])']
+    hubs = re.findall(r'\{UiIcon\w+,\s*"([^"]+)",\s*Home\w+,\s*"[^"]*",\s*\{(.*?)\}\}', table,
+                      re.S)
+    for h, (name, body) in enumerate(hubs):
+        out.append(f'  home --> h{h}["{name}"]')
+        entries = re.findall(r'\{UiIcon\w+,\s*Home\w+,\s*"([^"]+)",\s*"[^"]*",\s*"([^"]+)"',
+                             body)
+        for e, (label, hint) in enumerate(entries):
+            out.append(f'  h{h} --> h{h}e{e}["{label}<br/><small>{hint}</small>"]')
+    for k, name in enumerate(re.findall(r'page_add_tile\(app->page, UiIcon\w+, "([^"]+)"', src)):
+        out.append(f'  home --> t{k}["{name}"]')
+    out.append("```")
+    return "\n".join(out) + "\n"
 
 
 def timeline():
@@ -130,7 +173,7 @@ def ui_geometry():
     return "\n".join(rows)
 
 
-GENERATORS = {"sim-screens": sim_screens, "ui-geometry": ui_geometry, "pack-stats": pack_stats, "pack-kinds": pack_kinds, "screens": screens,
+GENERATORS = {"atlas": atlas, "cache-bench": cache_bench, "ia-tree": ia_tree, "ui-geometry": ui_geometry, "pack-stats": pack_stats, "pack-kinds": pack_kinds, "screens": screens,
               "timeline": timeline}
 
 

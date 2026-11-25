@@ -5,83 +5,103 @@
  "frames": [
   {
    "file": "01-home.png",
-   "caption": "Home: icons, counts and a bar for each share of the pack"
+   "caption": "Home: six tiles with counts; the status line explains the focused one"
   },
   {
-   "file": "02-browse.png",
-   "caption": "Browse: the book's chapters, sized by a square-root bar"
+   "file": "02-home-detect.png",
+   "caption": "Right moves along a row of the grid; the hint follows the focus"
   },
   {
-   "file": "03-list.png",
-   "caption": "A list: position in the header, pages of forty"
+   "file": "03-hub-library.png",
+   "caption": "Library: chapters, kinds, everything, a random article"
   },
   {
-   "file": "04-article.png",
+   "file": "04-chapters.png",
+   "caption": "The book's chapters with square-root share bars"
+  },
+  {
+   "file": "05-hub-detect.png",
+   "caption": "Detect: every detector, or a random one"
+  },
+  {
+   "file": "06-detectors.png",
+   "caption": "Every object with markers to check, paged by forty"
+  },
+  {
+   "file": "07-article.png",
    "caption": "An article: bold title, the kind in a pill, its code"
   },
   {
-   "file": "05-chips.png",
-   "caption": "One Down reaches the action chips: detector, map"
+   "file": "08-chips.png",
+   "caption": "Chips: detector markers and links on the map, one press away"
   },
   {
-   "file": "06-section.png",
-   "caption": "A section: its heading and icon move into the header"
+   "file": "09-detector.png",
+   "caption": "Detector: progress cells, one marker at a time: No, Unsure, Yes"
   },
   {
-   "file": "07-menu.png",
-   "caption": "Hold OK: the page's actions over a stippled page"
-  },
-  {
-   "file": "08-contents.png",
-   "caption": "Contents: every section; OK jumps there"
-  },
-  {
-   "file": "09-map.png",
-   "caption": "Map of links: confusables dotted, four neighbours at a time"
-  },
-  {
-   "file": "10-map-focus.png",
-   "caption": "A focused neighbour's full name in the header; OK walks there"
-  },
-  {
-   "file": "11-detector.png",
-   "caption": "Detector: progress cells, one marker at a time, No / ? / Yes"
-  },
-  {
-   "file": "12-result.png",
+   "file": "10-result.png",
    "caption": "Result: your marks as a number and a bar, never a score"
   },
   {
-   "file": "13-result-legend.png",
+   "file": "11-result-legend.png",
    "caption": "The bar's legend, then what to rule out and the next steps"
   },
   {
-   "file": "14-quiz.png",
+   "file": "12-menu.png",
+   "caption": "Hold OK: the page's actions over the dimmed page"
+  },
+  {
+   "file": "13-contents.png",
+   "caption": "Contents: every section; OK jumps there"
+  },
+  {
+   "file": "14-map.png",
+   "caption": "Map of links: four neighbours at a time, confusables dotted"
+  },
+  {
+   "file": "15-map-focus.png",
+   "caption": "A focused neighbour's full name in the header; OK walks there"
+  },
+  {
+   "file": "16-hub-act.png",
+   "caption": "Act: what to do, and pairs to tell apart"
+  },
+  {
+   "file": "17-hub-train.png",
+   "caption": "Train: two kinds of question and objects to quiz"
+  },
+  {
+   "file": "18-quiz.png",
    "caption": "Quiz: which term is this? The name is masked"
   },
   {
-   "file": "15-options.png",
+   "file": "19-options.png",
    "caption": "Distractors are the objects the page calls confusable"
   },
   {
-   "file": "16-answer.png",
+   "file": "20-answer.png",
    "caption": "The answer, the definition, a link to the article"
   },
   {
-   "file": "17-trainer.png",
+   "file": "21-trainer.png",
    "caption": "Trainer: manipulative or benign? A catalogue example"
   },
   {
-   "file": "18-trainer-answer.png",
+   "file": "22-trainer-answer.png",
    "caption": "Why, and a good response, from the catalogue"
   },
   {
-   "file": "19-objects.png",
-   "caption": "A category; Back returns to the same row"
+   "file": "23-info.png",
+   "caption": "Pack and device: source, contents, measured times"
   },
   {
-   "file": "20-info.png",
-   "caption": "Pack and device: source, contents, measured open and scan times"
+   "file": "24-info-cache.png",
+   "caption": "The read cache on the device: hits and misses"
+  },
+  {
+   "file": "25-about.png",
+   "caption": "About: what the app is and the keys"
   }
  ]
 }
