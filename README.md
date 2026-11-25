@@ -112,7 +112,8 @@ flowchart LR
   home --> h3["Train"]
   h3 --> h3e0["Which term?<br/><small>Pick the term of four</small>"]
   h3 --> h3e1["Manipulative?<br/><small>Manipulative or benign</small>"]
-  h3 --> h3e2["Quiz an object<br/><small>Quiz a chosen object</small>"]
+  h3 --> h3e2["Review<br/><small>Due again: boxes 1 to 5</small>"]
+  h3 --> h3e3["Quiz an object<br/><small>Quiz a chosen object</small>"]
   home --> t0["Info"]
   home --> t1["About"]
 ```
@@ -155,8 +156,9 @@ somewhere else than it says, or when a committed frame differs from the fresh re
   <tr><td align="center" width="50%"><img src="docs/evidence/atlas/23-detect-result.png" width="384" alt="Result: your marks as a number and a bar, never a score"><br><sub>Result: your marks as a number and a bar, never a score</sub></td><td align="center" width="50%"><img src="docs/evidence/atlas/24-quiz.png" width="384" alt="Which term? The definition with the name masked"><br><sub>Which term? The definition with the name masked</sub></td></tr>
   <tr><td align="center" width="50%"><img src="docs/evidence/atlas/25-quiz-options.png" width="384" alt="Distractors are the objects the page calls confusable"><br><sub>Distractors are the objects the page calls confusable</sub></td><td align="center" width="50%"><img src="docs/evidence/atlas/26-quiz-result.png" width="384" alt="The answer, the definition, a link to the article"><br><sub>The answer, the definition, a link to the article</sub></td></tr>
   <tr><td align="center" width="50%"><img src="docs/evidence/atlas/27-trainer.png" width="384" alt="Manipulative or benign? A catalogue example"><br><sub>Manipulative or benign? A catalogue example</sub></td><td align="center" width="50%"><img src="docs/evidence/atlas/28-trainer-result.png" width="384" alt="Why, and a good response, from the catalogue"><br><sub>Why, and a good response, from the catalogue</sub></td></tr>
-  <tr><td align="center" width="50%"><img src="docs/evidence/atlas/29-info.png" width="384" alt="Pack & device: what the pack is and where it came from"><br><sub>Pack & device: what the pack is and where it came from</sub></td><td align="center" width="50%"><img src="docs/evidence/atlas/30-info-cache.png" width="384" alt="Measured here: open time, scan time, the read cache's hits"><br><sub>Measured here: open time, scan time, the read cache's hits</sub></td></tr>
-  <tr><td align="center" width="50%"><img src="docs/evidence/atlas/31-about.png" width="384" alt="About: what the app is and the keys"><br><sub>About: what the app is and the keys</sub></td><td align="center" width="50%"><img src="docs/evidence/atlas/32-no-pack.png" width="384" alt="No pack: Info and About still work and say what to do"><br><sub>No pack: Info and About still work and say what to do</sub></td></tr>
+  <tr><td align="center" width="50%"><img src="docs/evidence/atlas/29-review-empty.png" width="384" alt="Review: questions come back by their Leitner box; here nothing is due"><br><sub>Review: questions come back by their Leitner box; here nothing is due</sub></td><td align="center" width="50%"><img src="docs/evidence/atlas/30-forget.png" width="384" alt="Forgetting your progress asks first; Back keeps it"><br><sub>Forgetting your progress asks first; Back keeps it</sub></td></tr>
+  <tr><td align="center" width="50%"><img src="docs/evidence/atlas/31-info.png" width="384" alt="Pack & device: what the pack is and where it came from"><br><sub>Pack & device: what the pack is and where it came from</sub></td><td align="center" width="50%"><img src="docs/evidence/atlas/32-info-cache.png" width="384" alt="Measured here: open time, scan time, the read cache's hits"><br><sub>Measured here: open time, scan time, the read cache's hits</sub></td></tr>
+  <tr><td align="center" width="50%"><img src="docs/evidence/atlas/33-about.png" width="384" alt="About: what the app is and the keys"><br><sub>About: what the app is and the keys</sub></td><td align="center" width="50%"><img src="docs/evidence/atlas/34-no-pack.png" width="384" alt="No pack: Info and About still work and say what to do"><br><sub>No pack: Info and About still work and say what to do</sub></td></tr>
 </table>
 
 Rendered by `tools/atlas.py` from `tests/sim/atlas.txt`: the real pack, the firmware's own u8g2 and fonts, the same app code as the FAP. Every screen of the app has a frame, and CI fails when one is missing or stale ([rule](.ai/repo/rules/project/ui-atlas.v1.md)); `tools/parity.sh` recorded the device drawing identical frames ([evidence](docs/evidence/parity/manifest.json)).
@@ -211,6 +213,7 @@ only in this text:
 | **Sharing** | The compiler stores each distinct string once ([`tools/pocket.py`](tools/pocket.py) `Strings`); records point into one pool. |
 | **Packed data** | Fixed-width little-endian records, read field by field, never cast to C structs; every offset is bounds-checked. |
 | **Partial failure** | A corrupted record or a pulled SD card shows *"could not be read"* on that screen, and the rest of the app keeps working (scenarios `eject-*`, `bad-*`). |
+| **Two copies, one winner** | Quiz progress (Leitner boxes, [`progress.c`](app/core/progress.c)) is a bounded, versioned, checksummed file of at most 3 KiB. A save writes a temporary copy, then replaces the file; the reader takes the valid copy with the higher generation, so a torn write or a rename that never happened costs at most the last answer (scenarios `progress-*`). |
 | **Exhaustion test** | The parser is fuzzed with thousands of mutated packs under ASan and UBSan, and checked against an independent Python decoder. |
 
 ### The cache, measured

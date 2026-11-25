@@ -13,8 +13,10 @@
 #include "core/pkp.h"
 #include "ui/ui_app.h"
 
-#define TAG      "Prismatic"
-#define PACK_DIR EXT_PATH("apps_data/prismatic")
+#define TAG           "Prismatic"
+#define PACK_DIR      EXT_PATH("apps_data/prismatic")
+#define PROGRESS_FILE PACK_DIR "/progress.bin"
+#define PROGRESS_TMP  PACK_DIR "/progress.tmp"
 
 typedef struct {
     File* file;
@@ -66,6 +68,39 @@ static PkpStatus
     }
     furi_string_free(path);
     return status;
+}
+
+/* Quiz progress (app/core/progress.h): the temporary copy is written and closed first, then
+ * the file is replaced by it. The storage API's rename refuses an existing target, so the old
+ * file is removed before the rename; if power fails between the two, the copy alone survives,
+ * and the reader takes the valid copy with the higher generation. */
+static size_t progress_read(void* ctx, int copy, uint8_t* buf, size_t cap) {
+    Storage* storage = ctx;
+    File* f = storage_file_alloc(storage);
+    size_t n = 0;
+    if(storage_file_open(f, copy ? PROGRESS_TMP : PROGRESS_FILE, FSAM_READ, FSOM_OPEN_EXISTING))
+        n = storage_file_read(f, buf, cap);
+    storage_file_close(f);
+    storage_file_free(f);
+    return n;
+}
+
+static bool progress_write(void* ctx, const uint8_t* data, size_t len) {
+    Storage* storage = ctx;
+    File* f = storage_file_alloc(storage);
+    bool ok = storage_file_open(f, PROGRESS_TMP, FSAM_WRITE, FSOM_CREATE_ALWAYS) &&
+              storage_file_write(f, data, len) == len;
+    ok = storage_file_close(f) && ok;
+    storage_file_free(f);
+    if(!ok) return false;
+    storage_common_remove(storage, PROGRESS_FILE);
+    return storage_common_rename(storage, PROGRESS_TMP, PROGRESS_FILE) == FSE_OK;
+}
+
+static void progress_forget(void* ctx) {
+    Storage* storage = ctx;
+    storage_common_remove(storage, PROGRESS_FILE);
+    storage_common_remove(storage, PROGRESS_TMP);
 }
 
 static uint32_t platform_random(void* ctx) {
@@ -134,7 +169,16 @@ int32_t prismatic_app(void* p) {
     App app;
     PkpCache* cache = malloc(sizeof(PkpCache));
     pkp_cache_init(cache, NULL, NULL, 0);
-    UiPlatform platform = {platform_random, platform_tick, platform_heap, NULL, cache};
+    Storage* storage = furi_record_open(RECORD_STORAGE);
+    UiPlatform platform = {
+        platform_random,
+        platform_tick,
+        platform_heap,
+        storage,
+        cache,
+        progress_read,
+        progress_write,
+        progress_forget};
     app.mutex = furi_mutex_alloc(FuriMutexTypeNormal);
     app.input = furi_message_queue_alloc(8, sizeof(InputEvent));
     app.ui = ui_app_alloc(&platform);
@@ -147,7 +191,6 @@ int32_t prismatic_app(void* p) {
 
     ui_app_loading(app.ui);
     view_port_update(app.view_port);
-    Storage* storage = furi_record_open(RECORD_STORAGE);
     PackFile pf = {0};
     PkpReader reader;
     uint32_t open_ms = 0;

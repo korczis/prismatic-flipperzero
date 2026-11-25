@@ -31,7 +31,8 @@ flowchart LR
   home --> h3["Train"]
   h3 --> h3e0["Which term?<br/><small>Pick the term of four</small>"]
   h3 --> h3e1["Manipulative?<br/><small>Manipulative or benign</small>"]
-  h3 --> h3e2["Quiz an object<br/><small>Quiz a chosen object</small>"]
+  h3 --> h3e2["Review<br/><small>Due again: boxes 1 to 5</small>"]
+  h3 --> h3e3["Quiz an object<br/><small>Quiz a chosen object</small>"]
   home --> t0["Info"]
   home --> t1["About"]
 ```
@@ -50,6 +51,15 @@ Rules behind it:
 - **Grids move in two dimensions.** In the grid the d-pad moves to the neighbouring tile; Left
   and Right stop at the edge instead of wrapping, and Up from below enters the last row at its
   left tile.
+
+### Review: spaced repetition
+
+Every answered question goes into a Leitner box on the SD card: a right answer moves it up one
+box, a wrong one back to box 1, and box *n* comes back after 2^(n-1) sessions (a session is a
+start of the app). **Train > Review** appears once something is due and asks the lowest box
+first; each answer offers the next due question. A question whose text changed in a rebuilt pack
+no longer matches its stored key and is dropped. Info shows how many questions are filed and
+offers to forget them, behind a confirmation; the file holds only the reader's own answers.
 
 ## Typography
 

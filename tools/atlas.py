@@ -36,9 +36,9 @@ SHEET_COLS = 4
 
 
 def screens():
-    """The Screen enum of ui_app.c, without the Scr prefix."""
-    body = re.search(r"typedef enum \{(.*?)\} Screen;", UI_APP.read_text(), re.S).group(1)
-    return [n.strip().rstrip(",")[3:] for n in body.split("\n") if n.strip().startswith("Scr")]
+    """Every screen of ui_app.c: the X(...) entries of its SCREENS list."""
+    body = re.search(r"#define SCREENS\(X\)(.*?)\n\n", UI_APP.read_text(), re.S).group(1)
+    return re.findall(r"X\((\w+)\)", body)
 
 
 def parse(text):
@@ -87,7 +87,7 @@ def render(out):
             seen = last_view(dump)
             if seen != e["view"]:
                 problems.append(f"{e['name']}: ends on {seen}, declares {e['view']}")
-            last = sorted(run.glob("*.bin"))[-1]
+            last = sorted(run.glob("[0-9]*.bin"))[-1]
             rows = fs.frame_to_rows(last.read_bytes())
             frames.append(rows)
             e["file"] = f"{i:02d}-{e['name']}.png"

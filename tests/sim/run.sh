@@ -39,6 +39,7 @@ while IFS='|' read -r name pack keys expect; do
     *) arg="build/sim/packs/$pack.pkp" ;;
   esac
   dir="$out/frames/$name"
+  rm -rf "$dir" # each scenario starts with no frames and no saved quiz progress
   mkdir -p "$dir"
   n=$((n + 1))
   if ! LLVM_PROFILE_FILE="$out/$name-%p.profraw" build/sim/pocketsim "$arg" "$dir" "$keys" \

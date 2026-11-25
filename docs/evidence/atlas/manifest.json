@@ -17,7 +17,8 @@
   "About",
   "Map",
   "Hub",
-  "Kinds"
+  "Kinds",
+  "Forget"
  ],
  "frames": [
   {
@@ -273,12 +274,30 @@
    "screen": "QuizResult"
   },
   {
+   "name": "review-empty",
+   "pack": "ui",
+   "keys": "down,right,ok,ok,ok,ok,restart,restart,down,right,ok,down,down,ok,ok,ok,down,down,ok",
+   "view": "Quiz",
+   "caption": "Review: questions come back by their Leitner box; here nothing is due",
+   "file": "29-review-empty.png",
+   "screen": "Quiz"
+  },
+  {
+   "name": "forget",
+   "pack": "ui",
+   "keys": "down,right,ok,ok,ok,ok,back:long,down,down,ok,right,right,right,right,right,down,ok",
+   "view": "Forget",
+   "caption": "Forgetting your progress asks first; Back keeps it",
+   "file": "30-forget.png",
+   "screen": "Forget"
+  },
+  {
    "name": "info",
    "pack": "kompendium",
    "keys": "down,down,ok",
    "view": "Info",
    "caption": "Pack & device: what the pack is and where it came from",
-   "file": "29-info.png",
+   "file": "31-info.png",
    "screen": "Info"
   },
   {
@@ -287,7 +306,7 @@
    "keys": "down,down,ok,right,right,right",
    "view": "Info",
    "caption": "Measured here: open time, scan time, the read cache's hits",
-   "file": "30-info-cache.png",
+   "file": "32-info-cache.png",
    "screen": "Info"
   },
   {
@@ -296,7 +315,7 @@
    "keys": "down,down,right,ok",
    "view": "About",
    "caption": "About: what the app is and the keys",
-   "file": "31-about.png",
+   "file": "33-about.png",
    "screen": "About"
   },
   {
@@ -305,7 +324,7 @@
    "keys": "",
    "view": "Home",
    "caption": "No pack: Info and About still work and say what to do",
-   "file": "32-no-pack.png",
+   "file": "34-no-pack.png",
    "screen": "Home"
   }
  ]

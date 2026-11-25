@@ -70,7 +70,9 @@ flags is refused.
 
 - **`app/core/`**: portable C99 with no Furi and no allocation. It holds the pack reader
   (`pkp.c`), the LRU block cache every read goes through (`cache.c`: eight 256-byte blocks), and
-  the detector summary and quiz check (`pocket.c`), and is tested on the host under sanitizers.
+  the detector summary and quiz check (`pocket.c`), and quiz progress for spaced repetition
+  (`progress.c`: Leitner boxes in a bounded, checksummed file kept as two copies). It is tested on
+  the host under sanitizers.
 - **`app/ui/`**: the whole user interface, portable as well. It uses only the canvas API and C99.
   - `page.c` is the one view engine. A page is a pinned header (the title, or the section whose
     heading scrolled by, plus the position), a body of styled blocks and optional softkeys.

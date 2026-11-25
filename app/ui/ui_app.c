@@ -29,23 +29,30 @@
 #define T_KIND(t)   ((t) & 0xFF000000u)
 #define T_ARG(t)    ((t) & 0x00FFFFFFu)
 
+/* Every screen, once: the enum and the names (tests, the screen atlas) both come from here. */
+#define SCREENS(X)  \
+    X(Home)         \
+    X(Categories)   \
+    X(Objects)      \
+    X(Filter)       \
+    X(Article)      \
+    X(Chapter)      \
+    X(Detect)       \
+    X(DetectResult) \
+    X(Quiz)         \
+    X(QuizOptions)  \
+    X(QuizResult)   \
+    X(Info)         \
+    X(About)        \
+    X(Map)          \
+    X(Hub)          \
+    X(Kinds)        \
+    X(Forget)
+
 typedef enum {
-    ScrHome,
-    ScrCategories,
-    ScrObjects,
-    ScrFilter,
-    ScrArticle,
-    ScrChapter,
-    ScrDetect,
-    ScrDetectResult,
-    ScrQuiz,
-    ScrQuizOptions,
-    ScrQuizResult,
-    ScrInfo,
-    ScrAbout,
-    ScrMap,
-    ScrHub,
-    ScrKinds,
+#define SCREEN_ENUM(name) Scr##name,
+    SCREENS(SCREEN_ENUM)
+#undef SCREEN_ENUM
 } Screen;
 
 enum {
@@ -63,6 +70,9 @@ enum {
     HomeQuizzable,
     HomeRandom,
     HomeRandomDetect,
+    HomeReview,
+    HomeForget,
+    HomeForgetNow,
     HomeHub, /* HomeHub + n: hub n of the hubs table */
 };
 
@@ -102,6 +112,9 @@ struct UiApp {
     PkpQuiz quiz;
     uint16_t quiz_asked; /* this session's answers, shown in the quiz header */
     uint16_t quiz_right;
+    Progress progress; /* Leitner boxes, loaded from and saved to storage */
+    uint8_t* file; /* PROGRESS_MAX_FILE bytes for reading and writing it */
+    bool progress_ok; /* the last save succeeded */
 };
 
 /* ------------------------------------------------------------------ helpers */
@@ -245,6 +258,7 @@ static uint32_t entry_count(UiApp* app, uint32_t entry) {
         [HomeQuizzable] = app->cap_count[cap_index(PKP_CAP_QUIZ)],
         [HomeRandom] = total,
         [HomeRandomDetect] = app->cap_count[cap_index(PKP_CAP_DETECT)],
+        [HomeReview] = progress_due_count(&app->progress),
     };
     return entry < sizeof(counts) / sizeof(counts[0]) ? counts[entry] : 0;
 }
@@ -307,6 +321,7 @@ static const Hub hubs[] = {
        "%lu",
        "Manipulative or benign",
        ShareQuestions},
+      {UiIconCorrect, HomeReview, "Review", "%lu", "Due again: boxes 1 to 5", ShareNone},
       {UiIconArticle,
        HomeQuizzable,
        "Quiz an object",
@@ -672,13 +687,35 @@ static void quiz_score(UiApp* app) {
     page_set_position(app->page, pos);
 }
 
+static void save_progress(UiApp* app) {
+    size_t n = progress_encode(&app->progress, app->file, PROGRESS_MAX_FILE);
+    app->progress_ok = app->platform.progress_write(app->platform.ctx, app->file, n);
+}
+
+/* Count the answer for the session and file it in its Leitner box. */
 static void score(UiApp* app, uint8_t pick) {
+    bool right = pocket_quiz_correct(&app->quiz, pick);
     app->quiz_asked++;
-    app->quiz_right += pocket_quiz_correct(&app->quiz, pick);
+    app->quiz_right += right;
+    uint32_t key = progress_key(str(app, app->quiz.prompt));
+    progress_record(&app->progress, key, (uint16_t)top(app)->aux, right);
+    save_progress(app);
 }
 
 static void render_quiz(UiApp* app) {
     page_reset(app->page, "Quiz");
+    if(top(app)->filter && top(app)->aux == UINT32_MAX) {
+        page_reset(app->page, "Review");
+        page_set_title_icon(app->page, UiIconCorrect);
+        page_add(app->page, PageParagraph, "Nothing is due now.", 0);
+        page_add(
+            app->page,
+            PageNote,
+            "Answered questions come back after 1, 2, 4, 8 or 16 sessions, by their box.",
+            0);
+        restore(app);
+        return;
+    }
     if(pkp_quiz(app->pack, top(app)->aux, &app->quiz) != PKP_OK) {
         page_add(app->page, PageNote, "This question could not be read.", 0);
         return;
@@ -738,7 +775,11 @@ static void render_quiz_result(UiApp* app) {
         page_add(app->page, PageTitle, str(app, o.title), 0);
         page_add(app->page, PageNote, str(app, o.definition), 0);
     }
-    page_add(app->page, PageLink, "Next question", T_NEXT_QUIZ | app->quiz.kind);
+    page_add(
+        app->page,
+        PageLink,
+        f->filter ? "Next due question" : "Next question",
+        f->filter ? T_HOME | HomeReview : T_NEXT_QUIZ | app->quiz.kind);
     if(have) page_add(app->page, PageLink, str(app, o.title), T_OBJECT | subject);
     restore(app);
 }
@@ -824,6 +865,31 @@ static void render_info(UiApp* app) {
     page_add(app->page, PageBullet, line, 0);
     snprintf(line, sizeof(line), "App v%s", PRISMATIC_VERSION);
     page_add(app->page, PageBullet, line, 0);
+    page_add(app->page, PageHeading, "Your progress", 0);
+    snprintf(
+        line,
+        sizeof(line),
+        "Answered: %u. Due now: %u. Session %u.",
+        app->progress.count,
+        progress_due_count(&app->progress),
+        app->progress.session);
+    page_add(app->page, PageParagraph, line, 0);
+    if(!app->progress_ok) page_add(app->page, PageNote, "The last save failed.", 0);
+    if(app->progress.count)
+        page_add(app->page, PageLink, "Forget my progress", T_HOME | HomeForget);
+    restore(app);
+}
+
+static void render_forget(UiApp* app) {
+    page_reset(app->page, "Forget progress?");
+    page_set_title_icon(app->page, UiIconAlert);
+    page_add(
+        app->page,
+        PageParagraph,
+        "Deletes every answer and box on the SD card. The pack is not touched.",
+        0);
+    page_add(app->page, PageLink, "Forget it", T_HOME | HomeForgetNow);
+    page_add(app->page, PageMeta, "Back keeps it.", 0);
     restore(app);
 }
 
@@ -902,6 +968,9 @@ static void render(UiApp* app) {
     case ScrKinds:
         render_kinds(app);
         break;
+    case ScrForget:
+        render_forget(app);
+        break;
     default:
         render_about(app);
         break;
@@ -947,6 +1016,24 @@ static uint16_t random_object(UiApp* app, uint8_t cap) {
     return (uint16_t)start; /* nothing readable: the article screen says so */
 }
 
+/* The next due question, checked against the pack: an entry whose question is gone or changed
+ * (its prompt no longer hashes to its key) is dropped. With none due, the review says so. */
+static void start_review(UiApp* app) {
+    Frame* f = top(app);
+    if(f->screen == ScrQuizResult) app->depth--; /* "Next due question" replaces the answer */
+    for(int i; (i = progress_next_due(&app->progress)) >= 0;) {
+        ProgressEntry* e = &app->progress.entries[i];
+        PkpQuiz q;
+        if(pkp_quiz(app->pack, e->quiz, &q) == PKP_OK &&
+           progress_key(str(app, q.prompt)) == e->key) {
+            push(app, (Frame){.screen = ScrQuiz, .aux = e->quiz, .filter = 1});
+            return;
+        }
+        progress_drop(&app->progress, i);
+    }
+    push(app, (Frame){.screen = ScrQuiz, .aux = UINT32_MAX, .filter = 1});
+}
+
 static void home(UiApp* app, uint32_t entry) {
     static const uint8_t filters[] = {
         [HomeDetect] = PKP_CAP_DETECT,
@@ -986,6 +1073,19 @@ static void home(UiApp* app, uint32_t entry) {
         break;
     case HomeRandomDetect:
         start_detect(app, random_object(app, PKP_CAP_DETECT));
+        break;
+    case HomeReview:
+        start_review(app);
+        break;
+    case HomeForget:
+        push(app, (Frame){.screen = ScrForget});
+        break;
+    case HomeForgetNow:
+        app->platform.progress_forget(app->platform.ctx);
+        progress_init(&app->progress);
+        app->progress_ok = true;
+        app->depth--; /* back to Info, which now shows the empty progress */
+        render(app);
         break;
     case HomeQuizTerm:
     case HomeQuizExample:
@@ -1070,7 +1170,10 @@ static void softkey(UiApp* app, uint32_t slot, bool long_press) {
             score(app, f->pick);
             render(app);
         } else {
-            push(app, (Frame){.screen = ScrQuizOptions, .aux = f->aux, .obj = f->obj});
+            push(
+                app,
+                (Frame){
+                    .screen = ScrQuizOptions, .aux = f->aux, .obj = f->obj, .filter = f->filter});
         }
     }
 }
@@ -1082,6 +1185,8 @@ UiApp* ui_app_alloc(const UiPlatform* platform) {
     app->platform = *platform;
     app->page = page_alloc();
     app->scratch = malloc(SCRATCH);
+    app->file = malloc(PROGRESS_MAX_FILE);
+    app->progress_ok = true;
     app->pack_status = PKP_E_MISSING;
     app->stack[0] = (Frame){.screen = ScrHome};
     app->depth = 1;
@@ -1091,6 +1196,7 @@ UiApp* ui_app_alloc(const UiPlatform* platform) {
 void ui_app_free(UiApp* app) {
     page_free(app->page);
     free(app->scratch);
+    free(app->file);
     free(app);
 }
 
@@ -1122,6 +1228,13 @@ void ui_app_set_pack(UiApp* app, PkpReader* pack, PkpStatus status, uint32_t ope
         }
         app->scan_ms = app->platform.tick_ms(app->platform.ctx) - t0;
     }
+    /* the quiz progress: the better of the file and its temporary copy; one more session */
+    static uint8_t copy[PROGRESS_MAX_FILE];
+    size_t a = app->platform.progress_read(app->platform.ctx, 0, app->file, PROGRESS_MAX_FILE);
+    size_t b = app->platform.progress_read(app->platform.ctx, 1, copy, sizeof(copy));
+    progress_load(&app->progress, app->file, a, copy, b);
+    app->progress.session++;
+    if(app->progress.count) save_progress(app); /* the session counts even with no answer */
     app->depth = 1;
     app->stack[0] = (Frame){.screen = ScrHome};
     render(app);
@@ -1156,22 +1269,9 @@ bool ui_app_input(UiApp* app, PageKey key, PagePress press) {
 
 const char* ui_app_screen_name(const UiApp* app) {
     static const char* const names[] = {
-        [ScrHome] = "Home",
-        [ScrCategories] = "Categories",
-        [ScrObjects] = "Objects",
-        [ScrFilter] = "Filter",
-        [ScrArticle] = "Article",
-        [ScrChapter] = "Chapter",
-        [ScrDetect] = "Detect",
-        [ScrDetectResult] = "DetectResult",
-        [ScrQuiz] = "Quiz",
-        [ScrQuizOptions] = "QuizOptions",
-        [ScrQuizResult] = "QuizResult",
-        [ScrInfo] = "Info",
-        [ScrAbout] = "About",
-        [ScrMap] = "Map",
-        [ScrHub] = "Hub",
-        [ScrKinds] = "Kinds",
+#define SCREEN_NAME(name) #name,
+        SCREENS(SCREEN_NAME)
+#undef SCREEN_NAME
     };
     return names[app->stack[app->depth - 1].screen];
 }

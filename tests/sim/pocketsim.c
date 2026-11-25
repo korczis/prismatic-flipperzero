@@ -34,6 +34,51 @@ static bool read_cb(void* ctx, uint32_t offset, void* buf, uint32_t len) {
     return fseek(pf->f, (long)offset, SEEK_SET) == 0 && fread(buf, 1, len, pf->f) == len;
 }
 
+/* Quiz progress in the run's folder: progress.dat and its temporary copy, written as the
+ * device does (the copy, then a rename). "full" makes writes fail like a full card. */
+static char progress_dir[400];
+static bool card_full, no_rename, tear;
+
+static size_t progress_read(void* ctx, int copy, uint8_t* buf, size_t cap) {
+    (void)ctx;
+    char path[512];
+    snprintf(path, sizeof(path), "%s/progress.%s", progress_dir, copy ? "tmp" : "dat");
+    FILE* f = fopen(path, "rb");
+    if(!f) return 0;
+    size_t n = fread(buf, 1, cap, f);
+    fclose(f);
+    return n;
+}
+
+static bool progress_write(void* ctx, const uint8_t* data, size_t len) {
+    (void)ctx;
+    char tmp[512], dst[512];
+    snprintf(tmp, sizeof(tmp), "%s/progress.tmp", progress_dir);
+    snprintf(dst, sizeof(dst), "%s/progress.dat", progress_dir);
+    if(card_full) return false;
+    FILE* f = fopen(tmp, "wb");
+    if(tear) { /* power lost mid-write: half the copy, no rename */
+        tear = false;
+        if(f) {
+            fwrite(data, 1, len / 2, f);
+            fclose(f);
+        }
+        return false;
+    }
+    bool ok = f && fwrite(data, 1, len, f) == len;
+    if(f) ok = fclose(f) == 0 && ok;
+    return ok && (no_rename || rename(tmp, dst) == 0);
+}
+
+static void progress_forget(void* ctx) {
+    (void)ctx;
+    char path[512];
+    snprintf(path, sizeof(path), "%s/progress.dat", progress_dir);
+    remove(path);
+    snprintf(path, sizeof(path), "%s/progress.tmp", progress_dir);
+    remove(path);
+}
+
 static uint32_t seed = 12345;
 static uint32_t rnd(void* ctx) {
     (void)ctx;
@@ -97,7 +142,9 @@ int main(int argc, char** argv) {
     /* POCKET_NOCACHE=1 reads the card directly, to measure what the cache saves */
     static PkpCache cache;
     bool nocache = getenv("POCKET_NOCACHE") != NULL;
-    UiPlatform platform = {rnd, tick, heap, NULL, &cache};
+    UiPlatform platform = {
+        rnd, tick, heap, NULL, &cache, progress_read, progress_write, progress_forget};
+    snprintf(progress_dir, sizeof(progress_dir), "%s", argv[2]);
     UiApp* app = ui_app_alloc(&platform);
     Canvas* canvas = sim_canvas_alloc();
     ui_app_loading(app);
@@ -138,6 +185,36 @@ int main(int argc, char** argv) {
             char name[24];
             snprintf(name, sizeof(name), "%s%s", tok, redraw ? "" : "-idle");
             frame(app, canvas, argv[2], n++, name);
+            continue;
+        }
+        if(strcmp(tok, "restart") == 0 || strcmp(tok, "full") == 0 || strcmp(tok, "tear") == 0 ||
+           strcmp(tok, "norename") == 0 || strcmp(tok, "rekey") == 0) {
+            /* restart: quit and start again over the same files; full: writes fail from now;
+             * tear: the next save stops halfway through the copy (power lost); norename: later
+             * saves leave the temporary copy and never rename it (power lost in between);
+             * rekey: the first entry's key stops matching its question */
+            if(tok[0] == 'f') card_full = true;
+            if(tok[0] == 't') tear = true;
+            if(tok[0] == 'n') no_rename = true;
+            if(tok[1] == 'e' && tok[2] == 'k') {
+                /* rekey: the first answered question's key no longer matches its prompt, as
+                 * after a pack rebuild that changed the question's text */
+                static Progress pr;
+                static uint8_t buf[PROGRESS_MAX_FILE];
+                size_t len = progress_read(NULL, 0, buf, sizeof(buf));
+                if(progress_decode(&pr, buf, len) == PROGRESS_OK && pr.count) {
+                    pr.entries[0].key ^= 1u;
+                    progress_write(NULL, buf, progress_encode(&pr, buf, sizeof(buf)));
+                }
+            }
+            if(tok[0] == 'r') {
+                ui_app_free(app);
+                app = ui_app_alloc(&platform);
+                ui_app_set_pack(app, status == PKP_OK ? &reader : NULL, status, 42);
+                frame(app, canvas, argv[2], n++, tok); /* drawn, so keys act on it */
+                continue;
+            }
+            printf("== %s\n", tok);
             continue;
         }
         if(strcmp(tok, "eject") == 0 || strcmp(tok, "insert") == 0) {

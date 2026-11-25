@@ -17,7 +17,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import atlas  # noqa: E402
 
-UI_APP = "typedef enum {\n    ScrHome,\n    ScrHub,\n} Screen;\n"
+UI_APP = "#define SCREENS(X) \\\n    X(Home) \\\n    X(Hub)\n\ntypedef enum {\n} Screen;\n"
 SPEC = ("# comment\n\n"
         "home | kompendium | | Home | The home grid\n"
         "menu | ui | ok:long | Home+menu | A menu\n")
@@ -106,7 +106,7 @@ class AtlasTest(unittest.TestCase):
 
     def test_entry_point(self):
         right = fake_run({"home": "Home", "menu": "Home"})
-        (Path(self.dir.name) / "ui_app.c").write_text("typedef enum {\n    ScrHome,\n} Screen;\n")
+        (Path(self.dir.name) / "ui_app.c").write_text("#define SCREENS(X) \\\n    X(Home)\n\nx\n")
         (Path(self.dir.name) / "build" / "packs").mkdir(parents=True)
         (Path(self.dir.name) / "build" / "packs" / "kompendium.pkp").write_bytes(b"")
         with mock.patch.object(atlas.subprocess, "run", right):

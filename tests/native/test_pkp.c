@@ -8,6 +8,7 @@
 #include "../../app/core/cache.h"
 #include "../../app/core/pkp.h"
 #include "../../app/core/pocket.h"
+#include "../../app/core/progress.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -582,6 +583,94 @@ static void test_cache(const uint8_t* pack, uint32_t size) {
     CHECK(c.misses == cold);
 }
 
+/* Leitner progress: boxes and due sessions, the file's round trip, every way a file can be
+ * bad, recovery from two copies, and a full table. */
+static void test_progress(void) {
+    static Progress p, q;
+    static uint8_t a[PROGRESS_MAX_FILE], b[PROGRESS_MAX_FILE];
+    CHECK(progress_key("abc") == progress_key("abc"));
+    CHECK(progress_key("abc") != progress_key("abd"));
+    CHECK(progress_key("") == 2166136261u);
+
+    progress_init(&p);
+    p.session = 3;
+    progress_record(&p, 7, 10, true); /* new, right: box 2, due in 2 sessions */
+    CHECK(p.count == 1 && p.entries[0].box == 2 && p.entries[0].due == 5);
+    CHECK(p.entries[0].attempts == 1 && p.entries[0].last_right == 1);
+    progress_record(&p, 7, 11, true); /* box 3, due in 4; the index follows the pack */
+    CHECK(p.entries[0].box == 3 && p.entries[0].due == 7 && p.entries[0].quiz == 11);
+    for(int i = 0; i < 5; i++)
+        progress_record(&p, 7, 11, true);
+    CHECK(p.entries[0].box == PROGRESS_BOXES);
+    progress_record(&p, 7, 11, false); /* wrong: back to box 1, due next session */
+    CHECK(p.entries[0].box == 1 && p.entries[0].due == 4 && p.entries[0].last_right == 0);
+    progress_record(&p, 8, 12, false);
+    CHECK(progress_due_count(&p) == 0);
+    p.session = 4;
+    CHECK(progress_due_count(&p) == 2);
+    progress_record(&p, 9, 13, true); /* box 2: not due yet */
+    CHECK(progress_due_count(&p) == 2);
+    int next = progress_next_due(&p);
+    CHECK(next >= 0 && p.entries[next].box == 1);
+    p.entries[1].due = 2; /* longer overdue in the same box wins */
+    CHECK(progress_next_due(&p) == 1);
+    p.session = 5;
+    CHECK(progress_next_due(&p) == 1); /* box 1 before box 2 */
+
+    /* round trip */
+    size_t n = progress_encode(&p, a, sizeof(a));
+    CHECK(n == PROGRESS_HEADER + 3 * PROGRESS_ENTRY + 4 && p.generation == 1);
+    CHECK(progress_decode(&q, a, n) == PROGRESS_OK);
+    CHECK(q.count == 3 && q.session == 5 && q.generation == 1);
+    CHECK(memcmp(q.entries, p.entries, sizeof(ProgressEntry) * 3) == 0);
+    CHECK(progress_encode(&p, a, 10) == 0); /* too small */
+
+    /* every way a file is bad leaves the progress empty */
+    CHECK(progress_decode(&q, a, 10) == PROGRESS_E_SHORT && q.count == 0);
+    memcpy(b, a, n);
+    b[0] = 'X';
+    CHECK(progress_decode(&q, b, n) == PROGRESS_E_MAGIC);
+    memcpy(b, a, n);
+    b[4] = 9;
+    CHECK(progress_decode(&q, b, n) == PROGRESS_E_VERSION);
+    memcpy(b, a, n);
+    b[14] = 0xFF;
+    b[15] = 0xFF;
+    CHECK(progress_decode(&q, b, n) == PROGRESS_E_COUNT);
+    CHECK(progress_decode(&q, a, n - 5) == PROGRESS_E_SHORT); /* cut mid-write */
+    memcpy(b, a, n);
+    b[PROGRESS_HEADER] ^= 1;
+    CHECK(progress_decode(&q, b, n) == PROGRESS_E_CRC);
+    /* an out-of-range box in a checksummed file is read as box 1 */
+    memcpy(b, a, n);
+    b[PROGRESS_HEADER + 6] = 9;
+    uint32_t crc = pkp_crc32(0, b, n - 4);
+    b[n - 4] = (uint8_t)crc;
+    b[n - 3] = (uint8_t)(crc >> 8);
+    b[n - 2] = (uint8_t)(crc >> 16);
+    b[n - 1] = (uint8_t)(crc >> 24);
+    CHECK(progress_decode(&q, b, n) == PROGRESS_OK && q.entries[0].box == 1);
+
+    /* two copies: the valid one with the higher generation wins */
+    size_t m = progress_encode(&p, b, sizeof(b)); /* generation 2 */
+    CHECK(progress_load(&q, a, n, b, m) == 2 && q.generation == 2);
+    CHECK(progress_load(&q, b, m, a, n) == 1 && q.generation == 2);
+    CHECK(progress_load(&q, a, n, b, m - 1) == 1 && q.generation == 1); /* tmp cut short */
+    CHECK(progress_load(&q, NULL, 0, b, m) == 2);
+    CHECK(progress_load(&q, a, 3, NULL, 0) == 0 && q.count == 0);
+
+    /* a full table replaces the entry due furthest away */
+    progress_init(&p);
+    for(uint32_t k = 0; k < PROGRESS_CAP; k++)
+        progress_record(&p, k + 100, (uint16_t)k, false);
+    p.entries[17].due = 900;
+    progress_record(&p, 99999, 1, false);
+    CHECK(p.count == PROGRESS_CAP && p.entries[17].key == 99999);
+    progress_drop(&p, 0);
+    CHECK(p.count == PROGRESS_CAP - 1);
+    CHECK(progress_next_due(&p) == -1); /* nothing due in session 0 */
+}
+
 int main(int argc, char** argv) {
     if(argc != 3) {
         fprintf(stderr, "usage: test_pkp test|dump|walk <path>\n");
@@ -600,6 +689,7 @@ int main(int argc, char** argv) {
         test_fuzz(pack, size);
         test_detect();
         test_cache(pack, size);
+        test_progress();
         printf("native: %s (%d failure(s))\n", failures ? "FAIL" : "PASS", failures);
         rc = failures ? 1 : 0;
     }

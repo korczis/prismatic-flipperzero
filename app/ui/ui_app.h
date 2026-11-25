@@ -11,6 +11,7 @@
 
 #include "../core/cache.h"
 #include "../core/pkp.h"
+#include "../core/progress.h"
 #include "page.h"
 
 typedef struct {
@@ -19,6 +20,11 @@ typedef struct {
     void (*heap)(void* ctx, uint32_t* free_bytes, uint32_t* largest_block);
     void* ctx;
     const PkpCache* cache; /* the pack's block cache, shown on the Info screen */
+    /* quiz progress on storage: read copy 0 (the file) or 1 (its temporary copy) into buf and
+     * return its length (0: none); write replaces the file safely; forget deletes both */
+    size_t (*progress_read)(void* ctx, int copy, uint8_t* buf, size_t cap);
+    bool (*progress_write)(void* ctx, const uint8_t* data, size_t len);
+    void (*progress_forget)(void* ctx);
 } UiPlatform;
 
 typedef struct UiApp UiApp;
