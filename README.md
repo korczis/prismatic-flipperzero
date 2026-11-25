@@ -25,8 +25,14 @@
   <a href="#install">Install</a> ·
   <a href="#build-it-yourself">Build</a> ·
   <a href="#how-it-is-kept-honest">Guarantees</a> ·
-  <a href="docs/case-study.md">Case study</a>
+  <a href="docs/case-study.md">Case study</a> ·
+  <a href="https://korczis.github.io/prismatic-flipperzero/">Explorer</a> ·
+  <a href="https://github.com/korczis/prismatic-flipperzero/wiki">Wiki</a>
 </p>
+
+> **Try it without a Flipper.** The [online explorer](https://korczis.github.io/prismatic-flipperzero/)
+> is the same pack in a browser: a drillable map of every category, search, every article with
+> its relation tree, the detector and both quizzes. Object *n* there is object *n* on the device.
 
 ---
 
