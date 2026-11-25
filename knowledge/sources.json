@@ -1,0 +1,59 @@
+{
+  "pack": {
+    "id": "kompendium",
+    "title": "Kompendium epistemicke anihilace",
+    "version": "1",
+    "generator": "tools/pocket.py, format PKP1 v1",
+    "licence": "Kompendium content (GHL v1.0) by its author's grant; see knowledge/LICENSE.md"
+  },
+  "source": {
+    "repository": "https://github.com/korczis/kompendium-epistemicke-anihilace",
+    "commit": "2d08d1bf6ab408ed8d4516c9acaaa423b53d58e3"
+  },
+  "pages": {
+    "roots": ["content/kompendium", "content/glossary", "content/philosophy"],
+    "exclude": ["_index.md"]
+  },
+  "title_strip": ["^Rychlá karta [^:]+:\\s*", "^Detekční signatura:\\s*"],
+  "drop_tags": ["kompendium", "quick-reference", "qr-card"],
+  "kinds": {
+    "techniques": "technique",
+    "quick-reference": "technique",
+    "detection-signatures": "signature",
+    "self-defense-guides": "countermeasure",
+    "recovery-protocols": "protocol",
+    "emergency-protocols": "protocol",
+    "educational-scenarios": "exercise",
+    "case-studies": "scenario",
+    "historical-cases": "scenario",
+    "argumentacni-fauly": "fallacy",
+    "nlp-vzorce": "pattern",
+    "glossary": "concept",
+    "default": "article"
+  },
+  "overlay": {"from_prefix": "kompendium/quick-reference/"},
+  "roles": {
+    "skip": ["literatura", "související", "souvisejici", "vazby na další", "zdroje a poznámky"],
+    "definition": ["co to je", "definice", "vymezení", "pojem"],
+    "indicators": ["jak ji poznat", "jak ho poznat", "jak je poznat", "pozorovatelné markery",
+                   "detekční markery", "detekční znaky", "rozpoznávací znaky",
+                   "signály, kterých si všimnout", "fenomenologické znaky", "varovné signály",
+                   "kontrolní otázky", "markery a diferenciální úvahy", "indikace"],
+    "actions": ["první bezpečná reakce", "doporučený postup", "neutralizační strategie",
+                "ochranná opatření", "intervenční strategie", "obrana", "ochranné struktury",
+                "ochrana dotčené osoby", "pojistky pro praxi", "od pojmu k praxi",
+                "praktický postup", "postup", "jak se bránit", "techniky obrany"],
+    "escalation": ["kdy a jak eskalovat", "rozhodovací body a eskalace", "řešení incidentu",
+                   "předání do dlouhodobé péče", "kdy vyhledat pomoc"],
+    "alternatives": ["s čím ji nezaměnit", "s čím ho nezaměnit", "odlišení",
+                     "riziko falešné pozitivity", "diferenciální", "klinická diferenciální",
+                     "časté omyly", "co námitka neprokazuje", "kontraindikace"],
+    "validation": ["validační test", "detekční kritéria"]
+  },
+  "catalogs": [
+    {"path": "data/fauly", "include": "^[a-z].*\\.toml$", "kind": "fallacy",
+     "prefix": "fauly", "category": "Argumentacni fauly (katalog)"},
+    {"path": "data/nlp", "include": "^[a-z].*\\.toml$", "kind": "pattern",
+     "prefix": "nlp", "category": "NLP vzorce (katalog)"}
+  ]
+}

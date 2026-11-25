@@ -228,7 +228,7 @@ class FakeFlipper:
 
     def write(self, data):
         if not self.rpc:
-            if data == b"\r":
+            if data in (b"\r", b"\x03\r"):
                 self.out += b"\r\n>: "
             elif data == b"start_rpc_session\r":
                 self.out += b"start_rpc_session\r\n"

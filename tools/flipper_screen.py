@@ -123,7 +123,7 @@ class Rpc:
         self.s = serial.Serial(port, 230400, timeout=0.2)
         self.buf = b""
         self.cid = 0
-        self._cli_until(b">: ", send=b"\r")
+        self._cli_until(b">: ", send=b"\x03\r")  # Ctrl-C ends any command left running
         self.s.reset_input_buffer()
         self.s.write(b"start_rpc_session\r")
         self._cli_until(b"\n")  # the echoed command line; RPC framing starts after it

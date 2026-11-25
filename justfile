@@ -28,6 +28,14 @@ gen:
     python3 tools/version.py
     python3 tools/icons.py
 
+# Extract the pinned Kompendium sources and compile the knowledge pack (build/packs/)
+pack:
+    python3 tools/pocket.py build
+
+# Copy the knowledge pack to the Flipper's SD card
+deploy-pack:
+    tools/device.sh deploy-pack
+
 # Native lint (clang-format check via uFBT)
 lint:
     cd app && ufbt -s lint
@@ -40,6 +48,10 @@ format:
 test:
     python3 tests/tools/coverage_gate.py
     tests/tools/coverage_gate_selftest.sh
+
+# Portable C core: sanitizers, mutation fuzz, C-vs-Python differential, llvm-cov line gate
+test-native:
+    tests/native/run.sh
 
 # Build, install and start the app on the connected Flipper
 launch sdk="official":

@@ -4,6 +4,7 @@
 # shells never deploy to the same device at once. Nothing here flashes firmware.
 #   tools/device.sh launch [sdk]        build, install and start the app (ufbt launch)
 #   tools/device.sh deploy [sdk]        install build/<sdk>/prismatic.fap without starting it
+#   tools/device.sh deploy-pack [pack]  copy a knowledge pack to SD:/apps_data/prismatic/
 #   tools/device.sh screenshot <png>    one real frame from the RPC screen stream
 #   tools/device.sh walk <dir> <keys>   frames before and after each key, e.g. right,back
 set -euo pipefail
@@ -48,6 +49,14 @@ case "$cmd" in
     [ -s "$fap" ] || { echo "device: $fap missing; run: just build $sdk" >&2; exit 12; }
     timeout 120 "$py" "$HOME/.ufbt/current/scripts/storage.py" -p auto \
       send "$fap" /ext/apps/Tools/prismatic.fap
+    ;;
+  deploy-pack)
+    pack="${1:-$root/build/packs/kompendium.pkp}"
+    [ -s "$pack" ] || { echo "device: $pack missing; run: just pack" >&2; exit 12; }
+    timeout 900 "$py" "$HOME/.ufbt/current/scripts/storage.py" -p auto mkdir /ext/apps_data/prismatic >/dev/null 2>&1 \
+      || true  # mkdir reports an error when the directory exists; send below fails loudly if it is unusable
+    timeout 900 "$py" "$HOME/.ufbt/current/scripts/storage.py" -p auto \
+      send "$pack" "/ext/apps_data/prismatic/$(basename "$pack")"
     ;;
   screenshot) timeout 60 "$py" "$root/tools/flipper_screen.py" capture "$@" ;;
   walk) timeout 120 "$py" "$root/tools/flipper_screen.py" walk "$@" ;;
