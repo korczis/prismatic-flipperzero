@@ -1,28 +1,33 @@
 {
- "bytes": 20701996,
+ "bytes": 20705500,
  "capabilities": {
-  "apply": 1546,
+  "apply": 1547,
   "assess": 5,
-  "browse": 2238,
+  "browse": 2240,
   "compare": 1128,
   "detect": 1212,
   "quiz": 1671,
+  "score": 2,
   "simulate": 9
  },
  "categories": 66,
  "items": {
-  "actions": 4085,
+  "actions": 4086,
   "alternatives": 3842,
   "axis": 6,
   "escalation": 480,
   "heading": 16807,
   "indicators": 4246,
   "level": 40,
+  "score_band": 10,
+  "score_choice": 26,
+  "score_question": 13,
+  "score_setup": 2,
   "sim_option": 135,
   "sim_start": 9,
   "sim_step": 45,
   "text": 18827,
-  "validation": 170
+  "validation": 173
  },
  "kinds": {
   "article": 552,
@@ -31,17 +36,17 @@
   "exercise": 30,
   "fallacy": 147,
   "pattern": 420,
-  "protocol": 85,
+  "protocol": 87,
   "scenario": 129,
   "signature": 33,
   "technique": 503
  },
- "objects": 2238,
+ "objects": 2240,
  "pack": "kompendium.pkp",
  "quiz": {
   "definition": 1671,
   "trainer": 1185
  },
  "relations": 37567,
- "sha256": "ff00e4dd709bd1ea459e900303082742e8df2cb7fcaa1122cf908ad8611b175b"
+ "sha256": "bffea4050c10337d7df514773dc1e3c79ef3c0792091052c7e6a567bc2f346bb"
 }

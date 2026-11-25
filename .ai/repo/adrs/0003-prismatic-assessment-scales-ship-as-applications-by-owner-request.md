@@ -46,6 +46,13 @@ Prismatic Platform commit (`49adc18f7bac`). A meaning the source does not give s
 grade is computed by the device, the reader chooses it. The prompt text, its JSON output
 contract and every other part of the Prismatic Platform stay where they are.
 
+Later the same day, at the owner's request to extend with "everything from
+~/dev/prismatic-platform: simulators, interactive evaluators" (verbatim in ADR 0004), two more
+scales (estimative language, threat-indicator age) and two scorecards (the executive frame of
+`apps/prismatic_dd/lib/prismatic_dd/executive_frame.ex` and the nominee-shareholder check of
+`apps/prismatic_cer/lib/prismatic_cer/nominee_risk.ex`) joined them under the same terms. A
+scorecard copies the source's base, weights, clamp, bands and red-flag texts.
+
 ## Consequences
 
 - Adding another scale is a data change in `knowledge/applications.toml`; the device walks any

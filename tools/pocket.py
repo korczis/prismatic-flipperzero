@@ -57,11 +57,12 @@ KINDS = ["pattern", "technique", "signature", "fallacy", "bias", "trait", "modal
 ITEM_ROLES = ["indicators", "actions", "escalation", "alternatives", "validation"]
 ITEM_TYPES = {"indicators": 1, "actions": 2, "escalation": 3, "alternatives": 4,
               "validation": 5, "heading": 6, "text": 7, "example": 8, "axis": 9, "level": 10,
-              "sim_start": 11, "sim_step": 12, "sim_option": 13}
+              "sim_start": 11, "sim_step": 12, "sim_option": 13, "score_setup": 14,
+              "score_question": 15, "score_choice": 16, "score_band": 17}
 RELATIONS = ["related_to", "contrasts_with", "confused_with", "specializes", "generalizes",
              "requires", "supports", "contradicts", "mitigated_by", "illustrated_by"]
 CAPS = {"browse": 1, "detect": 2, "apply": 4, "quiz": 8, "compare": 16, "assess": 32,
-        "simulate": 64}
+        "simulate": 64, "score": 128}
 SCENARIOS = Path("knowledge") / "scenarios.json"  # under ROOT
 SIMULATIONS_CATEGORY = "Simulations"
 SIM_IMPACTS = ("positive", "neutral", "negative", "critical")
@@ -406,6 +407,18 @@ def load_applications(path=None):
         for k in WORKING_FIELDS:  # an application has no page links to resolve
             del o[k]
         objects.append(o)
+    for a in data.get("scorecard", []):
+        o = empty_object(a["id"], "protocol", a["title"], APPLICATIONS_CATEGORY, a["provenance"])
+        o.update(code=a.get("code", ""), definition=a["definition"], actions=a.get("actions", []),
+                 validation=a.get("validation", []), validation_status="sourced_scorecard",
+                 scorecard={"base": a["base"], "min": a["min"], "max": a["max"],
+                            "questions": [{"text": q["text"],
+                                           "choices": [list(c) for c in q["choices"]]}
+                                          for q in a["question"]],
+                            "bands": [list(b) for b in a["bands"]]})
+        for k in WORKING_FIELDS:
+            del o[k]
+        objects.append(o)
     return objects
 
 
@@ -463,6 +476,7 @@ def extract(source_dir):
         objects[o["id"]] = o
     report["applications"] = sum(1 for o in objects.values() if o.get("rubric"))
     report["simulations"] = sum(1 for o in objects.values() if o.get("simulation"))
+    report["scorecards"] = sum(1 for o in objects.values() if o.get("scorecard"))
     report["accepted"] = len(objects)
     ir = {"schema": SCHEMA, "pack": {**spec["pack"], "source_repository": src["repository"],
                                      "source_commit": src["commit"]},
@@ -500,6 +514,19 @@ def validate(ir):
                     len(lv) != 3 or not lv[0] or not lv[1] or "|" in "".join(lv)
                     for lv in levels):
                 errors.append(f"{oid}: a scale needs a name and 2+ [code, label, meaning]")
+        card = o.get("scorecard")
+        if card:
+            bands, qs = card.get("bands", []), card.get("questions", [])
+            texts = [str(x) for q in qs for c in q.get("choices", []) for x in c] + \
+                [str(x) for b in bands for x in b]
+            if (not qs or not bands or bands[-1][0] < card["max"]
+                    or any(len(c) != 3 or not isinstance(c[1], int) for q in qs
+                           for c in q.get("choices", []))
+                    or any(not 2 <= len(q.get("choices", [])) <= 6 for q in qs)
+                    or any("|" in t for t in texts)
+                    or [b[0] for b in bands] != sorted(b[0] for b in bands)):
+                errors.append(f"{oid}: a scorecard needs questions of 2-6 [label, weight, note] "
+                              "and ascending bands up to its max")
         sim = o.get("simulation")
         for step in (sim or {}).get("steps", []):
             ops = step.get("options", [])
@@ -535,6 +562,8 @@ def capabilities(o, has_quiz):
         caps.append("assess")
     if o.get("simulation"):
         caps.append("simulate")
+    if o.get("scorecard"):
+        caps.append("score")
     return caps
 
 
@@ -560,7 +589,7 @@ def derive_quiz(objects):
     quiz = []
     for i, o in enumerate(objects):
         if (len(o["definition"]) >= 60 and o["kind"] != "article" and not o.get("rubric")
-                and not o.get("simulation")):
+                and not o.get("simulation") and not o.get("scorecard")):
             pool = [r["target"] for r in o["relations"]] + by_cat[o["category"]] + ids
             picks, titles = [], {fold(o["title"]).lower()}
             for cand in pool:
@@ -630,6 +659,15 @@ def object_items(o):
                 yield ITEM_TYPES["sim_option"], "|".join(
                     [op["risk"], c["impact"], str(c["trust_delta"]), c["type"], op["text"],
                      c["text"]])
+    card = o.get("scorecard")
+    if card:
+        yield ITEM_TYPES["score_setup"], f"{card['base']}|{card['min']}|{card['max']}"
+        for q in card["questions"]:
+            yield ITEM_TYPES["score_question"], q["text"]
+            for label, weight, note in q["choices"]:
+                yield ITEM_TYPES["score_choice"], f"{weight}|{label}|{note}"
+        for top, code, label, meaning in card["bands"]:
+            yield ITEM_TYPES["score_band"], f"{top}|{code}|{label}|{meaning}"
     for axis in o.get("rubric", []):
         yield ITEM_TYPES["axis"], axis["name"]
         for code, label, meaning in axis["levels"]:

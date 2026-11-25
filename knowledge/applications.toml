@@ -147,3 +147,103 @@ provenance = { repository = "https://gitlab.com/korczis/prismatic-platform", com
     ["0.25", "30-90 days", "Old indicator, high probability of reassignment."],
     ["0.10", "Over 90 days", "Very old, retained only for historical correlation."],
   ]
+
+# Scorecards: questions whose choices add weights to a base score, clamped, then placed in the
+# first band whose `max` it does not exceed. A choice may carry a note the result repeats (a red
+# flag and its evidence). Same rules as the source: base, weights, clamp, bands.
+
+[[scorecard]]
+id = "applications/executive-frame"
+title = "Executive frame: a deal's risk rating before diligence"
+code = "DD"
+definition = "Prismatic's executive frame rates a deal from its intake before any diligence: a base of 50, raised by gaps in what the intake says, clamped to 0-100 and labelled A (low risk) to F (critical risk)."
+validation = [
+  "Every adjustment is a gap in the intake, not a finding: the score rates how much is unknown.",
+]
+base = 50
+min = 0
+max = 100
+bands = [
+  [20, "A", "Low Risk", ""],
+  [40, "B", "Moderate Risk", ""],
+  [60, "C", "Elevated Risk", ""],
+  [80, "D", "High Risk", ""],
+  [100, "F", "Critical Risk", ""],
+]
+provenance = { repository = "https://gitlab.com/korczis/prismatic-platform", commit = "49adc18f7bac", path = "apps/prismatic_dd/lib/prismatic_dd/executive_frame.ex" }
+
+  [[scorecard.question]]
+  text = "Are key people listed in the intake?"
+  choices = [["Yes", 0, ""], ["No", 10, "Unidentified Key Personnel (high): no key people listed in intake. Cannot assess management quality or continuity risk."]]
+
+  [[scorecard.question]]
+  text = "Is the jurisdiction known?"
+  choices = [["Yes", 0, ""], ["No, empty or unknown", 10, "Unclear Jurisdiction (medium): regulatory and legal framework cannot be assessed."]]
+
+  [[scorecard.question]]
+  text = "How urgent is the timeline?"
+  choices = [["Standard", 0, ""], ["Urgent", 10, "Compressed Timeline (medium): urgent timeline requested. Reduced time for thorough investigation increases oversight risk."]]
+
+  [[scorecard.question]]
+  text = "Is the deal over 50M?"
+  choices = [["No", 0, ""], ["Yes", 5, "High Complexity Deal (low): deal size 50M+ introduces multi-layer regulatory, financial, and integration complexity."]]
+
+  [[scorecard.question]]
+  text = "Is the risk hypothesis at least 80 characters?"
+  choices = [["Yes", 0, ""], ["No, shorter", 10, "Insufficient Risk Hypothesis (high): lack of specificity suggests unclear deal rationale or risk awareness."]]
+
+  [[scorecard.question]]
+  text = "Is the deal type one of the named types?"
+  choices = [["Yes", 0, ""], ["No, other", 5, ""]]
+
+[[scorecard]]
+id = "applications/nominee-risk"
+title = "Nominee risk: is an owner a front?"
+code = "CER"
+definition = "Prismatic's nominee-shareholder check weighs evidence that an owner genuinely runs the company against evidence of a nominee arrangement: from a base of 0.30, each item against a nominee takes 0.15 and each item for one adds 0.25, clamped to 0-1. Shown here in hundredths."
+actions = [
+  "Missing verifications (beneficial owner register, other affiliations, source of funds) are informational only and do not change the score.",
+]
+validation = [
+  "Each question counts one item; the source can count several operating-business items.",
+  "Not being found in legal profession registries counts against a nominee.",
+]
+base = 30
+min = 0
+max = 100
+bands = [
+  [19, "LOW", "Low", "Active business, long involvement, not a legal professional."],
+  [34, "LOW-MED", "Low-medium", "Active business but some verification gaps."],
+  [49, "MED", "Medium", "Mixed indicators or significant gaps."],
+  [69, "HIGH", "High", "Multiple nominee indicators or professional patterns."],
+  [100, "CRIT", "Critical", "Confirmed nominee arrangement."],
+]
+provenance = { repository = "https://gitlab.com/korczis/prismatic-platform", commit = "49adc18f7bac", path = "apps/prismatic_cer/lib/prismatic_cer/nominee_risk.ex" }
+
+  [[scorecard.question]]
+  text = "Is there evidence of a real operating business?"
+  choices = [["No", 0, ""], ["Yes", -15, ""]]
+
+  [[scorecard.question]]
+  text = "Did the owner found the company?"
+  choices = [["No", 0, ""], ["Yes", -15, "Founded the company (genuine involvement indicator)."]]
+
+  [[scorecard.question]]
+  text = "Has the owner been a director for 2 years or more?"
+  choices = [["No", 0, ""], ["Yes", -15, "Established or long-term operational involvement."]]
+
+  [[scorecard.question]]
+  text = "Is the owner absent from legal profession registries?"
+  choices = [["No, found there", 25, "A legal professional: a nominee indicator."], ["Yes, not found", -15, "Not found in legal profession registries."]]
+
+  [[scorecard.question]]
+  text = "Is the owner affiliated with more than 5 companies?"
+  choices = [["No", 0, ""], ["Yes", 25, "Affiliated with many companies (pattern indicator)."]]
+
+  [[scorecard.question]]
+  text = "Does the company show shell or holding indicators?"
+  choices = [["No", 0, ""], ["Yes", 25, "Company has shell/holding company indicators."]]
+
+  [[scorecard.question]]
+  text = "Is the ownership exactly 100% or 1%?"
+  choices = [["No", 0, ""], ["Yes", 25, "100% or minimal 1% ownership (common in nominee arrangements)."]]

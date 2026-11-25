@@ -66,7 +66,11 @@ typedef enum {
     PKP_ITEM_SIM_START, /* a simulation's starting trust, decimal */
     PKP_ITEM_SIM_STEP, /* one step's prompt; its options follow */
     PKP_ITEM_SIM_OPTION, /* "risk|impact|trust delta|consequence type|option|consequence" */
-    PKP_ITEM_LAST = PKP_ITEM_SIM_OPTION,
+    PKP_ITEM_SCORE_SETUP, /* a scorecard's "base|min|max" */
+    PKP_ITEM_SCORE_QUESTION, /* one question; its choices follow */
+    PKP_ITEM_SCORE_CHOICE, /* "weight|label|note" */
+    PKP_ITEM_SCORE_BAND, /* "max|code|label|meaning", ascending */
+    PKP_ITEM_LAST = PKP_ITEM_SCORE_BAND,
 } PkpItemType;
 
 enum {
@@ -77,6 +81,7 @@ enum {
     PKP_CAP_COMPARE = 16,
     PKP_CAP_ASSESS = 32,
     PKP_CAP_SIMULATE = 64,
+    PKP_CAP_SCORE = 128,
 };
 
 enum {

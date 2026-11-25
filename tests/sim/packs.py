@@ -92,6 +92,18 @@ def ir():
                                op("c", "Opt C", "positive", 10),
                                op("d", "Opt D", "critical", -40, "danger"),
                                op("e", "Opt E", "neutral", -10)]}]}))
+    # a scorecard: base 50, a question raising it, one lowering it, three bands
+    objects.append(obj("card", "Card", "F score", kind="protocol", definition="Short.",
+                       actions=["act on it"], validation=["score fairly"],
+                       scorecard={"base": 50, "min": 0, "max": 100,
+                                  "questions": [
+                                      {"text": "Raise?", "choices": [["No", 0, ""],
+                                                                     ["Yes", 40, "raised a lot"]]},
+                                      {"text": "Lower?", "choices": [["No", 0, ""],
+                                                                     ["Yes", -60, ""]]}],
+                                  "bands": [[30, "LO", "Low", "below thirty"],
+                                            [70, "MID", "Middle", ""],
+                                            [100, "HI", "High", "above seventy"]]}))
     return {"schema": pocket.SCHEMA,
             "pack": {"id": "ui", "title": "UI test pack", "version": "1",
                      "source_repository": "r", "source_commit": "c"},

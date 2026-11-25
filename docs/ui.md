@@ -29,6 +29,7 @@ flowchart LR
   h2 --> h2e0["What to do<br/><small>Objects with steps</small>"]
   h2 --> h2e1["Confusables<br/><small>Pairs to tell apart</small>"]
   h2 --> h2e2["Assess<br/><small>Grade a source, a claim, a finding</small>"]
+  h2 --> h2e3["Score a case<br/><small>Answer, see the score and its band</small>"]
   home --> h3["Train"]
   h3 --> h3e0["Which term?<br/><small>Pick the term of four</small>"]
   h3 --> h3e1["Manipulative?<br/><small>Manipulative or benign</small>"]
@@ -80,6 +81,16 @@ screen: its grades are rows, and the status line shows what the focused grade me
 puts the chosen codes together ("B2"), then each scale's grade with its meaning, then what to do
 with the grade and how to grade. The device never computes a grade; the reader chooses, the
 screen records and explains. A new scale is data, not code.
+
+### Scorecards
+
+Act > Score a case runs the Prismatic Platform's deterministic scoring rules: the executive
+frame (a deal's risk rating A to F from gaps in its intake) and the nominee-shareholder check
+(evidence for and against a front owner). One question per screen, each answer with its weight;
+the header keeps the running score, and the status line shows the note an answer carries (a red
+flag and its evidence). The result is the score, its band and what it means, and every answer
+that moved it with its note. The base, weights, clamp and bands are the source's, as data in
+`knowledge/applications.toml`; a new scorecard needs no code.
 
 ### Crisis simulations
 

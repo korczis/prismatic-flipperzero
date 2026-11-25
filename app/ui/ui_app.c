@@ -1,6 +1,7 @@
 #include "ui_app.h"
 
 #include "../core/pocket.h"
+#include "../core/scorecard.h"
 #include "../core/simulate.h"
 #include "../version.h"
 #include "icons.h"
@@ -35,6 +36,10 @@
 #define T_SIMULATE     (17u << 24) /* start (or restart) the frame object's simulation */
 #define T_SIM_PICK     (18u << 24) /* argument: the option chosen in the current step */
 #define T_SIM_NEXT     (19u << 24) /* the next step, or the outcome after the last */
+#define T_SCORE        (20u << 24) /* start (or restart) the frame object's scorecard */
+#define T_SCORE_PICK   (21u << 24) /* argument: the choice made on the current question */
+#define MAX_QUESTIONS  12u
+#define MAX_BANDS      8u
 #define MAX_STEPS      12u
 #define MAX_OPTIONS    8u
 #define MAX_AXES       4u
@@ -68,7 +73,9 @@
     X(Sessions)     \
     X(SimStep)      \
     X(SimResult)    \
-    X(SimOutcome)
+    X(SimOutcome)   \
+    X(Score)        \
+    X(ScoreResult)
 
 typedef enum {
 #define SCREEN_ENUM(name) Scr##name,
@@ -94,6 +101,7 @@ enum {
     HomeReview,
     HomeAssess,
     HomeSimulate,
+    HomeScore,
     HomeForget,
     HomeForgetNow,
     HomeSessions,
@@ -123,7 +131,7 @@ struct UiApp {
     PkpStatus pack_status;
     uint32_t open_ms;
     uint32_t scan_ms;
-    uint16_t cap_count[7];
+    uint16_t cap_count[8];
     uint32_t quiz_kind_count[3];
     uint16_t kind_count[KIND_CAP];
 
@@ -150,6 +158,15 @@ struct UiApp {
     uint32_t sim_step_item[MAX_STEPS];
     uint8_t sim_step_options[MAX_STEPS];
     uint8_t sim_pick[MAX_STEPS];
+    /* a scorecard: base and clamp, each question's item and choice count, the picks, bands */
+    int16_t sc_base, sc_min, sc_max;
+    uint8_t sc_questions;
+    uint32_t sc_q_item[MAX_QUESTIONS];
+    uint8_t sc_q_choices[MAX_QUESTIONS];
+    uint8_t sc_pick[MAX_QUESTIONS];
+    uint32_t sc_band_item;
+    uint8_t sc_bands;
+    char sc_band_text[160];
 
     PkpQuiz quiz;
     uint16_t quiz_asked; /* this session's answers, shown in the quiz header */
@@ -303,6 +320,7 @@ static uint32_t entry_count(UiApp* app, uint32_t entry) {
         [HomeReview] = progress_due_count(&app->progress),
         [HomeAssess] = app->cap_count[cap_index(PKP_CAP_ASSESS)],
         [HomeSimulate] = app->cap_count[cap_index(PKP_CAP_SIMULATE)],
+        [HomeScore] = app->cap_count[cap_index(PKP_CAP_SCORE)],
     };
     return entry < sizeof(counts) / sizeof(counts[0]) ? counts[entry] : 0;
 }
@@ -354,11 +372,12 @@ static const Hub hubs[] = {
      "%lu with steps to take",
      {{UiIconApply, HomeApply, "What to do", "%lu", "Objects with steps", ShareObjects},
       {UiIconCompare, HomeCompare, "Confusables", "%lu", "Pairs to tell apart", ShareObjects},
+      {UiIconCorrect, HomeAssess, "Assess", "%lu", "Grade a source, a claim, a finding", ShareNone},
       {UiIconCorrect,
-       HomeAssess,
-       "Assess",
+       HomeScore,
+       "Score a case",
        "%lu",
-       "Grade a source, a claim, a finding",
+       "Answer, see the score and its band",
        ShareNone}}},
     {UiIconQuiz,
      "Train",
@@ -517,7 +536,14 @@ static void render_objects(UiApp* app) {
 static void render_filter(UiApp* app) {
     Frame* f = top(app);
     static const char* const names[] = {
-        "Everything", "Detectors", "What to do", "Quiz", "Confusables", "Assess", "Simulations"};
+        "Everything",
+        "Detectors",
+        "What to do",
+        "Quiz",
+        "Confusables",
+        "Assess",
+        "Simulations",
+        "Scorecards"};
     char kind[24];
     bool by_kind = f->filter == 0;
     if(by_kind) pkp_kind_name(app->pack, (uint8_t)f->cat, kind, sizeof(kind));
@@ -791,6 +817,115 @@ static void render_sim_outcome(UiApp* app) {
     restore(app);
 }
 
+/* ------------------------------------------------------------------ scorecards */
+
+/* The score of the choices made on questions 0..last, clamped. */
+static int score_total(UiApp* app, int last) {
+    int sum = app->sc_base;
+    for(int q = 0; q <= last; q++) {
+        PkpItem it;
+        ScoreChoice ch;
+        if(pkp_item(app->pack, app->sc_q_item[q] + 1 + app->sc_pick[q], &it) == PKP_OK &&
+           score_choice((char*)str(app, it.text), &ch))
+            sum += ch.weight;
+    }
+    return score_clamp(sum, app->sc_min, app->sc_max);
+}
+
+/* One question: its choices as rows with their weight; the focused one's note as a hint. */
+static void render_score(UiApp* app) {
+    Frame* f = top(app);
+    char title[32], right[12]; /* title: "Question " and two 32-bit counts */
+    PkpItem it;
+    if(app->sc_questions == 0 || pkp_item(app->pack, app->sc_q_item[f->aux], &it) != PKP_OK) {
+        page_reset(app->page, "Score");
+        page_add(app->page, PageNote, "This scorecard could not be read.", 0);
+        restore(app);
+        return;
+    }
+    snprintf(
+        title, sizeof(title), "Question %lu of %u", (unsigned long)f->aux + 1, app->sc_questions);
+    page_reset(app->page, title);
+    page_set_title_icon(app->page, UiIconCorrect);
+    snprintf(right, sizeof(right), "%d", score_total(app, (int)f->aux - 1));
+    page_set_position(app->page, right);
+    page_add(app->page, PageParagraph, str(app, it.text), 0);
+    for(uint8_t c = 0; c < app->sc_q_choices[f->aux]; c++) {
+        ScoreChoice ch;
+        if(pkp_item(app->pack, app->sc_q_item[f->aux] + 1 + c, &it) == PKP_OK &&
+           score_choice((char*)str(app, it.text), &ch)) {
+            snprintf(right, sizeof(right), "%+d", ch.weight);
+            page_add_row(app->page, 0, ch.label, right, T_SCORE_PICK | c);
+            if(*ch.note) page_set_hint(app->page, ch.note);
+        }
+    }
+    restore(app);
+}
+
+/* The score, its band, what moved it (with the notes of the choices made), then the guidance. */
+static void render_score_result(UiApp* app) {
+    Frame* f = top(app);
+    PkpObject o;
+    char line[200];
+    page_reset(app->page, "Your score");
+    page_set_title_icon(app->page, UiIconCorrect);
+    if(pkp_object(app->pack, f->obj, &o) != PKP_OK) {
+        page_add(app->page, PageNote, "This scorecard could not be read.", 0);
+        restore(app);
+        return;
+    }
+    int score = score_total(app, app->sc_questions - 1);
+    ScoreBand band = {0, "?", "", ""};
+    app->sc_band_text[0] = '\0';
+    for(uint8_t b = 0; b < app->sc_bands; b++) {
+        PkpItem it;
+        ScoreBand x;
+        if(pkp_item(app->pack, app->sc_band_item + b, &it) == PKP_OK &&
+           score_band((char*)str(app, it.text), &x) && score <= x.top) {
+            snprintf(
+                app->sc_band_text,
+                sizeof(app->sc_band_text),
+                "%s|%s|%s",
+                x.code,
+                x.label,
+                x.meaning);
+            break;
+        }
+    }
+    char* code = app->sc_band_text;
+    char* bar = strchr(code, '|');
+    if(bar) { /* code|label|meaning, kept in the app because str() reuses its buffer */
+        *bar = '\0';
+        band.code = code;
+        band.label = bar + 1;
+        bar = strchr(bar + 1, '|');
+        if(bar) {
+            *bar = '\0';
+            band.meaning = bar + 1;
+        }
+    }
+    snprintf(line, sizeof(line), "%d %s %s", score, band.code, band.label);
+    page_add(app->page, PageBig, line, 0);
+    snprintf(line, sizeof(line), "%d score,%d to max", score - app->sc_min, app->sc_max - score);
+    page_add(app->page, PageBar, line, 0);
+    if(*band.meaning) page_add(app->page, PageNote, band.meaning, 0);
+    page_add(app->page, PageHeading, "What moved it", 0);
+    for(uint8_t q = 0; q < app->sc_questions; q++) {
+        PkpItem it;
+        ScoreChoice ch;
+        if(pkp_item(app->pack, app->sc_q_item[q] + 1 + app->sc_pick[q], &it) != PKP_OK ||
+           !score_choice((char*)str(app, it.text), &ch) || ch.weight == 0)
+            continue;
+        snprintf(line, sizeof(line), "%+d %.150s", ch.weight, ch.label);
+        page_add(app->page, PageBullet, line, 0);
+        if(*ch.note) page_add(app->page, PageNote, ch.note, 0);
+    }
+    page_add(app->page, PageLink, "Score again", T_SCORE);
+    section(app, &o, PKP_ITEM_ACTION, "What to do with it");
+    section(app, &o, PKP_ITEM_VALIDATION, "How it is scored");
+    restore(app);
+}
+
 static void render_article(UiApp* app) {
     Frame* f = top(app);
     PkpObject o;
@@ -817,6 +952,7 @@ static void render_article(UiApp* app) {
         page_add_icon(app->page, PageChip, UiIconCorrect, "Assess", T_ASSESS);
     if(o.caps & PKP_CAP_SIMULATE)
         page_add_icon(app->page, PageChip, UiIconTrainer, "Run", T_SIMULATE);
+    if(o.caps & PKP_CAP_SCORE) page_add_icon(app->page, PageChip, UiIconCorrect, "Score", T_SCORE);
     if(o.caps & PKP_CAP_QUIZ) page_add_icon(app->page, PageChip, UiIconQuiz, "Quiz", T_QUIZ);
     if(o.rel_count) {
         snprintf(line, sizeof(line), "%u", o.rel_count);
@@ -865,6 +1001,7 @@ static void render_article(UiApp* app) {
     if(markers) page_add_menu(app->page, "Run the detector", T_DETECT);
     if(o.caps & PKP_CAP_ASSESS) page_add_menu(app->page, "Assess", T_ASSESS);
     if(o.caps & PKP_CAP_SIMULATE) page_add_menu(app->page, "Run the simulation", T_SIMULATE);
+    if(o.caps & PKP_CAP_SCORE) page_add_menu(app->page, "Score it", T_SCORE);
     if(markers && look_alikes(app, &o, NULL))
         page_add_menu(app->page, "Compare with a look-alike", T_PICK | f->obj);
     if(o.caps & PKP_CAP_QUIZ) page_add_menu(app->page, "Take the quiz", T_QUIZ);
@@ -1474,6 +1611,12 @@ static void render(UiApp* app) {
     case ScrSimOutcome:
         render_sim_outcome(app);
         break;
+    case ScrScore:
+        render_score(app);
+        break;
+    case ScrScoreResult:
+        render_score_result(app);
+        break;
     default:
         render_about(app);
         break;
@@ -1556,6 +1699,37 @@ static void start_simulation(UiApp* app, uint16_t obj) {
     push(app, (Frame){.screen = ScrSimStep, .obj = obj, .aux = 0});
 }
 
+/* A scorecard's setup, questions and bands; restarting from the result leaves the run's own
+ * screens first. */
+static void start_score(UiApp* app, uint16_t obj) {
+    while(app->depth > 1 && (top(app)->screen == ScrScore || top(app)->screen == ScrScoreResult))
+        app->depth--;
+    PkpObject o;
+    int base = 0, min = 0, max = 100;
+    app->sc_questions = app->sc_bands = 0;
+    memset(app->sc_pick, 0, sizeof(app->sc_pick));
+    if(pkp_object(app->pack, obj, &o) != PKP_OK) o.items_count = 0;
+    for(uint32_t k = 0; k < o.items_count; k++) {
+        PkpItem it;
+        if(pkp_item(app->pack, o.items_first + k, &it) != PKP_OK) break;
+        if(it.type == PKP_ITEM_SCORE_SETUP) score_setup(str(app, it.text), &base, &min, &max);
+        if(it.type == PKP_ITEM_SCORE_QUESTION && app->sc_questions < MAX_QUESTIONS) {
+            app->sc_q_item[app->sc_questions] = o.items_first + k;
+            app->sc_q_choices[app->sc_questions++] = 0;
+        } else if(
+            it.type == PKP_ITEM_SCORE_CHOICE && app->sc_questions &&
+            app->sc_q_choices[app->sc_questions - 1] < MAX_OPTIONS) {
+            app->sc_q_choices[app->sc_questions - 1]++;
+        } else if(it.type == PKP_ITEM_SCORE_BAND && app->sc_bands < MAX_BANDS) {
+            if(app->sc_bands++ == 0) app->sc_band_item = o.items_first + k;
+        }
+    }
+    app->sc_base = (int16_t)base;
+    app->sc_min = (int16_t)min;
+    app->sc_max = (int16_t)max;
+    push(app, (Frame){.screen = ScrScore, .obj = obj, .aux = 0});
+}
+
 /* q < 0 (no readable question) opens the quiz screen anyway, which says it could not read one. */
 static void start_quiz(UiApp* app, int32_t q, uint16_t obj) {
     push(app, (Frame){.screen = ScrQuiz, .aux = q < 0 ? UINT32_MAX : (uint32_t)q, .obj = obj});
@@ -1600,6 +1774,7 @@ static void home(UiApp* app, uint32_t entry) {
         [HomeQuizzable] = PKP_CAP_QUIZ,
         [HomeAssess] = PKP_CAP_ASSESS,
         [HomeSimulate] = PKP_CAP_SIMULATE,
+        [HomeScore] = PKP_CAP_SCORE,
     };
     switch(entry) {
     case HomeTop:
@@ -1621,6 +1796,7 @@ static void home(UiApp* app, uint32_t entry) {
     case HomeQuizzable:
     case HomeAssess:
     case HomeSimulate:
+    case HomeScore:
         push(app, (Frame){.screen = ScrFilter, .filter = filters[entry]});
         break;
     case HomeInfo:
@@ -1708,6 +1884,16 @@ static void open_target(UiApp* app, uint32_t target, bool long_press) {
         break;
     case T_SIMULATE:
         start_simulation(app, f->obj);
+        break;
+    case T_SCORE:
+        start_score(app, f->obj);
+        break;
+    case T_SCORE_PICK:
+        app->sc_pick[f->aux] = (uint8_t)T_ARG(target);
+        if(f->aux + 1 < app->sc_questions)
+            push(app, (Frame){.screen = ScrScore, .obj = f->obj, .aux = f->aux + 1});
+        else
+            push(app, (Frame){.screen = ScrScoreResult, .obj = f->obj});
         break;
     case T_SIM_PICK:
         app->sim_pick[f->aux] = (uint8_t)T_ARG(target);
@@ -1822,7 +2008,7 @@ void ui_app_set_pack(UiApp* app, PkpReader* pack, PkpStatus status, uint32_t ope
         for(uint32_t i = 0; i < pkp_count(pack, PKP_SEC_OBJECTS); i++) {
             PkpObject o;
             if(pkp_object(pack, i, &o) != PKP_OK) continue;
-            for(uint8_t bit = 1; bit <= PKP_CAP_SIMULATE; bit <<= 1) {
+            for(unsigned bit = 1; bit <= PKP_CAP_SCORE; bit <<= 1) { /* 128 << 1 wraps a uint8 */
                 if(o.caps & bit) app->cap_count[cap_index(bit)]++;
             }
             if(o.kind < KIND_CAP) app->kind_count[o.kind]++;

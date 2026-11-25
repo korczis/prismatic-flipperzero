@@ -27,13 +27,15 @@ map              | kompendium | right,ok,ok,ok,ok:long,down,down,ok | Map | Map 
 map-focus        | kompendium | right,ok,ok,ok,ok:long,down,down,ok,up | Map | A focused neighbour's full name in the header; OK walks there
 detect           | kompendium | right,ok,ok,ok,down,ok | Detect | Detector: progress cells, one marker at a time: No, Unsure, Yes
 detect-result    | kompendium | right,ok,ok,ok,down,ok,left,ok,right,ok:long,right | DetectResult | Result: your marks as a number and a bar, never a score
-compare-pick     | ui | ok,ok,up,up,up,ok,ok,ok:long,down,down,ok | Compare | Compare with a look-alike: only those with markers of their own
-compare-result   | ui | ok,ok,up,up,up,ok,ok,ok:long,down,down,ok,ok,right,right,left,right,ok:long,right | DetectResult | Side by side: your marks for both, a count and a bar each, no ranking
+compare-pick     | ui | ok,ok,up,up,up,up,ok,ok,ok:long,down,down,ok | Compare | Compare with a look-alike: only those with markers of their own
+compare-result   | ui | ok,ok,up,up,up,up,ok,ok,ok:long,down,down,ok,ok,right,right,left,right,ok:long,right | DetectResult | Side by side: your marks for both, a count and a bar each, no ranking
 assess-scale     | kompendium | down,ok,down,down,ok,ok,down,ok,down | Assess | An assessment, one scale at a time: the focused grade's meaning in the status line
 assess-result    | kompendium | down,ok,down,down,ok,ok,down,ok,down,ok,down,ok | AssessResult | The grade: the codes together, each grade's meaning, then what to do with it
 sim-step         | kompendium | down,right,ok,down,down,ok,ok,down,ok | SimStep | A crisis simulation from the Prismatic Platform: the situation, your options and their risk
 sim-result       | kompendium | down,right,ok,down,down,ok,ok,down,ok,down,down,down,ok | SimResult | The consequence of a decision, and trust before and after it
 sim-outcome      | kompendium | down,right,ok,down,down,ok,ok,down,ok,down,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,ok,down,down,down,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,ok,down,down,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,ok,down,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,ok,down,ok | SimOutcome | The outcome by the source's rules, and every decision with its trust change
+score            | kompendium | down,ok,down,down,down,ok,ok,down,ok,down | Score | A scorecard from the Prismatic Platform: each answer's weight, the note it carries
+score-result     | kompendium | down,ok,down,down,down,ok,ok,down,ok,down,ok,ok,down,ok,ok,ok,down,ok | ScoreResult | The score, its band, and what moved it, with each red flag's evidence
 quiz             | kompendium | down,right,ok,ok | Quiz | Which term? The definition with the name masked
 quiz-options     | kompendium | down,right,ok,ok,ok | QuizOptions | Distractors are the objects the page calls confusable
 quiz-result      | kompendium | down,right,ok,ok,ok,ok | QuizResult | The answer, the definition, a link to the article

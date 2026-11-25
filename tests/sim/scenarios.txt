@@ -46,7 +46,7 @@ map-hub              | ui  | ok,ok,down,ok,down,down,ok,ok:long,down,down,ok,rig
 map-eject            | ui  | ok,ok,down,ok,down,down,ok,ok:long,down,down,eject,ok,insert | This object could not be
 paragraph-split      | ui  | ok,ok,down,ok,down,down,ok,down,down,down,down,down,down,down,down | The hub links to many;neighbours at a time.;More neighbours rotate
 home-grid            | ui  | right,right,left,left,down,right,down,left,up,ok | >Detect;>Library;>Act;>Train;>About;>Info;# Act;~ Objects with steps
-home-hints           | ui  | right,down,down | ~ 53 objects to read;~ 47: mark what you saw;~ 18 questions to try;~ Keys; hold Back: Home
+home-hints           | ui  | right,down,down | ~ 54 objects to read;~ 47: mark what you saw;~ 18 questions to try;~ Keys; hold Back: Home
 hub-library          | ui  | ok,down,ok,up,ok,ok,back,back,back,down,ok,back,down,ok | # Library;~ Chapters in book order;# By kind;>technique;>article;# article;>Bare article;# Everything [p1/2];~ A random article
 hub-detect           | ui  | right,ok,ok,back,down,ok | # Detect;# Detectors;~ Markers of a random one;[No|Unsure|Yes]
 hub-train            | ui  | down,right,ok,down,down,down,ok,ok | # Train;~ Pick the term of four;~ Manipulative or benign;# Quiz [1/18];technique - 
@@ -61,8 +61,8 @@ progress-no-rename   | ui  | down,right,ok,ok,ok,ok,back,norename,down,ok,left,r
 progress-card-full   | ui  | full,down,right,ok,ok,ok,ok,back:long,down,down,ok,right,right,right,right,right | The last save failed.;Answered: 1.
 progress-forget      | ui  | down,right,ok,ok,ok,ok,back:long,down,down,ok,right,right,right,right,right,down,ok,down,ok | # Forget progress?;>Forget it;Answered: 0.;!The last save failed.
 progress-stale-entry | ui  | down,right,ok,ok,ok,ok,back,ok,ok,ok,rekey,restart,restart,restart,down,right,ok,down,down,ok | # Review;Nothing is due now.
-compare              | ui  | ok,ok,up,up,up,ok,ok,ok:long,down,down,ok,ok,right,right,left,right,ok:long,right,down,down,down,down,down,down,ok | # Compare with;>Full object with every section;# Pair with the full object [1/5];# Full object with every section [3/5];# Side by side;2/2 markers observed;1/3 markers observed;# Full object with every section
-eject-compare        | ui  | ok,ok,up,up,up,ok,ok,ok:long,down,down,ok,eject,ok,insert | This marker could not be
+compare              | ui  | ok,ok,up,up,up,up,ok,ok,ok:long,down,down,ok,ok,right,right,left,right,ok:long,right,down,down,down,down,down,down,ok | # Compare with;>Full object with every section;# Pair with the full object [1/5];# Full object with every section [3/5];# Side by side;2/2 markers observed;1/3 markers observed;# Full object with every section
+eject-compare        | ui  | ok,ok,up,up,up,up,ok,ok,ok:long,down,down,ok,eject,ok,insert | This marker could not be
 assess               | ui  | down,ok,down,down,ok,ok,down,ok,down,ok,ok,down,down,down,down,down,down,down,ok,back,back | # Assess;>Rate a source;# Axis one [1/2];~ first meaning;# Axis two [2/2];# Your grade;B1 R;# What to do with it;>Assess again;# D assess
 assess-scales        | ui  | down,ok,down,down,ok,ok,right,right | # Axis one [1/4];A  Alpha: first meaning;# Axis two [2/4];2  Two: second
 assess-unreadable    | ui  | down,ok,down,down,ok,ok,eject,down,ok,insert | This assessment could not
@@ -72,13 +72,18 @@ session-foreign-torn | ui  | foreign,tornsession,ok,ok,down,ok,down,ok,down,ok,r
 session-card-full    | ui  | full,ok,ok,down,ok,down,ok,down,ok,right,right,left,down,down,ok,down,down | Not saved: the card is
 session-delete       | ui  | ok,ok,down,ok,down,ok,down,ok,right,right,left,down,down,ok,back:long,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,ok,down,ok | # Delete sessions?;>Delete them;Saved: 0.
 session-eject        | ui  | ok,ok,down,ok,down,ok,down,ok,right,right,left,down,down,ok,back:long,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,up,eject,ok,insert | 11-25 12:00 full;!>11-25
-session-compare      | ui  | ok,ok,up,up,up,ok,ok,ok:long,down,down,ok,ok,right,right,left,right,ok:long,right,down,down,down,down,down,down,down,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down | # Side by side;Saved: Info > Saved sessions.
+session-compare      | ui  | ok,ok,up,up,up,up,ok,ok,ok:long,down,down,ok,ok,right,right,left,right,ok:long,right,down,down,down,down,down,down,down,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down | # Side by side;Saved: Info > Saved sessions.
 session-saved-note   | ui  | ok,ok,down,ok,down,ok,down,ok,right,right,left,down,down,ok,down,down | Saved: Info > Saved sessions.
-sim-optimal          | ui  | ok,ok,up,ok,ok,down,ok,down,ok,down,down,down,ok,down,ok,down,down,down,ok | # Step 1 of 2 [trust 50];# Success;75 trust (+25);# Step 2 of 2 [trust 75];85 trust (+10);# Outcome;Optimal
-sim-acceptable       | ui  | ok,ok,up,ok,ok,down,ok,down,ok,down,down,down,ok,down,down,down,ok,down,down,down,ok | 65 trust (-10);# Outcome;Acceptable
-sim-suboptimal       | ui  | ok,ok,up,ok,ok,down,ok,down,ok,down,down,down,ok,down,down,ok,down,down,down,ok | 35 trust (-40);Suboptimal
-sim-critical         | ui  | ok,ok,up,ok,ok,down,ok,down,down,ok,down,down,down,ok,down,down,ok,down,down,down,ok | # Danger;20 trust (-30);0 trust (-20);Critical failure
-sim-back-repick      | ui  | ok,ok,up,ok,ok,down,ok,down,ok,back,down,ok | 75 trust (+25);# Danger;20 trust (-30)
-sim-again            | ui  | ok,ok,up,ok,ok,down,ok,down,ok,down,down,down,ok,down,ok,down,down,down,ok,down,down,down,ok,back | >Run it again;# Step 1 of 2 [trust 50];# E simulate
-sim-unreadable       | ui  | ok,ok,up,ok,ok,down,eject,ok,insert | This simulation could not
-sim-lost-step        | ui  | ok,ok,up,ok,ok,down,ok,down,eject,ok,insert | This step could not
+sim-optimal          | ui  | ok,ok,up,up,ok,ok,down,ok,down,ok,down,down,down,ok,down,ok,down,down,down,ok | # Step 1 of 2 [trust 50];# Success;75 trust (+25);# Step 2 of 2 [trust 75];85 trust (+10);# Outcome;Optimal
+sim-acceptable       | ui  | ok,ok,up,up,ok,ok,down,ok,down,ok,down,down,down,ok,down,down,down,ok,down,down,down,ok | 65 trust (-10);# Outcome;Acceptable
+sim-suboptimal       | ui  | ok,ok,up,up,ok,ok,down,ok,down,ok,down,down,down,ok,down,down,ok,down,down,down,ok | 35 trust (-40);Suboptimal
+sim-critical         | ui  | ok,ok,up,up,ok,ok,down,ok,down,down,ok,down,down,down,ok,down,down,ok,down,down,down,ok | # Danger;20 trust (-30);0 trust (-20);Critical failure
+sim-back-repick      | ui  | ok,ok,up,up,ok,ok,down,ok,down,ok,back,down,ok | 75 trust (+25);# Danger;20 trust (-30)
+sim-again            | ui  | ok,ok,up,up,ok,ok,down,ok,down,ok,down,down,down,ok,down,ok,down,down,down,ok,down,down,down,ok,back | >Run it again;# Step 1 of 2 [trust 50];# E simulate
+sim-unreadable       | ui  | ok,ok,up,up,ok,ok,down,eject,ok,insert | This simulation could not
+sim-lost-step        | ui  | ok,ok,up,up,ok,ok,down,ok,down,eject,ok,insert | This step could not
+score-high           | ui  | ok,ok,up,ok,ok,down,ok,down,ok,ok | # Question 1 of 2 [50];~ raised a lot;# Question 2 of 2 [90];# Your score;90 HI High
+score-low            | ui  | ok,ok,up,ok,ok,down,ok,ok,down,ok,down,down | -60 Yes;# Your score;0 LO Low;below thirty
+score-again          | ui  | ok,ok,up,ok,ok,down,ok,ok,ok,down,down,ok,back | 50 MID Middle;>Score again;# Question 1 of 2 [50];# F score
+score-unreadable     | ui  | ok,ok,up,ok,ok,down,eject,ok,insert | This scorecard could not
+score-lost-result    | ui  | ok,ok,up,ok,ok,down,ok,ok,eject,ok,insert | This scorecard could not

@@ -10,6 +10,7 @@
 #include "../../app/core/pocket.h"
 #include "../../app/core/progress.h"
 #include "../../app/core/session.h"
+#include "../../app/core/scorecard.h"
 #include "../../app/core/simulate.h"
 
 #include <stdio.h>
@@ -409,10 +410,10 @@ static int dump(const uint8_t* d, uint32_t size) {
                                         "source_commit", "generator", "licence"};
     /* sorted by name, as the Python reference prints them */
     static const char* const caps[] = {"apply", "assess", "browse", "compare",
-                                       "detect", "quiz", "simulate"};
+                                       "detect", "quiz", "score", "simulate"};
     static const uint8_t capbit[] = {PKP_CAP_APPLY, PKP_CAP_ASSESS, PKP_CAP_BROWSE,
                                      PKP_CAP_COMPARE, PKP_CAP_DETECT, PKP_CAP_QUIZ,
-                                     PKP_CAP_SIMULATE};
+                                     PKP_CAP_SCORE, PKP_CAP_SIMULATE};
     Mem m = {d, size, -1};
     PkpReader r;
     PkpStatus st = pkp_open(&r, mem_read, &m, size);
@@ -743,6 +744,28 @@ static void test_simulate(void) {
     CHECK(!sim_option_split(bad, &o));
 }
 
+/* Scorecard pieces: the setup, a choice, a band, and the clamp. */
+static void test_scorecard(void) {
+    int base, min, max;
+    CHECK(score_setup("50|0|100", &base, &min, &max) && base == 50 && max == 100);
+    CHECK(!score_setup("50|0", &base, &min, &max));
+    CHECK(!score_setup("50|9|1", &base, &min, &max)); /* min above max */
+    char c[] = "-15|Yes|Founded it.";
+    ScoreChoice ch;
+    CHECK(score_choice(c, &ch) && ch.weight == -15 && strcmp(ch.label, "Yes") == 0);
+    CHECK(strcmp(ch.note, "Founded it.") == 0);
+    char bad[] = "10|Yes";
+    CHECK(!score_choice(bad, &ch));
+    char b[] = "20|A|Low Risk|";
+    ScoreBand band;
+    CHECK(score_band(b, &band) && band.top == 20 && strcmp(band.code, "A") == 0);
+    CHECK(strcmp(band.label, "Low Risk") == 0 && band.meaning[0] == '\0');
+    char bad2[] = "20|A";
+    CHECK(!score_band(bad2, &band));
+    CHECK(score_clamp(130, 0, 100) == 100 && score_clamp(-5, 0, 100) == 0);
+    CHECK(score_clamp(42, 0, 100) == 42);
+}
+
 int main(int argc, char** argv) {
     if(argc != 3) {
         fprintf(stderr, "usage: test_pkp test|dump|walk <path>\n");
@@ -764,6 +787,7 @@ int main(int argc, char** argv) {
         test_progress();
         test_session();
         test_simulate();
+        test_scorecard();
         printf("native: %s (%d failure(s))\n", failures ? "FAIL" : "PASS", failures);
         rc = failures ? 1 : 0;
     }

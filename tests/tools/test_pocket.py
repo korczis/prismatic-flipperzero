@@ -545,6 +545,42 @@ class PackTest(unittest.TestCase):
                 pocket.validate(ir)
         o["simulation"]["steps"] = [step]
 
+    def test_scorecards(self):
+        """A scorecard becomes setup, question, choice and band items and the score capability."""
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "apps.toml"
+            path.write_text(
+                '[[scorecard]]\nid = "applications/s"\ntitle = "S"\ndefinition = "D"\n'
+                'base = 50\nmin = 0\nmax = 100\n'
+                'bands = [[40, "A", "Low", ""], [100, "B", "High", "m"]]\n'
+                'provenance = { repository = "r", commit = "c", path = "p" }\n'
+                '[[scorecard.question]]\ntext = "Q?"\n'
+                'choices = [["No", 0, ""], ["Yes", 10, "note"]]\n')
+            (o,) = pocket.load_applications(path)
+        self.assertEqual(o["scorecard"]["questions"][0]["choices"][1], ["Yes", 10, "note"])
+        ir = tiny_ir(5)
+        ir["objects"].append(o)
+        got = next(x for x in pocket.decode(pocket.encode(ir))["objects"] if x["id"] == o["id"])
+        self.assertIn("score", got["caps"])
+        texts = {(it["type"], it["text"]) for it in got["items"]}
+        self.assertIn((pocket.ITEM_TYPES["score_setup"], "50|0|100"), texts)
+        self.assertIn((pocket.ITEM_TYPES["score_choice"], "10|Yes|note"), texts)
+        self.assertIn((pocket.ITEM_TYPES["score_band"], "100|B|High|m"), texts)
+        card = o["scorecard"]
+        good = json.loads(json.dumps(card))
+        for broken in ({**good, "questions": []}, {**good, "bands": []},
+                       {**good, "bands": [[40, "A", "Low", ""]]},  # stops short of max
+                       {**good, "bands": [[100, "B", "x", ""], [40, "A", "y", ""]]},
+                       {**good, "questions": [{"text": "Q", "choices": [["No", 0, ""]]}]},
+                       {**good, "questions": [{"text": "Q", "choices": [["No", "x", ""],
+                                                                       ["Yes", 1, ""]]}]},
+                       {**good, "questions": [{"text": "Q", "choices": [["N|o", 0, ""],
+                                                                       ["Yes", 1, ""]]}]}):
+            o["scorecard"] = broken
+            with self.assertRaisesRegex(pocket.PocketError, "a scorecard needs"):
+                pocket.validate(ir)
+        o["scorecard"] = card
+
     def test_too_many_objects(self):
         ir = tiny_ir(1)
         base = ir["objects"][0]
