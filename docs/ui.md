@@ -30,6 +30,17 @@ of existing blocks, not new drawing code.
 | Bar | stacked bar (solid, empty, dots, hatch) with a legend | the share of each mark |
 | Steps | one cell per step, current one framed | detector progress |
 
+Two more surfaces sit on top of pages:
+
+- **The context menu.** Hold OK on any page without softkeys. A panel opens over the stippled
+  page with the page's actions: the detector, the quiz, the map of links, the category and
+  Home. The engine adds **Contents** whenever the page has two or more sections. Contents lists
+  the page's own headings, and choosing one moves that heading into the header.
+- **The map of links.** This is a bounded local graph: the object in the centre and four
+  neighbours around it (top, right, bottom, left). Confusable objects sit on dotted edges and
+  related ones on solid edges. The focused neighbour's full name replaces the title in the
+  header, and the header counts the windows of four ("2/3").
+
 ## Geometry
 
 The table below is read from the engine's `#define`s by `tools/docs.py`. Do not edit it by hand.
@@ -62,6 +73,12 @@ The table below is read from the engine's `#define`s by `tools/docs.py`. Do not 
 | Hold Up / Down | same as Left / Right | same | same |
 | OK | open the focused link | open the row | centre softkey (hold = its long action) |
 | Back | one step back, restoring the scroll and the focused row | same | same |
+| Hold OK | context menu (Back or holding OK again closes it) | context menu | the softkey's long action |
+
+On the map, a direction focuses the neighbour on that side. The same direction again shows the
+next four neighbours, and the opposite direction returns to the centre. OK on a neighbour
+re-centres the map there, so you can walk the book's links. Holding OK opens the neighbour's
+article, and OK on the centre opens the centre's article.
 
 These rules are taken from earlier small-screen designs:
 
@@ -73,6 +90,10 @@ These rules are taken from earlier small-screen designs:
   sits ("2/5"), the way a TI-83 title line names its current menu.
 - **Softkeys at fixed places.** Firmware-style inverted tabs keep the same position for the same
   meaning (TI-83 guidelines), and the detector's answers never move.
+- **No wall of text.** After three lines, a paragraph breaks at its next sentence end and
+  leaves a 3 px gap, so a long definition reads as short blocks.
+- **Details on demand.** The map's side boxes hold a few characters. The full name of the
+  focused box appears in the header.
 - **Body text at 10 px pitch** in haxrcorp4089, about 5 lines a screen. The firmware's own font
   table gives 11 as default and 9 as minimum for this font. Shorter lines read better than more
   lines (Duchnicky and Kolers, 1983).

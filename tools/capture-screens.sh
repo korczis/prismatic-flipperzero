@@ -27,6 +27,8 @@ walk terms "down,down,down,down,ok,ok,ok"
 walk manip "down,down,down,down,down,ok,left"
 walk browse "ok,ok"
 walk info "up,up,ok"
+walk menu "down,ok,ok,ok:long,ok"
+walk map "down,ok,ok,ok:long,down,down,ok,up"
 
 mkdir -p "$out"
 rm -f "$out"/*.png
@@ -47,6 +49,10 @@ keep manip/07-left.png 13-trainer-result.png
 keep browse/01-ok.png 14-categories.png
 keep browse/02-ok.png 15-objects.png
 keep info/03-ok.png 16-info.png
+keep menu/04-ok-long.png 17-menu.png
+keep menu/05-ok.png 18-contents.png
+keep map/07-ok.png 19-map.png
+keep map/08-up.png 20-map-focus.png
 
 firmware="$("$dev" cli "device_info" | awk -F': ' '/^firmware_version/ {gsub(/ /,"",$2); print $2}')"
 python3 - "$out/manifest.json" "$firmware" <<'PY'
@@ -68,6 +74,10 @@ captions = [
     ("14-categories.png", "Browse: the Kompendium's chapters and collections"),
     ("15-objects.png", "A category; Back returns to the same row"),
     ("16-info.png", "Pack and device: source, contents, measured open and scan times"),
+    ("17-menu.png", "Hold OK: the page's actions in a panel over the page"),
+    ("18-contents.png", "Contents: the article's sections; OK jumps there"),
+    ("19-map.png", "Map of links: the object and four neighbours, confusables dotted"),
+    ("20-map-focus.png", "A focused neighbour's full name in the header; OK walks there"),
 ]
 json.dump({"captured": datetime.date.today().isoformat(), "firmware": sys.argv[2],
            "command": "tools/capture-screens.sh",

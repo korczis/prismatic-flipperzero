@@ -23,6 +23,7 @@
 #define T_HOME      (7u << 24) /* argument: a home entry */
 #define T_PAGE      (8u << 24) /* argument: 0 previous, 1 next */
 #define T_OPTION    (9u << 24) /* argument: quiz option */
+#define T_MAP       (10u << 24) /* argument: object at the centre of a map */
 #define T_KIND(t)   ((t) & 0xFF000000u)
 #define T_ARG(t)    ((t) & 0x00FFFFFFu)
 
@@ -40,10 +41,12 @@ typedef enum {
     ScrQuizResult,
     ScrInfo,
     ScrAbout,
+    ScrMap,
 } Screen;
 
 enum {
-    HomeBrowse = 1,
+    HomeTop = 0, /* "Home" in a context menu: back to the first screen */
+    HomeBrowse,
     HomeDetect,
     HomeApply,
     HomeCompare,
@@ -201,6 +204,7 @@ static void restore(UiApp* app) {
         /* a list whose every record failed: say so rather than show nothing */
         page_add(app->page, PageNote, "Nothing could be read. Is the SD card in?", 0);
     }
+    if(app->depth > 1) page_add_menu(app->page, "Home", T_HOME | HomeTop);
     page_restore(app->page, top(app)->top, top(app)->sel);
 }
 
@@ -389,6 +393,7 @@ static void render_article(UiApp* app) {
     }
     if(o.rel_count > 0 && (!has_confused || o.rel_count > 1)) {
         page_add(app->page, PageHeading, "See also", 0);
+        page_add(app->page, PageLink, "Map of links", T_MAP | f->obj);
         add_relation_links(app, &o, confused, true);
     }
     if(pkp_category(app->pack, o.category, &c) == PKP_OK) {
@@ -396,7 +401,34 @@ static void render_article(UiApp* app) {
         page_add(app->page, PageLink, line, T_CATEGORY | o.category);
     }
     page_add(app->page, PageNote, "Markers describe; they never prove.", 0);
+    if(markers) page_add_menu(app->page, "Run the detector", T_DETECT);
+    if(o.caps & PKP_CAP_QUIZ) page_add_menu(app->page, "Take the quiz", T_QUIZ);
+    if(o.rel_count) page_add_menu(app->page, "Map of links", T_MAP | f->obj);
+    page_add_menu(app->page, "Open the category", T_CATEGORY | o.category);
     restore(app);
+}
+
+/* The local map: the object in the middle, its links around it, confusables dotted. */
+static void render_map(UiApp* app) {
+    Frame* f = top(app);
+    PkpObject o, t;
+    if(pkp_object(app->pack, f->obj, &o) != PKP_OK) {
+        page_reset(app->page, "Map");
+        page_add(app->page, PageNote, "This object could not be read.", 0);
+        return;
+    }
+    page_reset(app->page, str(app, o.title));
+    page_set_graph(app->page, str(app, o.title), T_OBJECT | f->obj);
+    uint8_t confused = relation_type(app, "confused_with");
+    for(int pass = 0; pass < 2; pass++) {
+        for(uint32_t k = 0; k < o.rel_count; k++) {
+            PkpRelation r;
+            if(pkp_relation(app->pack, o.rel_first + k, &r) != PKP_OK) continue;
+            if((r.type == confused) != (pass == 0)) continue;
+            if(pkp_object(app->pack, r.target, &t) != PKP_OK) continue;
+            page_add_node(app->page, str(app, t.title), pass == 0 ? 1 : 0, T_MAP | r.target);
+        }
+    }
 }
 
 static void render_chapter(UiApp* app) {
@@ -631,6 +663,7 @@ static void render_about(UiApp* app) {
     page_add(app->page, PageBullet, "Left/Right: previous/next section", 0);
     page_add(app->page, PageBullet, "Hold Up/Down: same as Left/Right", 0);
     page_add(app->page, PageBullet, "OK: open; Back: one step back", 0);
+    page_add(app->page, PageBullet, "Hold OK: actions, contents, map", 0);
     page_add(
         app->page,
         PageNote,
@@ -678,6 +711,9 @@ static void render(UiApp* app) {
     case ScrInfo:
         render_info(app);
         break;
+    case ScrMap:
+        render_map(app);
+        break;
     default:
         render_about(app);
         break;
@@ -713,7 +749,12 @@ static void start_quiz(UiApp* app, int32_t q, uint16_t obj) {
 
 static void home(UiApp* app, uint32_t entry) {
     static const uint8_t filters[] = {0, 0, PKP_CAP_DETECT, PKP_CAP_APPLY, PKP_CAP_COMPARE};
-    if(entry == HomeBrowse)
+    if(entry == HomeTop) {
+        app->depth = 1;
+        top(app)->sel = 0;
+        top(app)->top = 0;
+        render(app);
+    } else if(entry == HomeBrowse)
         push(app, (Frame){.screen = ScrCategories});
     else if(entry <= HomeCompare)
         push(app, (Frame){.screen = ScrFilter, .filter = filters[entry]});
@@ -728,9 +769,15 @@ static void home(UiApp* app, uint32_t entry) {
             0);
 }
 
-static void open_target(UiApp* app, uint32_t target) {
+static void open_target(UiApp* app, uint32_t target, bool long_press) {
     Frame* f = top(app);
     switch(T_KIND(target)) {
+    case T_MAP:
+        /* OK walks the map to that object; holding OK opens its article */
+        push(
+            app,
+            (Frame){.screen = long_press ? ScrArticle : ScrMap, .obj = (uint16_t)T_ARG(target)});
+        break;
     case T_HOME:
         home(app, T_ARG(target));
         break;
@@ -856,7 +903,7 @@ bool ui_app_input(UiApp* app, PageKey key, PagePress press) {
         render(app);
         break;
     case PageActOpen:
-        open_target(app, act.target);
+        open_target(app, act.target, act.long_press);
         break;
     case PageActSoftkey:
         softkey(app, act.target, act.long_press);

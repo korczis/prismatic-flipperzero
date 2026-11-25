@@ -11,7 +11,7 @@ category-back        | ui  | ok,down,ok,down,back,back | # Browse;>B short;Bare 
 article-full         | ui  | ok,down,ok,down,ok,down,down,down,down,down:long,right,right,right,right,right,right,right,left,up:long,left:long | technique - F-1;>Run the detector (3);>Take the quiz;# How to recognise it [1/7];# What to do [2/7];# When to escalate [3/7];# Don't confuse with [4/7];# Validation tests [5/7];# Chapters [6/7];# See also [7/7];In: B short;Markers describe
 article-links        | ui  | ok,down,ok,down,ok,right,right,right,down,ok,back,right,right,right,down,down,down,ok,back,down,ok | # B short;Bare article;Short.;article;Huge chapter;# Browse
 chapter              | ui  | ok,down,ok,down,ok,right,right,right,right,right,down,ok,down,down,ok | # Full object with every section;Chapter one;First chapter text.;>Next: Chapter two;Second chapter text.
-huge-page            | ui  | ok,down,ok,down,down,ok,right,down,ok,down:long,down,up,up:long | # Huge chapter;Everything;word word;more in the pack than fits
+huge-page            | ui  | ok,down,ok,down,down,down,ok,right,down,ok,down:long,down,up,up:long | # Huge chapter;Everything;word word;more in the pack than fits
 detector             | ui  | ok,down,ok,down,ok,down,ok,left,ok,right,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down | # Full object with every section [1/3];0/3;[No|?|Yes];[2/3];[3/3];1/3 markers observed;1,1,1,0;Your marks only;# Your observations;Rule out first;Validate;Next steps;When to escalate
 detector-na          | ui  | ok,down,ok,down,ok,down,ok,ok:long,ok:long,ok:long | 0/3 markers observed;0,0,0,3
 detector-from-list   | ui  | down,ok,ok,down,ok,ok,ok,ok,ok,ok,ok,ok,ok,ok | # Detectors;Long entry 00;markers observed
@@ -38,3 +38,10 @@ bad-quiz-article     | bad | down,down,down,ok,ok,down,down,down,down,ok | # Con
 eject-back-article   | ui  | ok,down,ok,down,ok,right,right,right,right,right,right,right,down,ok,eject,back,insert | This object could not be
 eject-quiz-random    | ui  | down,down,down,down,eject,ok,insert,back | # Quiz;This question could not be
 eject-chapter        | ui  | ok,down,ok,down,ok,right,right,right,right,right,down,eject,ok,insert | This chapter could not be
+menu-and-contents    | ui  | ok,down,ok,down,ok,ok:long,down,up,up,down,ok,down,ok,ok:long,back,ok:long,ok:long,ok:long,down,ok | [Actions];>Contents;>Home;[Contents];>What to do;# What to do [2/7];# Full object with every section [1/3]
+menu-detector-quiz   | ui  | ok,down,ok,down,ok,ok:long,down,down,ok,back,ok:long,down,down,down,down,ok | # Which term?;# B short
+list-menu-home       | ui  | ok,ok,ok:long,ok,ok:long | [Actions];>Home;# Prismatic Pocket [1/8]
+map-small            | ui  | ok,down,ok,down,ok,right,right,right,right,right,right,right,down,ok,up,left,down,right,down,right,left,ok,back,up,ok:long,back,right,ok | o Full object with every section;*^ Bare article;*> Huge chapter;Short.;o Huge chapter
+map-hub              | ui  | ok,down,ok,down,down,ok,ok:long,down,down,ok,right,right,right,up,up,up,down,left,ok,back,right,ok:long | # Hub of links [1/3];# Hub of links [2/3];# Hub of links [3/3];o Hub of links;Long entry 05;technique - L-1
+map-eject            | ui  | ok,down,ok,down,down,ok,ok:long,down,down,eject,ok,insert | This object could not be
+paragraph-split      | ui  | ok,down,ok,down,down,ok,down,down,down,down,down | The hub links to many;neighbours at a time.;More neighbours rotate into

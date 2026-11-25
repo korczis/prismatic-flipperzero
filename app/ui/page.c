@@ -11,6 +11,10 @@
 #define TITLE_CAP 48u
 #define POS_CAP   12u
 #define KEY_CAP   10u
+#define MENU_CAP  8u
+#define LABEL_CAP 48u
+#define NODE_CAP  24u
+#define CONTENTS  0xFFFFFFFEu /* the engine's own "Contents" menu entry */
 
 /* Geometry: docs/ui.md explains every number. */
 #define SCREEN_W  128
@@ -70,6 +74,26 @@ struct Page {
     char position[POS_CAP];
     bool position_set;
     char softkey[3][KEY_CAP];
+    /* context menu and the outline it can open */
+    char menu_label[MENU_CAP][LABEL_CAP];
+    uint32_t menu_target[MENU_CAP];
+    uint8_t menu_n;
+    uint8_t overlay; /* OverlayNone, OverlayMenu, OverlayOutline */
+    int16_t overlay_sel;
+    /* local graph: node 0 is the centre */
+    bool graph;
+    char node_label[NODE_CAP + 1][LABEL_CAP];
+    uint32_t node_target[NODE_CAP + 1];
+    uint8_t node_kind[NODE_CAP + 1];
+    uint8_t nodes_n; /* neighbours, without the centre */
+    uint8_t node_window; /* first neighbour shown */
+    int8_t node_focus; /* 0 centre, 1..4 top, right, bottom, left */
+};
+
+enum {
+    OverlayNone,
+    OverlayMenu,
+    OverlayOutline,
 };
 
 /* ------------------------------------------------------------------ building */
@@ -113,6 +137,33 @@ void page_reset(Page* p, const char* title) {
     p->position[0] = '\0';
     copy_str(p->title, title, TITLE_CAP);
     memset(p->softkey, 0, sizeof(p->softkey));
+    p->menu_n = 0;
+    p->overlay = OverlayNone;
+    p->graph = false;
+    p->nodes_n = 0;
+    p->node_window = 0;
+    p->node_focus = 0;
+}
+
+void page_add_menu(Page* p, const char* label, uint32_t target) {
+    if(p->menu_n >= MENU_CAP) return;
+    copy_str(p->menu_label[p->menu_n], label, LABEL_CAP);
+    p->menu_target[p->menu_n++] = target;
+}
+
+void page_set_graph(Page* p, const char* centre, uint32_t target) {
+    p->graph = true;
+    copy_str(p->node_label[0], centre, LABEL_CAP);
+    p->node_target[0] = target;
+    p->node_kind[0] = 0;
+}
+
+void page_add_node(Page* p, const char* label, uint8_t kind, uint32_t target) {
+    if(p->nodes_n >= NODE_CAP) return;
+    uint8_t i = ++p->nodes_n;
+    copy_str(p->node_label[i], label, LABEL_CAP);
+    p->node_target[i] = target;
+    p->node_kind[i] = kind;
 }
 
 void page_set_softkeys(Page* p, const char* left, const char* center, const char* right) {
@@ -260,7 +311,7 @@ static void wrap(Page* p, Canvas* canvas, uint16_t b, uint8_t height) {
     const Block* blk = &p->blocks[b];
     const char* s = p->text + blk->off;
     int avail = right_of(blk->style) - indent_of(blk->style);
-    uint16_t start = 0, last_space = 0, i = 0, first_line = p->lines_n;
+    uint16_t start = 0, last_space = 0, i = 0, first_line = p->lines_n, run = 0;
     int width = 0;
     bool have_space = false;
     canvas_set_font(canvas, font_of(blk->style));
@@ -269,6 +320,7 @@ static void wrap(Page* p, Canvas* canvas, uint16_t b, uint8_t height) {
         if(width + w > avail && i > start) {
             uint16_t cut = have_space ? last_space : i;
             push_line(p, b, blk->off + start, cut - start, height, LINE_BODY);
+            run++;
             start = have_space ? (uint16_t)(last_space + 1) : i;
             i = start;
             width = 0;
@@ -281,6 +333,17 @@ static void wrap(Page* p, Canvas* canvas, uint16_t b, uint8_t height) {
         }
         width += w;
         i++;
+        /* a paragraph three lines long breaks at its next sentence end: no wall of text */
+        if(blk->style == PageParagraph && run >= 3 && s[i - 1] == '.' && i < blk->len &&
+           s[i] == ' ') {
+            push_line(p, b, blk->off + start, i - start, height, LINE_BODY);
+            push_gap(p, b, GAP);
+            start = (uint16_t)(i + 1);
+            i = start;
+            width = 0;
+            have_space = false;
+            run = 0;
+        }
     }
     if(i > start || p->lines_n == first_line) {
         push_line(p, b, blk->off + start, i - start, height, LINE_BODY);
@@ -664,17 +727,32 @@ static int16_t current_heading(const Page* p, uint16_t* index, uint16_t* count) 
     return at;
 }
 
+static int node_at(const Page* p, int side);
+
 /* The header's title (the current section once its heading scrolled by) and position. */
 static int16_t header_of(const Page* p, const char** t, size_t* tn, char* pos) {
     uint16_t index, count;
     int16_t heading = current_heading(p, &index, &count);
     *t = p->title;
     *tn = strlen(p->title);
+    if(p->graph && p->node_focus > 0) {
+        /* the map's side boxes are small: the focused one's full name goes in the header */
+        *t = p->node_label[node_at(p, p->node_focus)];
+        *tn = strlen(*t);
+    }
     if(heading >= 0) {
         *t = p->text + p->blocks[heading].off;
         *tn = p->blocks[heading].len;
     }
     pos[0] = '\0';
+    if(p->graph && p->nodes_n > 4) {
+        unsigned windows = (p->nodes_n + 3u) / 4u, at = p->node_window / 4u + 1u;
+        pos[0] = (char)('0' + at % 10);
+        pos[1] = '/';
+        pos[2] = (char)('0' + windows % 10);
+        pos[3] = '\0';
+        return heading;
+    }
     if(p->position_set) {
         copy_str(pos, p->position, POS_CAP);
     } else if(p->list && p->focus >= 0) {
@@ -773,10 +851,182 @@ static void draw_softkey(Canvas* canvas, int slot, const char* label) {
     canvas_set_color(canvas, ColorBlack);
 }
 
+/* ------------------------------------------------------------------ overlays and graph */
+
+/* Line indexes of the page's section headings, in order. */
+static uint8_t outline(const Page* p, int16_t* at, uint8_t cap) {
+    uint8_t n = 0;
+    for(uint16_t i = 0; i < p->lines_n && n < cap; i++) {
+        const Line* l = &p->lines[i];
+        if(p->blocks[l->block].style == PageHeading && (l->flags & LINE_FIRST))
+            at[n++] = (int16_t)i;
+    }
+    return n;
+}
+
+static uint8_t menu_count(const Page* p) {
+    int16_t at[2];
+    return (uint8_t)(p->menu_n + (outline(p, at, 2) >= 2 ? 1 : 0));
+}
+
+/* Entry i of the context menu: "Contents" first when the page has sections. */
+static const char* menu_entry(const Page* p, uint8_t i, uint32_t* target) {
+    int16_t at[2];
+    if(outline(p, at, 2) >= 2) {
+        if(i == 0) {
+            *target = CONTENTS;
+            return "Contents";
+        }
+        i--;
+    }
+    *target = p->menu_target[i];
+    return p->menu_label[i];
+}
+
+static uint8_t overlay_count(const Page* p) {
+    int16_t at[MENU_CAP * 8];
+    return p->overlay == OverlayMenu ? menu_count(p) : outline(p, at, MENU_CAP * 8);
+}
+
+static const char* overlay_label(const Page* p, uint8_t i, char* buf, size_t cap) {
+    uint32_t target;
+    if(p->overlay == OverlayMenu) return menu_entry(p, i, &target);
+    int16_t at[MENU_CAP * 8];
+    outline(p, at, MENU_CAP * 8);
+    const Line* l = &p->lines[at[i]];
+    const Block* b = &p->blocks[l->block];
+    size_t n = b->len < cap - 1 ? b->len : cap - 1;
+    memcpy(buf, p->text + b->off, n);
+    buf[n] = '\0';
+    return buf;
+}
+
+#define PANEL_X    12
+#define PANEL_Y    3
+#define PANEL_W    104
+#define PANEL_H    58
+#define PANEL_ROWS 4
+
+/* A panel over a stippled page: title strip, four rows, the selected one inverted. */
+static void draw_overlay(Canvas* canvas, const Page* p) {
+    char buf[64], fitted[64];
+    for(int y = 0; y < SCREEN_H; y += 2) {
+        for(int x = y % 4 == 0 ? 0 : 1; x < SCREEN_W; x += 2)
+            canvas_draw_dot(canvas, x, y);
+    }
+    canvas_set_color(canvas, ColorWhite);
+    canvas_draw_rbox(canvas, PANEL_X, PANEL_Y, PANEL_W, PANEL_H, 3);
+    canvas_set_color(canvas, ColorBlack);
+    canvas_draw_rframe(canvas, PANEL_X, PANEL_Y, PANEL_W, PANEL_H, 3);
+    canvas_draw_rbox(canvas, PANEL_X, PANEL_Y, PANEL_W, 12, 3);
+    canvas_set_color(canvas, ColorWhite);
+    canvas_set_font(canvas, FontPrimary);
+    canvas_draw_str(
+        canvas, PANEL_X + 5, PANEL_Y + 10, p->overlay == OverlayMenu ? "Actions" : "Contents");
+    canvas_set_color(canvas, ColorBlack);
+    canvas_set_font(canvas, FontSecondary);
+    uint8_t n = overlay_count(p);
+    int first = p->overlay_sel > PANEL_ROWS - 1 ? p->overlay_sel - (PANEL_ROWS - 1) : 0;
+    for(int r = 0; r < PANEL_ROWS && first + r < n; r++) {
+        int i = first + r, y = PANEL_Y + 14 + r * 10;
+        const char* label = overlay_label(p, (uint8_t)i, buf, sizeof(buf));
+        fit(canvas, label, strlen(label), PANEL_W - 12, fitted, sizeof(fitted));
+        if(i == p->overlay_sel) {
+            canvas_draw_rbox(canvas, PANEL_X + 2, y, PANEL_W - 4, 10, 2);
+            canvas_set_color(canvas, ColorWhite);
+        }
+        canvas_draw_str(canvas, PANEL_X + 6, y + 8, fitted);
+        canvas_set_color(canvas, ColorBlack);
+    }
+    if(n > PANEL_ROWS) {
+        int track = PANEL_ROWS * 10, thumb = track * PANEL_ROWS / n;
+        int ty = PANEL_Y + 14 + (track - thumb) * first / (n - PANEL_ROWS);
+        canvas_draw_box(canvas, PANEL_X + PANEL_W - 3, ty, 1, (size_t)thumb);
+    }
+}
+
+/* Node box for side k (0 centre, 1 top, 2 right, 3 bottom, 4 left). */
+static void node_box(int k, int* x, int* y, int* w, int* h) {
+    static const int8_t box[5][4] = {
+        {36, 31, 56, 13}, {14, 14, 100, 11}, {95, 32, 33, 11}, {14, 52, 100, 11}, {0, 32, 33, 11}};
+    *x = box[k][0];
+    *y = box[k][1];
+    *w = box[k][2];
+    *h = box[k][3];
+}
+
+static int node_at(const Page* p, int side) {
+    int i = p->node_window + side;
+    return side == 0 ? 0 : i <= p->nodes_n ? i : -1;
+}
+
+static void draw_edge(Canvas* canvas, int x1, int y1, int x2, int y2, bool dotted) {
+    if(!dotted) {
+        canvas_draw_line(canvas, x1, y1, x2, y2);
+        return;
+    }
+    int steps = (x2 > x1 ? x2 - x1 : x1 - x2) + (y2 > y1 ? y2 - y1 : y1 - y2);
+    for(int t = 0; t <= steps; t += 2)
+        canvas_draw_dot(canvas, x1 + (x2 - x1) * t / steps, y1 + (y2 - y1) * t / steps);
+}
+
+static void draw_graph(Canvas* canvas, const Page* p) {
+    static const int8_t anchor[5][4] = {
+        /* edge from the centre box to each side: centre point, then node point */
+        {0, 0, 0, 0},
+        {64, 31, 64, 25},
+        {92, 37, 95, 37},
+        {64, 44, 64, 52},
+        {36, 37, 33, 37}};
+    char fitted[LABEL_CAP + 4];
+    canvas_set_font(canvas, FontSecondary);
+    for(int side = 1; side <= 4; side++) {
+        int i = node_at(p, side);
+        if(i < 0) continue;
+        draw_edge(
+            canvas,
+            anchor[side][0],
+            anchor[side][1],
+            anchor[side][2],
+            anchor[side][3],
+            p->node_kind[i] == 1);
+    }
+    for(int side = 0; side <= 4; side++) {
+        int i = node_at(p, side), x, y, w, h;
+        if(i < 0) continue;
+        node_box(side, &x, &y, &w, &h);
+        canvas_set_color(canvas, ColorWhite);
+        canvas_draw_box(canvas, x, y, (size_t)w, (size_t)h);
+        canvas_set_color(canvas, ColorBlack);
+        bool focused = p->node_focus == side;
+        if(focused || side == 0) {
+            canvas_draw_rbox(canvas, x, y, (size_t)w, (size_t)h, 2);
+            canvas_set_color(canvas, ColorWhite);
+        } else {
+            canvas_draw_rframe(canvas, x, y, (size_t)w, (size_t)h, 2);
+        }
+        if(side == 0 && !focused) {
+            /* the centre is solid; unfocused it gets an inner frame instead of inversion */
+            canvas_draw_rframe(canvas, x + 1, y + 1, (size_t)(w - 2), (size_t)(h - 2), 2);
+        }
+        canvas_set_font(canvas, side == 0 ? FontPrimary : FontSecondary);
+        const char* label = p->node_label[i];
+        fit(canvas, label, strlen(label), w - 6, fitted, sizeof(fitted));
+        int tw = canvas_string_width(canvas, fitted);
+        canvas_draw_str(canvas, x + (w - tw) / 2, y + h - 3, fitted);
+        canvas_set_color(canvas, ColorBlack);
+    }
+}
+
 void page_draw(Page* p, Canvas* canvas) {
     canvas_clear(canvas);
     canvas_set_color(canvas, ColorBlack);
     if(p->dirty) layout(p, canvas);
+    if(p->graph) {
+        draw_graph(canvas, p);
+        draw_header(canvas, p);
+        return;
+    }
     int y = HEADER_H, bottom = body_bottom(p);
     for(int16_t i = p->top; i < (int16_t)p->lines_n && y < bottom; i++) {
         draw_line(canvas, p, &p->lines[i], y);
@@ -791,6 +1041,7 @@ void page_draw(Page* p, Canvas* canvas) {
     draw_scrollbar(canvas, p);
     for(int k = 0; k < 3; k++)
         draw_softkey(canvas, k, p->softkey[k]);
+    if(p->overlay != OverlayNone) draw_overlay(canvas, p);
 }
 
 /* ------------------------------------------------------------------ input */
@@ -893,13 +1144,78 @@ static void jump(Page* p, int dir) {
     p->focus = -1;
 }
 
+static PageAction overlay_input(Page* p, PageKey key, PagePress press) {
+    PageAction act = {PageActNone, 0, false};
+    int n = overlay_count(p);
+    if(key == PageKeyBack || (key == PageKeyOk && press == PagePressLong)) {
+        p->overlay = OverlayNone; /* dismiss; Back does not leave the page */
+    } else if(key == PageKeyUp || key == PageKeyDown) {
+        p->overlay_sel = (int16_t)((p->overlay_sel + (key == PageKeyDown ? 1 : n - 1)) % n);
+    } else if(key == PageKeyOk && p->overlay == OverlayMenu) {
+        uint32_t target;
+        menu_entry(p, (uint8_t)p->overlay_sel, &target);
+        if(target == CONTENTS) {
+            /* open the outline on the section in view */
+            uint16_t index, count;
+            current_heading(p, &index, &count);
+            p->overlay = OverlayOutline;
+            p->overlay_sel = (int16_t)(index ? index - 1 : 0);
+        } else {
+            p->overlay = OverlayNone;
+            act.kind = PageActOpen;
+            act.target = target;
+        }
+    } else if(key == PageKeyOk) {
+        /* outline: the chosen section's heading moves into the header */
+        int16_t at[MENU_CAP * 8];
+        outline(p, at, MENU_CAP * 8);
+        int16_t mt = max_top(p), top = (int16_t)(at[p->overlay_sel] + 1);
+        p->top = top > mt ? mt : top;
+        p->focus = -1;
+        p->overlay = OverlayNone;
+    }
+    return act;
+}
+
+static PageAction graph_input(Page* p, PageKey key, PagePress press) {
+    static const int8_t side_of[] = {
+        [PageKeyUp] = 1, [PageKeyRight] = 2, [PageKeyDown] = 3, [PageKeyLeft] = 4};
+    PageAction act = {PageActNone, 0, false};
+    if(key == PageKeyOk) {
+        int i = node_at(p, p->node_focus);
+        act.kind = PageActOpen;
+        act.target = p->node_target[i];
+        act.long_press = press == PagePressLong && p->node_focus != 0;
+        return act;
+    }
+    int side = side_of[key], focus = p->node_focus;
+    int opposite = focus > 2 ? focus - 2 : focus + 2;
+    if(focus != 0 && side == focus) {
+        /* the same direction again: the next four neighbours (wrapping) */
+        p->node_window = (uint8_t)(p->node_window + 4 < p->nodes_n ? p->node_window + 4 : 0);
+        if(node_at(p, focus) < 0) p->node_focus = 0;
+    } else if(focus != 0 && side == opposite) {
+        p->node_focus = 0;
+    } else if(node_at(p, side) >= 0) {
+        p->node_focus = (int8_t)side;
+    }
+    return act;
+}
+
 PageAction page_input(Page* p, PageKey key, PagePress press) {
     PageAction act = {PageActNone, 0, false};
+    if(p->overlay != OverlayNone) return overlay_input(p, key, press);
     if(key == PageKeyBack) {
         if(press == PagePressShort) act.kind = PageActBack;
         return act;
     }
     if(p->dirty) return act; /* not laid out yet: nothing on screen to act on */
+    if(p->graph) return graph_input(p, key, press);
+    if(key == PageKeyOk && press == PagePressLong && !has_softkeys(p) && menu_count(p) > 0) {
+        p->overlay = OverlayMenu;
+        p->overlay_sel = 0;
+        return act;
+    }
     bool soft = has_softkeys(p);
     if(soft && (key == PageKeyLeft || key == PageKeyRight || key == PageKeyOk)) {
         int slot = key == PageKeyLeft ? 0 : key == PageKeyOk ? 1 : 2;
@@ -953,6 +1269,30 @@ uint16_t page_visible_lines(const Page* p, char out[][64], uint16_t cap) {
     }
     n++;
     cap--; /* one entry kept for the softkeys */
+    if(p->graph) {
+        /* the map: "o" the centre, then the visible neighbours by side */
+        static const char mark[5] = {'o', '^', '>', 'v', '<'};
+        for(int side = 0; side <= 4 && n < cap; side++) {
+            int i = node_at(p, side);
+            if(i < 0) continue;
+            out[n][0] = p->node_focus == side ? '*' : ' ';
+            out[n][1] = mark[side];
+            out[n][2] = ' ';
+            copy_str(out[n] + 3, p->node_label[i], 60);
+            n++;
+        }
+        return n;
+    }
+    if(p->overlay != OverlayNone) {
+        char buf[64];
+        copy_str(out[n++], p->overlay == OverlayMenu ? "[Actions]" : "[Contents]", 64);
+        for(uint8_t i = 0; i < overlay_count(p) && n < cap; i++) {
+            out[n][0] = i == p->overlay_sel ? '>' : ' ';
+            copy_str(out[n] + 1, overlay_label(p, i, buf, sizeof(buf)), 62);
+            n++;
+        }
+        return n;
+    }
     for(int16_t i = p->top; i <= last && n < cap; i++) {
         const Line* l = &p->lines[i];
         const Block* blk = &p->blocks[l->block];

@@ -53,6 +53,13 @@ def ir():
         relations=[{"type": "confused_with", "target": "bare"},
                    {"type": "related_to", "target": "huge"}]))
     objects.append(obj("bare", "Bare article", "B short", kind="article", definition="Short."))
+    objects.append(obj(
+        "hub", "Hub of links", "B short", kind="concept",
+        definition="The hub links to many entries. It exists to test the map. A map shows four "
+                   "neighbours at a time. More neighbours rotate into view. The last sentence "
+                   "ends here.",
+        relations=[{"type": "confused_with", "target": f"long/{i:02d}"} for i in range(3)] +
+                  [{"type": "related_to", "target": f"long/{i:02d}"} for i in range(3, 9)]))
     objects.append(obj("huge", "Huge chapter", "B short", kind="concept",
                        chapters=[{"heading": "Everything", "text": "word " * 2600}] +
                        [{"heading": f"Part {k}", "text": "x"} for k in range(240)],

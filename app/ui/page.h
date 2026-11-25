@@ -87,6 +87,18 @@ int16_t page_scroll(const Page* page);
 uint32_t page_focused_target(const Page* page);
 uint16_t page_block_count(const Page* page);
 
+/* Context menu: hold OK on a page without softkeys opens it over the page. Entries open their
+ * target like a link; "Contents" (the page's own section headings) is added by the engine
+ * whenever the page has two or more sections. */
+void page_add_menu(Page* page, const char* label, uint32_t target);
+
+/* Local relationship graph: the page body becomes a map of one centre and its neighbours.
+ * Up/Right/Down/Left focus the neighbour on that side; the same direction again shows the next
+ * four; the opposite one returns to the centre. OK opens the focused node's target; holding OK
+ * on a neighbour opens it with long_press set. `kind` 1 draws a dotted edge (confusable). */
+void page_set_graph(Page* page, const char* centre, uint32_t target);
+void page_add_node(Page* page, const char* label, uint8_t kind, uint32_t target);
+
 void page_draw(Page* page, Canvas* canvas);
 PageAction page_input(Page* page, PageKey key, PagePress press);
 

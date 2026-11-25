@@ -40,6 +40,7 @@ Generated from the repository's history by [`tools/docs.py`](../tools/docs.py). 
 | `a1cc740` | 06:36 | docs(readme): link the online explorer and the wiki |
 | `4fb013a` | 06:39 | fix(site): ignore the gallery when the overview is already gone |
 | `d9d7a20` | 07:10 | fix(tests): docs and wiki tests no longer read the real README |
+| `3e6c165` | 08:13 | feat(ui): portable interface, host simulator with firmware fonts, device parity |
 <!-- docs:end timeline -->
 
 ## What made it fast
