@@ -1,0 +1,16 @@
+# Manifest fields: documentation/AppManifests.md in the firmware repository.
+# The version authority is /VERSION; tools/version.py checks fap_version (major.minor).
+App(
+    appid="prismatic",
+    name="Prismatic",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="prismatic_app",
+    stack_size=2 * 1024,
+    fap_category="Tools",
+    fap_version="0.0",
+    fap_icon="prismatic.png",
+    fap_icon_assets="images",
+    fap_description="Prismatic edge terminal: first light",
+    fap_author="korczis",
+    fap_weburl="https://github.com/korczis/prismatic-flipperzero",
+)

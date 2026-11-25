@@ -10,3 +10,5 @@
 *.gcno
 *.profraw
 .DS_Store
+/app/.clang-format
+__pycache__/

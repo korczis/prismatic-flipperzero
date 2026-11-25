@@ -1,0 +1,27 @@
+{
+  "_comment": "Pinned SDK matrix. tools/sdk.py installs an entry; CI builds every entry. status: official = primary target; compat = build-verified only.",
+  "sdks": [
+    {
+      "id": "official",
+      "label": "Official firmware 1.5.1 (release)",
+      "firmware": "flipperdevices/flipperzero-firmware",
+      "firmware_url": "https://github.com/flipperdevices/flipperzero-firmware/releases/tag/1.5.1",
+      "version": "1.5.1",
+      "url": "https://update.flipperzero.one/builds/firmware/1.5.1/flipper-z-f7-sdk-1.5.1.zip",
+      "sha256": "dfde39df32ba8a9789b26afc1d702579ad8399a1c285770637cfe3287b2e2ffe",
+      "ufbt_home": "~/.ufbt",
+      "status": "official"
+    },
+    {
+      "id": "momentum",
+      "label": "Momentum firmware mntm-012 (release)",
+      "firmware": "Next-Flip/Momentum-Firmware",
+      "firmware_url": "https://github.com/Next-Flip/Momentum-Firmware/releases/tag/mntm-012",
+      "version": "mntm-012",
+      "url": "https://up.momentum-fw.dev/builds/firmware/mntm-012/flipper-z-f7-sdk-mntm-012.zip",
+      "sha256": "c90530c3e0aa7bc4356b8521df20d23d7b4a5435ab58a2530ffb696200408cc2",
+      "ufbt_home": "~/.ufbt-momentum",
+      "status": "compat"
+    }
+  ]
+}
