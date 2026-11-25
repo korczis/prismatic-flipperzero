@@ -1,0 +1,1891 @@
+{
+ "source": {
+  "repository": "https://gitlab.com/korczis/prismatic-platform",
+  "commit": "49adc18f7bac",
+  "path": "apps/prismatic/lib/prismatic_crisis/scenario_engine.ex"
+ },
+ "start_trust": 50,
+ "scenarios": [
+  {
+   "id": "hostage_negotiation",
+   "briefing": "A gunman has taken three hostages in a downtown bank. Police have established a perimeter. You are the lead negotiator. The suspect is agitated and has made demands for a vehicle and safe passage. Communication has been established via phone. Your goal is to de-escalate the situation and secure the safe release of all hostages.",
+   "objectives": [
+    "Establish rapport with the hostage-taker",
+    "Ensure hostage safety at all times",
+    "De-escalate emotional tension",
+    "Negotiate incremental concessions",
+    "Achieve peaceful resolution"
+   ],
+   "rules": [
+    "Every decision affects trust level with the suspect",
+    "Time pressure increases suspect agitation",
+    "Aggressive moves risk hostage safety",
+    "Patience and active listening build rapport"
+   ],
+   "steps": [
+    {
+     "prompt": "The suspect answers the phone. He is shouting demands. How do you open?",
+     "options": [
+      {
+       "id": "hn_1_calm",
+       "text": "Introduce yourself calmly and ask about the hostages' wellbeing.",
+       "risk": "low",
+       "consequence": {
+        "text": "The suspect pauses. Your concern for the hostages surprises him. He lowers his voice slightly.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 15
+       }
+      },
+      {
+       "id": "hn_1_authority",
+       "text": "State your authority clearly and demand he release the hostages immediately.",
+       "risk": "high",
+       "consequence": {
+        "text": "The suspect becomes more agitated. He threatens to harm a hostage if you don't meet his demands.",
+        "type": "danger",
+        "impact": "negative",
+        "trust_delta": -20
+       }
+      },
+      {
+       "id": "hn_1_empathy",
+       "text": "Acknowledge his frustration and ask what led him to this point.",
+       "risk": "low",
+       "consequence": {
+        "text": "He hesitates, then starts talking about financial problems. A crack in the armor appears.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 20
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "The suspect wants a vehicle within 30 minutes. Tactical team reports hostages appear unharmed. What's your move?",
+     "options": [
+      {
+       "id": "hn_2_stall",
+       "text": "Buy time by discussing logistics of the vehicle, keep him talking.",
+       "risk": "low",
+       "consequence": {
+        "text": "You engage him in practical details. Minutes pass without escalation. Tactical team repositions.",
+        "type": "info",
+        "impact": "positive",
+        "trust_delta": 5
+       }
+      },
+      {
+       "id": "hn_2_counter",
+       "text": "Offer food and water for the hostages in exchange for releasing one.",
+       "risk": "medium",
+       "consequence": {
+        "text": "He considers the offer. After tense minutes, he agrees to release one hostage in exchange for supplies.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 10
+       }
+      },
+      {
+       "id": "hn_2_refuse",
+       "text": "Refuse the vehicle demand outright and set a hard boundary.",
+       "risk": "high",
+       "consequence": {
+        "text": "He slams the phone down. Communication goes silent for several minutes. Tension spikes.",
+        "type": "danger",
+        "impact": "critical",
+        "trust_delta": -30
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "Two hours have passed. The suspect is showing signs of fatigue. He mentions his children. How do you proceed?",
+     "options": [
+      {
+       "id": "hn_3_children",
+       "text": "Gently ask about his children and connect it to the hostages' families.",
+       "risk": "low",
+       "consequence": {
+        "text": "His voice breaks. He admits he doesn't want anyone hurt. Progress toward resolution.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 25
+       }
+      },
+      {
+       "id": "hn_3_pressure",
+       "text": "Point out the hopelessness of his situation and urge surrender.",
+       "risk": "medium",
+       "consequence": {
+        "text": "He becomes defensive but doesn't escalate. He asks what will happen if he surrenders.",
+        "type": "warning",
+        "impact": "neutral",
+        "trust_delta": -5
+       }
+      },
+      {
+       "id": "hn_3_tactical",
+       "text": "Signal tactical team to prepare for breach while keeping him engaged.",
+       "risk": "high",
+       "consequence": {
+        "text": "The suspect notices unusual movement outside. Trust drops sharply. He threatens harm.",
+        "type": "danger",
+        "impact": "negative",
+        "trust_delta": -25
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "The suspect says he'll come out if you guarantee no one will shoot. Remaining hostages are tired but unharmed.",
+     "options": [
+      {
+       "id": "hn_4_guarantee",
+       "text": "Give your personal guarantee and arrange a safe surrender corridor.",
+       "risk": "low",
+       "consequence": {
+        "text": "He agrees. You coordinate with tactical team for a controlled surrender. The end is near.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 30
+       }
+      },
+      {
+       "id": "hn_4_conditions",
+       "text": "Set conditions: he must release hostages first, then come out unarmed.",
+       "risk": "medium",
+       "consequence": {
+        "text": "He pushes back but you negotiate a compromise: hostages exit together with him, hands visible.",
+        "type": "info",
+        "impact": "neutral",
+        "trust_delta": 0
+       }
+      },
+      {
+       "id": "hn_4_breach",
+       "text": "Order tactical breach while he seems cooperative.",
+       "risk": "high",
+       "consequence": {
+        "text": "Breach is successful but a hostage sustains minor injuries. Resolution achieved but at a cost.",
+        "type": "warning",
+        "impact": "negative",
+        "trust_delta": -40
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "Final phase. The suspect is at the door. All hostages are accounted for. Conclude the operation.",
+     "options": [
+      {
+       "id": "hn_5_calm_arrest",
+       "text": "Guide the suspect through a calm, step-by-step surrender process.",
+       "risk": "low",
+       "consequence": {
+        "text": "The suspect surrenders peacefully. All hostages are safe. Textbook resolution through negotiation.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 0
+       }
+      },
+      {
+       "id": "hn_5_quick_action",
+       "text": "Have officers move in quickly as soon as he steps out.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Officers apprehend him swiftly. Minor scuffle but no injuries. Situation resolved.",
+        "type": "info",
+        "impact": "neutral",
+        "trust_delta": 0
+       }
+      },
+      {
+       "id": "hn_5_force",
+       "text": "Deploy flashbang and have tactical team secure him.",
+       "risk": "high",
+       "consequence": {
+        "text": "Overwhelming force ends the standoff. Suspect and one officer sustain minor injuries. Outcome mixed.",
+        "type": "warning",
+        "impact": "negative",
+        "trust_delta": 0
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "suicide_intervention",
+   "briefing": "You've received a call about an individual standing on a bridge overpass threatening to jump. First responders have established a safety perimeter. You are the crisis intervention specialist. The individual appears to be a male in his 30s, visibly distressed. Communication must be handled with extreme care and empathy.",
+   "objectives": [
+    "Establish verbal contact safely",
+    "Build trust and rapport",
+    "Identify underlying issues",
+    "Guide toward accepting help"
+   ],
+   "rules": [
+    "Empathy and active listening are critical",
+    "Avoid commands or ultimatums",
+    "Every word matters - choose carefully",
+    "Time is your ally if used wisely"
+   ],
+   "steps": [
+    {
+     "prompt": "You approach the individual at a safe distance on the rooftop. He notices you and tenses. How do you initiate contact?",
+     "options": [
+      {
+       "id": "si_1_gentle",
+       "text": "Introduce yourself by first name and ask if you can talk for a minute.",
+       "risk": "low",
+       "consequence": {
+        "text": "He hesitates but doesn't move away. Your calm demeanor slightly eases the tension.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 15
+       }
+      },
+      {
+       "id": "si_1_direct",
+       "text": "Tell him you're here to help and that people care about him.",
+       "risk": "medium",
+       "consequence": {
+        "text": "He scoffs and says nobody cares. But he's engaging—that's something.",
+        "type": "info",
+        "impact": "neutral",
+        "trust_delta": -5
+       }
+      },
+      {
+       "id": "si_1_authority",
+       "text": "Identify yourself as crisis response and instruct him to step back from the edge.",
+       "risk": "high",
+       "consequence": {
+        "text": "He shouts 'Don't tell me what to do!' and moves closer to the edge. Dangerous escalation.",
+        "type": "danger",
+        "impact": "negative",
+        "trust_delta": -25
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "He's talking about feeling like a burden to everyone. His voice is breaking. How do you respond?",
+     "options": [
+      {
+       "id": "si_2_validate",
+       "text": "Acknowledge his pain: 'It sounds like you're carrying an enormous weight right now.'",
+       "risk": "low",
+       "consequence": {
+        "text": "He pauses mid-sentence. Someone finally understands. His shoulders drop slightly.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 20
+       }
+      },
+      {
+       "id": "si_2_reframe",
+       "text": "Challenge the belief: 'The people who called us are terrified of losing you.'",
+       "risk": "medium",
+       "consequence": {
+        "text": "He considers this but pushes back: 'They'd get over it.' Still, doubt has been planted.",
+        "type": "info",
+        "impact": "positive",
+        "trust_delta": 5
+       }
+      },
+      {
+       "id": "si_2_minimize",
+       "text": "Try to cheer him up: 'Things aren't that bad. Tomorrow is a new day.'",
+       "risk": "high",
+       "consequence": {
+        "text": "He becomes angry: 'You don't know anything about my life!' Trust severely damaged.",
+        "type": "danger",
+        "impact": "negative",
+        "trust_delta": -20
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "He asks 'Why should I go on?' and looks at you directly. This is the critical moment.",
+     "options": [
+      {
+       "id": "si_3_honest",
+       "text": "Be honest: 'I can't answer that for you, but I'd like to help you find reasons. Can we talk a bit more?'",
+       "risk": "low",
+       "consequence": {
+        "text": "Your honesty resonates. He sits down on the ledge instead of standing. A breakthrough.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 25
+       }
+      },
+      {
+       "id": "si_3_family",
+       "text": "Mention his children—you learned about them from the family contact.",
+       "risk": "medium",
+       "consequence": {
+        "text": "His face crumbles. He starts crying. The wall is breaking but emotions are volatile.",
+        "type": "info",
+        "impact": "positive",
+        "trust_delta": 10
+       }
+      },
+      {
+       "id": "si_3_rush",
+       "text": "Signal the rescue team to move in while he's distracted.",
+       "risk": "high",
+       "consequence": {
+        "text": "He sees movement behind him and panics. He scrambles toward the edge. Critical mistake.",
+        "type": "danger",
+        "impact": "critical",
+        "trust_delta": -35
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "He seems to be reconsidering. He's sitting on the ledge and talking to you. Guide him to safety.",
+     "options": [
+      {
+       "id": "si_4_patient",
+       "text": "Continue talking, slowly building rapport. Ask if he'd like some water—offer to bring it closer.",
+       "risk": "low",
+       "consequence": {
+        "text": "He accepts the water. As you approach, he allows you closer. He agrees to come inside.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 20
+       }
+      },
+      {
+       "id": "si_4_offer",
+       "text": "Offer to call someone he trusts—a friend, family member, counselor.",
+       "risk": "low",
+       "consequence": {
+        "text": "He mentions his sister. You connect them on the phone. Her voice brings him back. He steps away from the edge.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 15
+       }
+      },
+      {
+       "id": "si_4_grab",
+       "text": "You're close enough now—reach out and physically pull him to safety.",
+       "risk": "high",
+       "consequence": {
+        "text": "He recoils violently. The physical contact triggers fight response. Situation re-escalates dangerously.",
+        "type": "danger",
+        "impact": "negative",
+        "trust_delta": -30
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "active_shooter",
+   "briefing": "Reports of shots fired at a shopping center. Multiple casualties reported. You are the incident commander coordinating the response. SWAT is en route. Patrol units are on scene. Civilians are still evacuating. The situation is dynamic.",
+   "objectives": [
+    "Establish unified command",
+    "Coordinate evacuation routes",
+    "Direct tactical response",
+    "Manage casualty triage"
+   ],
+   "rules": [
+    "Speed of response is critical",
+    "Civilian safety is the priority",
+    "Communication between units is essential",
+    "Resource allocation determines outcomes"
+   ],
+   "steps": [
+    {
+     "prompt": "First units arrive on scene. Shots are still being fired inside. Civilians are streaming out the exits. Your orders?",
+     "options": [
+      {
+       "id": "as_1_contact",
+       "text": "Form a contact team from first responders and enter to engage the shooter immediately.",
+       "risk": "high",
+       "consequence": {
+        "text": "Contact team enters and draws shooter's attention away from civilians. Risky but lives are saved in the initial minutes.",
+        "type": "warning",
+        "impact": "positive",
+        "trust_delta": 5
+       }
+      },
+      {
+       "id": "as_1_perimeter",
+       "text": "Establish perimeter, evacuate civilians from exits, wait for SWAT to form up.",
+       "risk": "low",
+       "consequence": {
+        "text": "Perimeter secure. Civilians evacuating safely. But shots continue inside—casualties may be mounting.",
+        "type": "info",
+        "impact": "neutral",
+        "trust_delta": 10
+       }
+      },
+      {
+       "id": "as_1_split",
+       "text": "Split resources: half secure perimeter and evacuate, half form contact team to enter.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Balanced approach. Contact team moves in while perimeter holds. Resources stretched thin but both objectives addressed.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 10
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "SWAT is forming up. Reports of multiple wounded near the food court. Medical teams are staged but can't enter the hot zone. How do you allocate resources?",
+     "options": [
+      {
+       "id": "as_2_rescue",
+       "text": "Create a rescue task force—officers escort medical teams to extract the wounded from the food court.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Rescue teams extract 4 wounded civilians. One officer sustains minor injury. Medical care is reaching those who need it.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 10
+       }
+      },
+      {
+       "id": "as_2_wait",
+       "text": "Hold medical teams at staging until SWAT clears the area. Focus all tactical assets on the shooter.",
+       "risk": "low",
+       "consequence": {
+        "text": "SWAT advances methodically. Wounded wait longer but no additional casualties from rescue attempts. Two wounded don't make it.",
+        "type": "warning",
+        "impact": "negative",
+        "trust_delta": 5
+       }
+      },
+      {
+       "id": "as_2_all_in",
+       "text": "Send all available units into the building for maximum coverage.",
+       "risk": "high",
+       "consequence": {
+        "text": "Chaos in the building. Friendly fire incident narrowly avoided. No command presence outside. Media is broadcasting unchecked.",
+        "type": "danger",
+        "impact": "negative",
+        "trust_delta": -15
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "The shooter has barricaded in a store with 2 hostages. Situation is transitioning from active shooter to hostage scenario. Adjust your strategy.",
+     "options": [
+      {
+       "id": "as_3_negotiate",
+       "text": "Transition to hostage protocol. Pull back SWAT to containment positions. Attempt communication with the shooter.",
+       "risk": "low",
+       "consequence": {
+        "text": "Shooter answers the store phone. He's agitated but talking. Buying time for tactical options and hostage safety.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 15
+       }
+      },
+      {
+       "id": "as_3_breach",
+       "text": "SWAT is in position. Breach immediately before he can fortify or harm hostages.",
+       "risk": "high",
+       "consequence": {
+        "text": "Breach is fast but shooter fires at hostages during entry. One hostage wounded. Shooter neutralized.",
+        "type": "warning",
+        "impact": "negative",
+        "trust_delta": -5
+       }
+      },
+      {
+       "id": "as_3_hybrid",
+       "text": "Begin negotiation while SWAT quietly prepares a breach option as backup.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Dual-track approach working. Negotiator keeps him talking while tactical team positions. Maximum options maintained.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 10
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "Shooter communication established. He demands media coverage and a vehicle. He's unstable and deadline is 20 minutes.",
+     "options": [
+      {
+       "id": "as_4_stall",
+       "text": "Appear to comply with demands while stalling. 'We're working on the vehicle, it takes time. Tell me about the hostages.'",
+       "risk": "low",
+       "consequence": {
+        "text": "He buys the stall. Each passing minute he calms slightly. SWAT has two breach points ready. Hostages report he lowered his weapon briefly.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 15
+       }
+      },
+      {
+       "id": "as_4_refuse",
+       "text": "Firmly refuse demands. 'No vehicle, no media. But we can discuss what you actually need.'",
+       "risk": "high",
+       "consequence": {
+        "text": "He becomes enraged and fires a round into the ceiling. Hostages screaming. Deadline shortened to 10 minutes.",
+        "type": "danger",
+        "impact": "negative",
+        "trust_delta": -25
+       }
+      },
+      {
+       "id": "as_4_partial",
+       "text": "Offer a partial concession: allow a written statement to be read on camera, in exchange for one hostage.",
+       "risk": "medium",
+       "consequence": {
+        "text": "He considers it. After tense minutes, he releases one hostage. His statement is recorded but not broadcast. Progress.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 10
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "emergency_response",
+   "briefing": "A major earthquake has struck the metropolitan area. Multiple buildings have collapsed. Power is out across wide areas. Hospital ERs are overwhelmed. You are the emergency operations center commander coordinating multi-agency response.",
+   "objectives": [
+    "Establish emergency operations center",
+    "Prioritize search and rescue",
+    "Coordinate medical response",
+    "Manage public communication",
+    "Allocate scarce resources",
+    "Set up emergency shelters"
+   ],
+   "rules": [
+    "Resources are severely limited",
+    "Multiple agencies must coordinate",
+    "Public information prevents panic",
+    "Triage decisions affect survival"
+   ],
+   "steps": [
+    {
+     "prompt": "Initial damage reports: 3 building collapses downtown, gas leaks in residential zone, hospital reporting structural damage. Set your priorities.",
+     "options": [
+      {
+       "id": "er_1_hospital",
+       "text": "Prioritize hospital—evacuate patients and secure medical capability for incoming casualties.",
+       "risk": "low",
+       "consequence": {
+        "text": "Hospital evacuation proceeds smoothly. Alternative care sites activated. Medical system remains functional for incoming casualties.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 15
+       }
+      },
+      {
+       "id": "er_1_collapse",
+       "text": "Focus search and rescue on collapsed buildings—most lives at immediate risk.",
+       "risk": "medium",
+       "consequence": {
+        "text": "SAR teams deployed to all 3 collapse sites. 12 survivors located in first hour. But hospital is struggling and gas leaks spreading.",
+        "type": "info",
+        "impact": "positive",
+        "trust_delta": 5
+       }
+      },
+      {
+       "id": "er_1_gas",
+       "text": "Address gas leaks first—explosion risk could create a second disaster.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Gas company dispatched. Residential area evacuating. Smart prevention move, but collapse victims are waiting.",
+        "type": "info",
+        "impact": "neutral",
+        "trust_delta": 10
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "Hospitals at capacity. 200+ casualties reported. Field medical teams request guidance on triage protocols.",
+     "options": [
+      {
+       "id": "er_2_field",
+       "text": "Set up field hospitals at two schools. Implement START triage—green/yellow/red/black categories.",
+       "risk": "low",
+       "consequence": {
+        "text": "Field hospitals operational within 40 minutes. Triage is directing resources effectively. Survival rates improving.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 10
+       }
+      },
+      {
+       "id": "er_2_transport",
+       "text": "Request mutual aid from neighboring counties. Transport critical patients to hospitals outside the zone.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Mutual aid activated. Transport corridors established. But road damage slows ambulances. Some critical patients delayed.",
+        "type": "info",
+        "impact": "neutral",
+        "trust_delta": 5
+       }
+      },
+      {
+       "id": "er_2_ration",
+       "text": "Ration remaining hospital supplies. Perform only life-saving surgeries. All else deferred.",
+       "risk": "high",
+       "consequence": {
+        "text": "Difficult decision. Some treatable injuries worsen while waiting. Staff morale drops. But critical resources preserved.",
+        "type": "warning",
+        "impact": "negative",
+        "trust_delta": -10
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "Aftershock hits—magnitude 4.8. Search and rescue teams are inside damaged structures. Orders?",
+     "options": [
+      {
+       "id": "er_3_pull",
+       "text": "Immediately pull all SAR teams out of structures until engineers reassess stability.",
+       "risk": "low",
+       "consequence": {
+        "text": "Teams evacuated safely. 45-minute delay while engineers clear structures. Two teams report hearing trapped survivors.",
+        "type": "info",
+        "impact": "neutral",
+        "trust_delta": 10
+       }
+      },
+      {
+       "id": "er_3_assess",
+       "text": "Teams pause in place. Structural engineers do rapid assessment—continue only in cleared areas.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Quick assessment completed. Two sites cleared for continued operations. One site too unstable—evacuated. Balanced approach.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 10
+       }
+      },
+      {
+       "id": "er_3_continue",
+       "text": "SAR teams continue operations—survivors can't wait for engineering assessments.",
+       "risk": "high",
+       "consequence": {
+        "text": "One team narrowly escapes a secondary collapse. Two rescuers injured. Survivors extracted but at a cost.",
+        "type": "danger",
+        "impact": "negative",
+        "trust_delta": -15
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "Relief supplies arriving but distribution points are overwhelmed. Crowds growing frustrated.",
+     "options": [
+      {
+       "id": "er_4_organize",
+       "text": "Deploy National Guard to manage distribution. Set up ticket system for fair allocation.",
+       "risk": "low",
+       "consequence": {
+        "text": "Order restored. Distribution becomes systematic. Vulnerable populations prioritized. Community trust maintained.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 15
+       }
+      },
+      {
+       "id": "er_4_decentralize",
+       "text": "Open multiple smaller distribution points across the affected area to reduce crowding.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Crowds thin out. Supply chain stretched thinner but manageable. Accessibility improves for those who can't travel far.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 10
+       }
+      },
+      {
+       "id": "er_4_restrict",
+       "text": "Close distribution temporarily until security and logistics are sorted out.",
+       "risk": "high",
+       "consequence": {
+        "text": "Crowd becomes angry. Social media backlash. Some people break into supply trucks. Situation spiraling.",
+        "type": "danger",
+        "impact": "negative",
+        "trust_delta": -20
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "Day two: exhausted first responders need rotation. Mutual aid teams arriving but unfamiliar with local geography.",
+     "options": [
+      {
+       "id": "er_5_pair",
+       "text": "Pair incoming teams with local responders for half-shift handover. Local knowledge transfers with the rotation.",
+       "risk": "low",
+       "consequence": {
+        "text": "Smooth handover. Incoming teams get oriented quickly. Local teams get needed rest. Operations maintain continuity.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 10
+       }
+      },
+      {
+       "id": "er_5_replace",
+       "text": "Full replacement—send local teams home to rest. Incoming teams take over with maps and briefing documents.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Some confusion during transition. Two teams dispatched to wrong locations. But local teams get full rest period.",
+        "type": "info",
+        "impact": "neutral",
+        "trust_delta": 0
+       }
+      },
+      {
+       "id": "er_5_push",
+       "text": "Ask local teams to push through one more shift. They know the terrain and the situation.",
+       "risk": "high",
+       "consequence": {
+        "text": "Exhaustion-related errors increase. One responder collapses from heat exhaustion. Morale plummets.",
+        "type": "danger",
+        "impact": "negative",
+        "trust_delta": -15
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "Public anxiety rising. Media demanding briefing. Rumors spreading about contaminated water supply.",
+     "options": [
+      {
+       "id": "er_6_brief",
+       "text": "Hold press conference. Be transparent about situation, what's confirmed, and what's being done.",
+       "risk": "low",
+       "consequence": {
+        "text": "Media reports factual information. Public anxiety decreases. Water rumor debunked with test results. Trust in leadership rises.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 15
+       }
+      },
+      {
+       "id": "er_6_social",
+       "text": "Focus on social media—rapid response team correcting misinformation in real-time.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Social media team effective at countering rumors. But traditional media feels snubbed—runs more speculative stories.",
+        "type": "info",
+        "impact": "neutral",
+        "trust_delta": 0
+       }
+      },
+      {
+       "id": "er_6_silence",
+       "text": "No comment until full damage assessment is complete. Don't speculate publicly.",
+       "risk": "high",
+       "consequence": {
+        "text": "Silence fuels more rumors. Panic buying of bottled water. Some residents self-evacuate clogging roads needed for emergency vehicles.",
+        "type": "danger",
+        "impact": "negative",
+        "trust_delta": -20
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "chemical_incident",
+   "briefing": "A train derailment has released an unknown chemical agent near a residential area. Residents are reporting respiratory symptoms. HAZMAT is en route. You are the on-scene commander. Wind is shifting toward a school two blocks away.",
+   "objectives": [
+    "Identify the chemical agent",
+    "Establish hot/warm/cold zones",
+    "Order evacuation of at-risk areas",
+    "Coordinate decontamination",
+    "Manage medical triage"
+   ],
+   "rules": [
+    "Unknown chemicals require maximum caution",
+    "Wind direction determines evacuation zones",
+    "First responder safety is paramount",
+    "Public communication prevents secondary exposure"
+   ],
+   "steps": [
+    {
+     "prompt": "First HAZMAT readings coming in. Chemical not yet positively identified. Wind is carrying fumes toward a school 500m away. Establish your response.",
+     "options": [
+      {
+       "id": "ci_1_wide",
+       "text": "Establish wide perimeter (1km). Evacuate the school immediately. Begin air monitoring.",
+       "risk": "low",
+       "consequence": {
+        "text": "School evacuated within 8 minutes. Wide perimeter prevents civilian exposure. Air monitoring confirms chlorine. Good call.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 15
+       }
+      },
+      {
+       "id": "ci_1_shelter",
+       "text": "Order school to shelter-in-place (close windows, HVAC off). Deploy HAZMAT team to source.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Shelter-in-place buys time. HAZMAT team reaches the tanker. But some classrooms have poor seals—minor exposure cases.",
+        "type": "info",
+        "impact": "neutral",
+        "trust_delta": 0
+       }
+      },
+      {
+       "id": "ci_1_narrow",
+       "text": "Set tight perimeter around the tanker. Focus all resources on containment at the source.",
+       "risk": "high",
+       "consequence": {
+        "text": "Wind carries chlorine past your perimeter. School reports children coughing. You've underestimated the plume spread.",
+        "type": "danger",
+        "impact": "negative",
+        "trust_delta": -20
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "Wind shift detected—now blowing directly toward residential area with 2,000 residents. Cloud is visible and growing. You have minutes.",
+     "options": [
+      {
+       "id": "ci_2_evacuate",
+       "text": "Sound emergency sirens. Activate reverse-911. Deploy buses for mass evacuation away from plume direction.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Evacuation underway. Most residents leave within 20 minutes. Some elderly and disabled need door-to-door assistance.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 10
+       }
+      },
+      {
+       "id": "ci_2_shelter",
+       "text": "Broadcast shelter-in-place order. Faster than evacuation—people seal homes and wait for plume to pass.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Most residents shelter effectively. But chlorine is heavier than air and seeps into basements. 15 exposure cases reported.",
+        "type": "info",
+        "impact": "neutral",
+        "trust_delta": 5
+       }
+      },
+      {
+       "id": "ci_2_delay",
+       "text": "Wait for updated air monitoring data before committing to a decision.",
+       "risk": "high",
+       "consequence": {
+        "text": "Data arrives in 12 minutes. By then the cloud has reached the residential area. Dozens of exposure cases. Hospital overwhelmed.",
+        "type": "danger",
+        "impact": "critical",
+        "trust_delta": -25
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "Agent confirmed as chlorine gas. Decontamination stations needed for exposed civilians and first responders. Where to set up?",
+     "options": [
+      {
+       "id": "ci_3_upwind",
+       "text": "Set up decon stations upwind at the community center parking lot. 3 lanes for ambulatory, non-ambulatory, and first responders.",
+       "risk": "low",
+       "consequence": {
+        "text": "Decon operational in 20 minutes. Efficient processing of exposed individuals. Clean water supply adequate. Textbook setup.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 15
+       }
+      },
+      {
+       "id": "ci_3_hospital",
+       "text": "Set up at the hospital entrance so decontaminated patients go directly into medical care.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Convenient for medical handoff. But contaminated patients arriving at hospital create secondary exposure risk for ER staff.",
+        "type": "warning",
+        "impact": "negative",
+        "trust_delta": -5
+       }
+      },
+      {
+       "id": "ci_3_source",
+       "text": "Set up near the incident to catch people as they emerge from the hot zone.",
+       "risk": "high",
+       "consequence": {
+        "text": "Too close to the source. Wind shifts expose decon team to chlorine. Two HAZMAT technicians need medical treatment.",
+        "type": "danger",
+        "impact": "negative",
+        "trust_delta": -15
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "Residents in the warm zone are panicking. Cars trying to drive through checkpoints. Some abandoning vehicles and fleeing on foot.",
+     "options": [
+      {
+       "id": "ci_4_calm",
+       "text": "Deploy community liaison officers. Loudspeaker announcements in multiple languages with clear evacuation routes.",
+       "risk": "low",
+       "consequence": {
+        "text": "Clear communication reduces panic. Most residents follow designated routes. Traffic flow improves significantly.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 15
+       }
+      },
+      {
+       "id": "ci_4_force",
+       "text": "Police officers physically redirect traffic. Tow abandoned vehicles to clear routes.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Roads clearing but aggressive police posture increases anxiety. One confrontation caught on camera. Routes are functional.",
+        "type": "info",
+        "impact": "neutral",
+        "trust_delta": -5
+       }
+      },
+      {
+       "id": "ci_4_close",
+       "text": "Close all roads in the area. Pedestrian evacuation only—buses pick up at assembly points.",
+       "risk": "high",
+       "consequence": {
+        "text": "Road closures create gridlock in surrounding areas. Emergency vehicles can't reach some locations. Evacuation slowed dramatically.",
+        "type": "danger",
+        "impact": "negative",
+        "trust_delta": -15
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "Air monitoring shows chlorine levels dropping. Source is contained. Plan the re-entry and long-term monitoring.",
+     "options": [
+      {
+       "id": "ci_5_cautious",
+       "text": "Wait 4 hours after levels hit safe threshold. Re-entry in phases—first responders, then residents by zone.",
+       "risk": "low",
+       "consequence": {
+        "text": "Phased re-entry is orderly. Environmental monitoring continues for 48 hours. No secondary exposure incidents. Clean resolution.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 15
+       }
+      },
+      {
+       "id": "ci_5_quick",
+       "text": "Open re-entry as soon as monitors show safe levels. Residents are anxious to return.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Most residents return safely. But residual chlorine in a few low-lying basements causes 3 minor exposure cases the next day.",
+        "type": "info",
+        "impact": "neutral",
+        "trust_delta": 5
+       }
+      },
+      {
+       "id": "ci_5_immediate",
+       "text": "Declare all-clear immediately. People can see the cloud is gone—let them go home.",
+       "risk": "high",
+       "consequence": {
+        "text": "Two families report respiratory issues from residual contamination. Media questions the premature all-clear. Your credibility takes a hit.",
+        "type": "warning",
+        "impact": "negative",
+        "trust_delta": -15
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "natural_disaster",
+   "briefing": "Category 4 hurricane is making landfall. Mandatory evacuation was issued but many residents refused to leave. Storm surge is exceeding predictions. Multiple rescue calls coming in. You are the regional emergency director. Resources are stretched to breaking point.",
+   "objectives": [
+    "Prioritize rescue operations",
+    "Manage shelter capacity",
+    "Coordinate with National Guard",
+    "Maintain communication infrastructure",
+    "Distribute emergency supplies",
+    "Plan for post-storm recovery"
+   ],
+   "rules": [
+    "You cannot save everyone simultaneously",
+    "Weather conditions limit rescue operations",
+    "Communication failures compound problems",
+    "Resource allocation is zero-sum"
+   ],
+   "steps": [
+    {
+     "prompt": "Hurricane landfall in 6 hours. 15,000 people haven't evacuated from mandatory zones. Shelters at 80% capacity. Your orders?",
+     "options": [
+      {
+       "id": "nd_1_door",
+       "text": "Deploy National Guard for door-to-door evacuation. Mark houses checked. Mandatory transport for holdouts.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Guard teams reach 60% of holdouts. 9,000 additional people evacuated. Some refuse to leave. Resources stretched but effective.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 10
+       }
+      },
+      {
+       "id": "nd_1_shelters",
+       "text": "Focus on opening additional shelters first—capacity is the bottleneck. Then push evacuation harder.",
+       "risk": "low",
+       "consequence": {
+        "text": "3 additional shelters opened. Capacity problem solved. But evacuation push comes late—only 5,000 additional people moved.",
+        "type": "info",
+        "impact": "neutral",
+        "trust_delta": 10
+       }
+      },
+      {
+       "id": "nd_1_warn",
+       "text": "Final emergency broadcast: 'Anyone remaining in Zone A after 2 hours will not be rescued during the storm.'",
+       "risk": "high",
+       "consequence": {
+        "text": "Harsh message motivates 4,000 to leave. But 11,000 remain—many elderly, disabled, or without transportation. Media criticizes the threat.",
+        "type": "warning",
+        "impact": "negative",
+        "trust_delta": -15
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "Storm surge exceeding barriers. Multiple 911 calls for rooftop rescues. Helicopter assets available but winds are 60 mph. Deploy them?",
+     "options": [
+      {
+       "id": "nd_2_boats",
+       "text": "Too dangerous for helicopters. Deploy boat rescue teams to accessible areas. Mark unreachable locations for helicopter rescue when winds drop.",
+       "risk": "low",
+       "consequence": {
+        "text": "Boat teams rescue 45 people from flooded homes. Helicopter deployment plan ready for wind window. No rescue team casualties.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 15
+       }
+      },
+      {
+       "id": "nd_2_helo",
+       "text": "Deploy helicopters—lives are at stake. Pilots are trained for this. Start with the most critical rescues.",
+       "risk": "high",
+       "consequence": {
+        "text": "Two successful hoist rescues. Third attempt—wind gust forces emergency landing. Helicopter damaged, crew uninjured but asset lost.",
+        "type": "warning",
+        "impact": "negative",
+        "trust_delta": -5
+       }
+      },
+      {
+       "id": "nd_2_wait",
+       "text": "All rescue operations on hold until wind drops below 45 mph. Too dangerous for any deployment.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Teams stand by for 3 hours. Water continues rising. When operations resume, two rooftop locations are now underwater. Casualties.",
+        "type": "danger",
+        "impact": "critical",
+        "trust_delta": -10
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "Main shelter at capacity. Two more busloads of evacuees arriving in 30 minutes. 400 people need placement.",
+     "options": [
+      {
+       "id": "nd_3_overflow",
+       "text": "Open the high school gym as overflow shelter. Not ideal but it's built to code and has backup power.",
+       "risk": "low",
+       "consequence": {
+        "text": "Overflow shelter operational in 20 minutes. Evacuees have roof over their heads. Supplies diverted from main shelter. System strained but holding.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 10
+       }
+      },
+      {
+       "id": "nd_3_redistribute",
+       "text": "Redistribute from main shelter to 3 smaller shelters that have capacity. Bus evacuees to those.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Redistribution takes time. Some evacuees upset about being moved. But capacity balanced across the system.",
+        "type": "info",
+        "impact": "neutral",
+        "trust_delta": 0
+       }
+      },
+      {
+       "id": "nd_3_turn",
+       "text": "Divert buses to shelters in the next county. Our system is at max.",
+       "risk": "high",
+       "consequence": {
+        "text": "45-minute drive to next county in worsening conditions. One bus breaks down en route. Evacuees stranded on highway during storm.",
+        "type": "danger",
+        "impact": "negative",
+        "trust_delta": -15
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "Power grid failure expanding. Water treatment plant at risk—3 hours of backup power remaining. Critical infrastructure decision.",
+     "options": [
+      {
+       "id": "nd_4_generators",
+       "text": "Deploy emergency generators to the water treatment plant. Water is the higher priority—people can live without electricity.",
+       "risk": "low",
+       "consequence": {
+        "text": "Generators keep water treatment running. Safe drinking water maintained. Boil-water advisory avoided. Strong infrastructure decision.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 15
+       }
+      },
+      {
+       "id": "nd_4_split",
+       "text": "Split generator capacity: half to water treatment, half to the hospital backup systems.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Both critical systems receive partial power. Water treatment on reduced capacity. Hospital keeps essential systems. Tight margins.",
+        "type": "info",
+        "impact": "positive",
+        "trust_delta": 5
+       }
+      },
+      {
+       "id": "nd_4_hospital",
+       "text": "All generator power to the hospital. Water plant will have to shut down—issue boil-water advisory.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Hospital fully powered. But boil-water advisory causes panic. People don't have fuel to boil water. Dehydration cases spike.",
+        "type": "warning",
+        "impact": "negative",
+        "trust_delta": -10
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "Storm weakening. Transition from rescue to recovery operations. Damage assessment teams need deployment priorities.",
+     "options": [
+      {
+       "id": "nd_5_infra",
+       "text": "Priority: critical infrastructure assessment—roads, bridges, utilities. Recovery can't start until we know what's usable.",
+       "risk": "low",
+       "consequence": {
+        "text": "Infrastructure assessment completed in 8 hours. Clear picture of recovery needs. FEMA briefed with accurate data. Federal aid expedited.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 15
+       }
+      },
+      {
+       "id": "nd_5_residential",
+       "text": "Priority: residential damage assessment. People need to know if they can return home.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Residential teams deployed. 2,000 homes assessed in 12 hours. But infrastructure unknowns delay utility restoration and road clearing.",
+        "type": "info",
+        "impact": "neutral",
+        "trust_delta": 5
+       }
+      },
+      {
+       "id": "nd_5_both",
+       "text": "Deploy all available teams simultaneously—split evenly between infrastructure and residential.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Both assessments proceed but neither is thorough. Some structural dangers missed. One assessment team enters an unstable building.",
+        "type": "warning",
+        "impact": "negative",
+        "trust_delta": -5
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "Federal disaster declaration pending. FEMA liaison needs comprehensive damage documentation. Media requesting recovery timeline.",
+     "options": [
+      {
+       "id": "nd_6_document",
+       "text": "Assemble documentation team. Compile damage photos, cost estimates, affected population data. Brief FEMA and media together.",
+       "risk": "low",
+       "consequence": {
+        "text": "Comprehensive documentation submitted. FEMA declaration expedited. Media reports data-driven recovery timeline. Public confidence restored.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 15
+       }
+      },
+      {
+       "id": "nd_6_estimate",
+       "text": "Provide preliminary estimates to FEMA now. Refine later. Speed matters for federal aid.",
+       "risk": "medium",
+       "consequence": {
+        "text": "FEMA accepts preliminary data. Process starts. But revised numbers later create confusion and delay in aid distribution.",
+        "type": "info",
+        "impact": "neutral",
+        "trust_delta": 0
+       }
+      },
+      {
+       "id": "nd_6_delay",
+       "text": "Tell FEMA and media you need more time for accurate assessment. Don't rush the numbers.",
+       "risk": "high",
+       "consequence": {
+        "text": "FEMA aid delayed by 5 days. Residents running out of supplies. Political pressure mounts. Accuracy came at the cost of urgency.",
+        "type": "danger",
+        "impact": "negative",
+        "trust_delta": -10
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "cyber_attack",
+   "briefing": "A sophisticated cyber attack has been detected targeting your city's critical infrastructure. The power grid SCADA systems are showing anomalous behavior, water treatment plant controls are unresponsive, and hospital networks are reporting ransomware. You are the cyber incident commander coordinating the response across multiple agencies and private sector partners.",
+   "objectives": [
+    "Identify the attack vector and scope",
+    "Isolate compromised systems to prevent lateral movement",
+    "Coordinate with federal cyber agencies (CISA, FBI)",
+    "Maintain essential services through manual overrides",
+    "Establish secure communication channels"
+   ],
+   "rules": [
+    "Disconnecting systems can cause cascading physical failures",
+    "Attribution should not delay defensive action",
+    "Manual overrides exist but require trained operators",
+    "Public communication must balance transparency with operational security"
+   ],
+   "steps": [
+    {
+     "prompt": "SOC analysts report coordinated intrusion across power grid, water treatment, and hospital networks. Indicators suggest a state-sponsored APT. What is your first priority?",
+     "options": [
+      {
+       "id": "ca_1_isolate",
+       "text": "Order immediate network segmentation to isolate compromised SCADA systems from clean networks.",
+       "risk": "low",
+       "consequence": {
+        "text": "Network segmentation limits lateral movement. Some non-critical systems go offline but the attack surface shrinks. Forensic evidence is preserved.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 10
+       }
+      },
+      {
+       "id": "ca_1_monitor",
+       "text": "Deploy additional monitoring to understand the full scope before taking action.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Enhanced monitoring reveals the attacker's toolset and C2 infrastructure. However, the adversary notices the increased scrutiny and accelerates their timeline.",
+        "type": "warning",
+        "impact": "neutral",
+        "trust_delta": -5
+       }
+      },
+      {
+       "id": "ca_1_shutdown",
+       "text": "Order emergency shutdown of all internet-connected infrastructure systems.",
+       "risk": "high",
+       "consequence": {
+        "text": "Total shutdown causes power fluctuations across the grid. Hospitals switch to generators. Water pressure drops. The cure is almost as damaging as the attack.",
+        "type": "danger",
+        "impact": "negative",
+        "trust_delta": -20
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "The hospital network ransomware is spreading. Patient records are encrypted and surgical scheduling systems are down. The attackers demand 50 BTC. Hospitals report no immediate life-threatening impacts but elective procedures are cancelled.",
+     "options": [
+      {
+       "id": "ca_2_backup",
+       "text": "Activate hospital disaster recovery plans and restore from verified clean backups.",
+       "risk": "low",
+       "consequence": {
+        "text": "Backup restoration begins. Most systems recoverable within 4-6 hours. Some recent records lost but patient safety maintained. No ransom paid.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 15
+       }
+      },
+      {
+       "id": "ca_2_negotiate",
+       "text": "Engage with the attackers to buy time while forensics teams work on decryption.",
+       "risk": "medium",
+       "consequence": {
+        "text": "The negotiation stalls the attackers. Forensic teams identify the ransomware variant and find a partial decryption solution. Partial recovery achieved.",
+        "type": "info",
+        "impact": "neutral",
+        "trust_delta": 0
+       }
+      },
+      {
+       "id": "ca_2_pay",
+       "text": "Authorize ransom payment to restore hospital systems as quickly as possible.",
+       "risk": "high",
+       "consequence": {
+        "text": "Payment processed but decryption keys only partially work. Attackers demand more. FBI expresses strong disapproval. Media discovers the payment.",
+        "type": "danger",
+        "impact": "critical",
+        "trust_delta": -25
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "Water treatment plant operators report they have lost remote access to chemical dosing controls. Manual overrides are available but require on-site personnel. Current chlorine levels are within safe parameters but trending upward.",
+     "options": [
+      {
+       "id": "ca_3_manual",
+       "text": "Dispatch trained operators to implement manual overrides at the treatment plant.",
+       "risk": "low",
+       "consequence": {
+        "text": "Operators arrive and establish manual control. Water quality maintained within safe parameters. Process is slower but reliable.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 10
+       }
+      },
+      {
+       "id": "ca_3_patch",
+       "text": "Have the IT team attempt to regain remote access by patching the exploited vulnerability.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Patching is partially successful. Remote access restored to monitoring but not control systems. Provides situational awareness while manual ops continue.",
+        "type": "info",
+        "impact": "neutral",
+        "trust_delta": 0
+       }
+      },
+      {
+       "id": "ca_3_shutdown_water",
+       "text": "Shut down the water treatment plant entirely until systems are verified clean.",
+       "risk": "high",
+       "consequence": {
+        "text": "Water service interrupted for 200,000 residents. Panic buying of bottled water. Hospitals lose water pressure. Emergency water distribution overwhelmed.",
+        "type": "danger",
+        "impact": "negative",
+        "trust_delta": -15
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "CISA and FBI arrive on scene. They have intelligence linking the attack to a known APT group. They want to deploy counter-intrusion tools but warn it could alert the adversary. Meanwhile, power grid operators report they can maintain service with manual controls.",
+     "options": [
+      {
+       "id": "ca_4_coordinate",
+       "text": "Coordinate a synchronized deployment of counter-intrusion tools across all affected networks.",
+       "risk": "low",
+       "consequence": {
+        "text": "Synchronized deployment succeeds. The adversary's access is cut across all networks simultaneously. Clean-up operations begin in earnest.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 20
+       }
+      },
+      {
+       "id": "ca_4_partial",
+       "text": "Deploy counter-tools on the most critical systems first, accepting risk on secondary targets.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Critical systems secured. The adversary detects the action and attempts to destroy evidence on secondary systems. Partial intelligence loss.",
+        "type": "warning",
+        "impact": "neutral",
+        "trust_delta": 5
+       }
+      },
+      {
+       "id": "ca_4_delay",
+       "text": "Delay the counter-operation to gather more intelligence about the adversary's capabilities.",
+       "risk": "high",
+       "consequence": {
+        "text": "During the delay, the adversary deploys additional persistence mechanisms. The eventual cleanup becomes significantly more complex and expensive.",
+        "type": "danger",
+        "impact": "negative",
+        "trust_delta": -10
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "Recovery operations are underway. Power grid and water treatment are on manual control. Hospitals are partially restored. The mayor wants a public statement and a timeline for full restoration. Media pressure is intense.",
+     "options": [
+      {
+       "id": "ca_5_transparent",
+       "text": "Issue a detailed public statement acknowledging the attack, current status, and realistic recovery timeline.",
+       "risk": "low",
+       "consequence": {
+        "text": "Public responds positively to transparency. Panic subsides. Federal assistance accelerates. Full recovery projected within 72 hours.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 0
+       }
+      },
+      {
+       "id": "ca_5_cautious",
+       "text": "Provide a brief statement with limited details, citing ongoing investigation.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Media speculates about the true extent. Some public anxiety but no panic. Recovery continues on schedule without external pressure.",
+        "type": "info",
+        "impact": "neutral",
+        "trust_delta": 0
+       }
+      },
+      {
+       "id": "ca_5_minimize",
+       "text": "Downplay the severity to avoid public panic and economic impact.",
+       "risk": "high",
+       "consequence": {
+        "text": "Leaked internal documents contradict the public statement. Media trust collapses. Political fallout ensues. Recovery efforts are now scrutinized adversarially.",
+        "type": "danger",
+        "impact": "negative",
+        "trust_delta": 0
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "infrastructure_failure",
+   "briefing": "A major bridge collapse during rush hour has triggered a cascading infrastructure crisis. The collapse has severed a main water line, ruptured a gas main, and knocked out power transmission lines serving the hospital district. Hundreds of vehicles are stranded. You are the city emergency manager facing simultaneous infrastructure emergencies.",
+   "objectives": [
+    "Coordinate immediate rescue of bridge collapse survivors",
+    "Isolate ruptured gas main to prevent explosion",
+    "Restore water and power to the hospital district",
+    "Manage traffic rerouting and evacuation",
+    "Establish unified command across utility companies"
+   ],
+   "rules": [
+    "Gas leak creates explosion risk near rescue operations",
+    "Hospital district has limited backup generator fuel",
+    "Rescue and utility repair teams share limited heavy equipment",
+    "Every hour of hospital power outage increases patient risk"
+   ],
+   "steps": [
+    {
+     "prompt": "The bridge has partially collapsed. Approximately 20 vehicles are on the damaged span. Smoke is rising from a ruptured gas main below. Fire department reports strong gas odor near the collapse zone. What is your immediate priority?",
+     "options": [
+      {
+       "id": "if_1_gas",
+       "text": "Order gas company to shut off the main and establish a safety perimeter before beginning rescue.",
+       "risk": "low",
+       "consequence": {
+        "text": "Gas isolation takes 15 minutes. The safety perimeter protects rescuers. Rescue operations begin safely once gas flow is confirmed stopped.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 15
+       }
+      },
+      {
+       "id": "if_1_simultaneous",
+       "text": "Begin rescue operations immediately while gas crews work to isolate the leak in parallel.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Rescue teams extract two survivors quickly. Gas crews are delayed by debris. A minor ignition incident injures no one but forces a temporary pullback.",
+        "type": "warning",
+        "impact": "neutral",
+        "trust_delta": -5
+       }
+      },
+      {
+       "id": "if_1_rescue_first",
+       "text": "Send all available units to rescue survivors immediately, gas leak is secondary.",
+       "risk": "high",
+       "consequence": {
+        "text": "Rescue teams rush in. Three survivors extracted. Then a gas pocket ignites, injuring two firefighters. All operations halted for an hour.",
+        "type": "danger",
+        "impact": "negative",
+        "trust_delta": -20
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "The hospital district reports backup generators have 4 hours of fuel remaining. The severed water main has flooded a subway tunnel. Power company says overhead line repair requires a crane currently in use at the bridge. How do you allocate?",
+     "options": [
+      {
+       "id": "if_2_hospital",
+       "text": "Prioritize hospital power. Release the crane for power line repair and find alternate bridge equipment.",
+       "risk": "low",
+       "consequence": {
+        "text": "Power lines repaired within 2 hours. Hospital power restored with fuel to spare. Bridge rescue continues with lighter equipment at reduced pace.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 10
+       }
+      },
+      {
+       "id": "if_2_split",
+       "text": "Split the crane time: 2 hours at bridge, then move to power repair.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Bridge rescue makes progress. Crane relocated with 90 minutes of generator fuel remaining. Power restored just in time. Close call.",
+        "type": "warning",
+        "impact": "neutral",
+        "trust_delta": 0
+       }
+      },
+      {
+       "id": "if_2_bridge",
+       "text": "Keep the crane at the bridge. Hospital will manage on generators while we dispatch fuel trucks.",
+       "risk": "high",
+       "consequence": {
+        "text": "Fuel truck delayed by traffic chaos. Hospital generators run dry for 22 minutes. Emergency hand-ventilation of ICU patients required. No fatalities but severe risk.",
+        "type": "danger",
+        "impact": "critical",
+        "trust_delta": -25
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "The flooded subway tunnel is causing ground instability near adjacent buildings. Structural engineers warn of possible secondary collapses. 500 residents in nearby buildings need evacuation. Traffic gridlock is blocking emergency vehicle access.",
+     "options": [
+      {
+       "id": "if_3_evacuate",
+       "text": "Establish pedestrian evacuation corridors and deploy police to clear emergency vehicle routes.",
+       "risk": "low",
+       "consequence": {
+        "text": "Orderly evacuation proceeds. Emergency routes cleared within 30 minutes. No secondary collapses during evacuation. Residents relocated to shelters.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 10
+       }
+      },
+      {
+       "id": "if_3_pump",
+       "text": "Focus on pumping the subway tunnel to reduce ground instability, delaying full evacuation.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Pumping begins but structural settling continues. Partial evacuation ordered. One building shows new cracks. Engineers recommend full evacuation anyway.",
+        "type": "info",
+        "impact": "neutral",
+        "trust_delta": -5
+       }
+      },
+      {
+       "id": "if_3_shelter",
+       "text": "Order residents to shelter in place until ground stability can be assessed.",
+       "risk": "high",
+       "consequence": {
+        "text": "A secondary pipe burst causes localized ground subsidence. One building's foundation shifts. Emergency evacuation required under worse conditions.",
+        "type": "danger",
+        "impact": "negative",
+        "trust_delta": -15
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "Twelve hours in. Bridge rescue complete, all survivors accounted for. Power restored. But the water main repair will take 48 hours. The hospital district and 30,000 residents have no water service. Mutual aid from neighboring cities offered.",
+     "options": [
+      {
+       "id": "if_4_mutual_aid",
+       "text": "Accept mutual aid. Deploy water tankers to hospitals and establish community distribution points.",
+       "risk": "low",
+       "consequence": {
+        "text": "Water tankers arrive within hours. Hospital water supply secured. Community distribution points operational by evening. Orderly and effective.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 15
+       }
+      },
+      {
+       "id": "if_4_temporary",
+       "text": "Install a temporary bypass pipe to restore partial water service faster.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Temporary bypass provides 40% capacity within 12 hours. Sufficient for hospitals and essential services. Residential areas on rationing.",
+        "type": "info",
+        "impact": "neutral",
+        "trust_delta": 5
+       }
+      },
+      {
+       "id": "if_4_expedite",
+       "text": "Expedite the full repair with 24/7 crews, foregoing temporary measures.",
+       "risk": "high",
+       "consequence": {
+        "text": "Full repair estimated at 36 hours with continuous work. But 36 hours without water causes sanitation crisis. Two care homes require emergency relocation.",
+        "type": "danger",
+        "impact": "negative",
+        "trust_delta": -10
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "Day three. Water main repaired, all services restored. Investigation reveals the bridge collapse was caused by deferred maintenance. City council demands a briefing. Media is reporting on the near-miss at the hospital. How do you handle the aftermath?",
+     "options": [
+      {
+       "id": "if_5_accountability",
+       "text": "Present a comprehensive after-action report with specific infrastructure inspection and maintenance recommendations.",
+       "risk": "low",
+       "consequence": {
+        "text": "Council approves emergency infrastructure inspection funding. Public confidence in emergency management restored. Lessons learned documented.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 0
+       }
+      },
+      {
+       "id": "if_5_defer",
+       "text": "Recommend a full independent investigation before making public recommendations.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Investigation commissioned. Results expected in 6 months. Some criticism of slow response to systemic issues but process is respected.",
+        "type": "info",
+        "impact": "neutral",
+        "trust_delta": 0
+       }
+      },
+      {
+       "id": "if_5_deflect",
+       "text": "Focus the briefing on the successful rescue and minimize the infrastructure discussion.",
+       "risk": "high",
+       "consequence": {
+        "text": "Media and opposition councilors expose the deferred maintenance records. Public trust erodes. Multiple officials face accountability hearings.",
+        "type": "danger",
+        "impact": "negative",
+        "trust_delta": 0
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "public_health",
+   "briefing": "A novel respiratory pathogen has been identified in three hospital clusters in your metropolitan area. Initial cases show high transmissibility and 8% hospitalization rate. CDC is en route but you are the local public health emergency commander. Early containment decisions in the next 72 hours will determine the trajectory of this outbreak.",
+   "objectives": [
+    "Implement disease surveillance and contact tracing",
+    "Coordinate hospital surge capacity planning",
+    "Establish public communication and guidance",
+    "Deploy containment measures proportional to threat",
+    "Coordinate with state and federal health agencies"
+   ],
+   "rules": [
+    "Early aggressive containment is most effective but most disruptive",
+    "Public trust in health authorities determines compliance",
+    "Hospital capacity is the binding constraint",
+    "Information gaps require decisions under uncertainty"
+   ],
+   "steps": [
+    {
+     "prompt": "Twenty-three confirmed cases across three hospitals. Genomic sequencing underway. No approved therapeutics. Two healthcare workers infected. What containment measures do you implement immediately?",
+     "options": [
+      {
+       "id": "ph_1_targeted",
+       "text": "Activate targeted containment: isolate confirmed cases, trace and quarantine contacts, enhance hospital infection control.",
+       "risk": "low",
+       "consequence": {
+        "text": "Contact tracing identifies 180 close contacts. Quarantine compliance is high. Two additional clusters identified early. Measured and effective.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 15
+       }
+      },
+      {
+       "id": "ph_1_broad",
+       "text": "Recommend voluntary restrictions: work from home advisories, event cancellations, mask mandates in healthcare settings.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Partial compliance. Some transmission chains broken. But voluntary measures allow continued community spread in non-compliant venues.",
+        "type": "info",
+        "impact": "neutral",
+        "trust_delta": 0
+       }
+      },
+      {
+       "id": "ph_1_lockdown",
+       "text": "Declare public health emergency and implement immediate shelter-in-place orders.",
+       "risk": "high",
+       "consequence": {
+        "text": "Economic disruption is immediate and severe. Public backlash is strong given only 23 confirmed cases. Political opposition mobilizes. Compliance is mixed.",
+        "type": "danger",
+        "impact": "negative",
+        "trust_delta": -20
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "Day 3. Cases have risen to 89. Genomic analysis reveals the pathogen is a novel coronavirus variant. R0 estimated at 3.2. Two ICU patients are ventilated. CDC confirms no existing vaccines are effective. Hospital capacity is at 78%.",
+     "options": [
+      {
+       "id": "ph_2_surge",
+       "text": "Activate hospital surge plans: cancel elective procedures, set up overflow facilities, request federal medical teams.",
+       "risk": "low",
+       "consequence": {
+        "text": "Surge capacity increases by 40%. Federal medical teams arrive within 48 hours. Hospitals remain functional as case counts climb.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 10
+       }
+      },
+      {
+       "id": "ph_2_testing",
+       "text": "Focus resources on expanding testing capacity to better understand true prevalence.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Testing expansion reveals true case count is 3x reported. Better data enables targeted interventions but the numbers alarm the public.",
+        "type": "warning",
+        "impact": "neutral",
+        "trust_delta": -5
+       }
+      },
+      {
+       "id": "ph_2_wait",
+       "text": "Maintain current measures and wait for CDC guidance before escalating.",
+       "risk": "high",
+       "consequence": {
+        "text": "Cases double in 4 days while awaiting guidance. Hospital capacity reaches 92%. CDC arrives to find the situation more advanced than expected.",
+        "type": "danger",
+        "impact": "negative",
+        "trust_delta": -15
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "Week 2. Case count at 340, 12 deaths. Schools are asking for guidance. Businesses are losing revenue. A major sporting event is scheduled this weekend. Public anxiety is high. CDC recommends social distancing but leaves implementation to local authority.",
+     "options": [
+      {
+       "id": "ph_3_phased",
+       "text": "Implement phased restrictions: close schools, postpone the event, mandate distancing in businesses with clear criteria for reopening.",
+       "risk": "low",
+       "consequence": {
+        "text": "Clear criteria reduce uncertainty. Most businesses comply. The event is postponed without legal challenge. Transmission curve begins to flatten.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 10
+       }
+      },
+      {
+       "id": "ph_3_advisory",
+       "text": "Issue strong advisories but allow businesses and event organizers to decide independently.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Mixed compliance. The sporting event proceeds at reduced capacity. A cluster of 30 cases traced to the event within a week. Public debate intensifies.",
+        "type": "warning",
+        "impact": "neutral",
+        "trust_delta": -5
+       }
+      },
+      {
+       "id": "ph_3_nothing",
+       "text": "Resist restrictions to protect the economy. Focus on hospital capacity instead.",
+       "risk": "high",
+       "consequence": {
+        "text": "Transmission accelerates. Hospital capacity exceeded within 10 days. Emergency field hospitals required. Economic impact ultimately worse.",
+        "type": "danger",
+        "impact": "critical",
+        "trust_delta": -20
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "Week 4. Curve is flattening under current measures. A pharmaceutical company announces a promising therapeutic in early trials. Pressure mounts to ease restrictions. Hospital capacity is at 65% and declining. 28 total deaths.",
+     "options": [
+      {
+       "id": "ph_4_gradual",
+       "text": "Begin gradual, metrics-based reopening. Publish clear thresholds for re-tightening if cases resurge.",
+       "risk": "low",
+       "consequence": {
+        "text": "Phased reopening proceeds smoothly. Public appreciates the transparency. Minor uptick in cases managed by enhanced testing and tracing.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 15
+       }
+      },
+      {
+       "id": "ph_4_accelerate",
+       "text": "Lift most restrictions immediately given the declining trend.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Initial relief in the business community. Cases begin rising again after 10 days. A second wave of restrictions needed within 3 weeks.",
+        "type": "warning",
+        "impact": "neutral",
+        "trust_delta": -10
+       }
+      },
+      {
+       "id": "ph_4_maintain",
+       "text": "Maintain all current restrictions until the therapeutic is approved and distributed.",
+       "risk": "high",
+       "consequence": {
+        "text": "Approval timeline uncertain. Continued restrictions cause severe economic damage and compliance fatigue. Protests organized. Political crisis develops.",
+        "type": "danger",
+        "impact": "negative",
+        "trust_delta": -15
+       }
+      }
+     ]
+    },
+    {
+     "prompt": "Week 8. The outbreak is under control. Therapeutic approved under emergency use. Total deaths: 41. Time for the after-action review. The governor wants a report on lessons learned and preparedness recommendations.",
+     "options": [
+      {
+       "id": "ph_5_comprehensive",
+       "text": "Deliver a comprehensive after-action report with specific investment recommendations for surveillance, hospital capacity, and stockpiles.",
+       "risk": "low",
+       "consequence": {
+        "text": "Report leads to significant preparedness funding. Regional coordination agreements signed. Public health infrastructure strengthened for future threats.",
+        "type": "success",
+        "impact": "positive",
+        "trust_delta": 0
+       }
+      },
+      {
+       "id": "ph_5_summary",
+       "text": "Provide a summary report focused on what went well, with general improvement suggestions.",
+       "risk": "medium",
+       "consequence": {
+        "text": "Report accepted. Some incremental improvements funded. Structural vulnerabilities in preparedness remain unaddressed.",
+        "type": "info",
+        "impact": "neutral",
+        "trust_delta": 0
+       }
+      },
+      {
+       "id": "ph_5_political",
+       "text": "Craft the report to emphasize political leadership success and downplay systemic gaps.",
+       "risk": "high",
+       "consequence": {
+        "text": "Report dismissed by public health community as whitewash. Independent review commissioned. Preparedness improvements delayed by political controversy.",
+        "type": "danger",
+        "impact": "negative",
+        "trust_delta": 0
+       }
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

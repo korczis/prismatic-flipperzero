@@ -33,7 +33,8 @@ flowchart LR
   h3 --> h3e0["Which term?<br/><small>Pick the term of four</small>"]
   h3 --> h3e1["Manipulative?<br/><small>Manipulative or benign</small>"]
   h3 --> h3e2["Review<br/><small>Due again: boxes 1 to 5</small>"]
-  h3 --> h3e3["Quiz an object<br/><small>Quiz a chosen object</small>"]
+  h3 --> h3e3["Crisis simulations<br/><small>Decide, see what follows</small>"]
+  h3 --> h3e4["Quiz an object<br/><small>Quiz a chosen object</small>"]
   home --> t0["Info"]
   home --> t1["About"]
 ```
@@ -79,6 +80,17 @@ screen: its grades are rows, and the status line shows what the focused grade me
 puts the chosen codes together ("B2"), then each scale's grade with its meaning, then what to do
 with the grade and how to grade. The device never computes a grade; the reader chooses, the
 screen records and explains. A new scale is data, not code.
+
+### Crisis simulations
+
+Train > Crisis simulations runs the Prismatic Platform's tabletop exercises (hostage
+negotiation, active shooter, chemical incident, cyber attack and more), imported as data by
+`tools/prismatic_import.py`. Each step shows the situation and the options with their risk;
+choosing one shows its consequence and what it did to trust (shown as a number and a bar).
+After the last step the outcome follows the source's own rules, with every decision and its
+trust change. Back returns to a step and a new choice replaces the old one: the state is
+recomputed from the choices, so nothing counts twice. Every run says it is a training exercise,
+not guidance for a real emergency.
 
 ### Saved sessions
 

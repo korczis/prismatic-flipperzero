@@ -63,7 +63,10 @@ typedef enum {
     PKP_ITEM_EXAMPLE,
     PKP_ITEM_AXIS, /* a scale of an assessment: its name */
     PKP_ITEM_LEVEL, /* one grade of the scale above: "code|label|meaning" */
-    PKP_ITEM_LAST = PKP_ITEM_LEVEL,
+    PKP_ITEM_SIM_START, /* a simulation's starting trust, decimal */
+    PKP_ITEM_SIM_STEP, /* one step's prompt; its options follow */
+    PKP_ITEM_SIM_OPTION, /* "risk|impact|trust delta|consequence type|option|consequence" */
+    PKP_ITEM_LAST = PKP_ITEM_SIM_OPTION,
 } PkpItemType;
 
 enum {
@@ -73,6 +76,7 @@ enum {
     PKP_CAP_QUIZ = 8,
     PKP_CAP_COMPARE = 16,
     PKP_CAP_ASSESS = 32,
+    PKP_CAP_SIMULATE = 64,
 };
 
 enum {

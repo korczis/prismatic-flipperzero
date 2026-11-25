@@ -47,6 +47,9 @@ while IFS=$'\t' read -r id _version status; do
   fi
 done < <(python3 tools/sdk.py list)
 
+step "prismatic import (crisis simulations current with the pinned source, where present)"
+python3 tools/prismatic_import.py --check
+
 step "acceptance (a new object, the same FAP)"
 tools/acceptance.sh
 

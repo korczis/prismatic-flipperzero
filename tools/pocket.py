@@ -56,10 +56,15 @@ KINDS = ["pattern", "technique", "signature", "fallacy", "bias", "trait", "modal
          "concept", "article"]
 ITEM_ROLES = ["indicators", "actions", "escalation", "alternatives", "validation"]
 ITEM_TYPES = {"indicators": 1, "actions": 2, "escalation": 3, "alternatives": 4,
-              "validation": 5, "heading": 6, "text": 7, "example": 8, "axis": 9, "level": 10}
+              "validation": 5, "heading": 6, "text": 7, "example": 8, "axis": 9, "level": 10,
+              "sim_start": 11, "sim_step": 12, "sim_option": 13}
 RELATIONS = ["related_to", "contrasts_with", "confused_with", "specializes", "generalizes",
              "requires", "supports", "contradicts", "mitigated_by", "illustrated_by"]
-CAPS = {"browse": 1, "detect": 2, "apply": 4, "quiz": 8, "compare": 16, "assess": 32}
+CAPS = {"browse": 1, "detect": 2, "apply": 4, "quiz": 8, "compare": 16, "assess": 32,
+        "simulate": 64}
+SCENARIOS = Path("knowledge") / "scenarios.json"  # under ROOT
+SIMULATIONS_CATEGORY = "Simulations"
+SIM_IMPACTS = ("positive", "neutral", "negative", "critical")
 APPLICATIONS = Path("knowledge") / "applications.toml"  # under ROOT
 WORKING_FIELDS = ("links", "confused_links", "related_terms", "catalog_id", "ea_code")
 APPLICATIONS_CATEGORY = "Applications"
@@ -404,6 +409,30 @@ def load_applications(path=None):
     return objects
 
 
+def load_scenarios(path=None):
+    """The crisis simulations in knowledge/scenarios.json (imported from the Prismatic Platform
+    by tools/prismatic_import.py) as IR objects with a `simulation`: steps, options and their
+    consequences, and the trust a run starts with."""
+    path = Path(path) if path else ROOT / SCENARIOS
+    if not path.exists():
+        return []
+    data = json.loads(path.read_text())
+    prov = data["source"]
+    objects = []
+    for sc in data["scenarios"]:
+        title = sc["id"].replace("_", " ").capitalize()
+        o = empty_object(f"simulations/{sc['id'].replace('_', '-')}", "scenario", title,
+                         SIMULATIONS_CATEGORY, prov)
+        o.update(code="SIM", definition=sc["briefing"], validation_status="sourced_simulation",
+                 chapters=[{"heading": "Objectives", "text": "; ".join(sc["objectives"]) + "."},
+                           {"heading": "Rules", "text": "; ".join(sc["rules"]) + "."}],
+                 simulation={"start_trust": data["start_trust"], "steps": sc["steps"]})
+        for k in WORKING_FIELDS:
+            del o[k]
+        objects.append(o)
+    return objects
+
+
 def extract(source_dir):
     spec = json.loads(SOURCES.read_text())
     src = spec["source"]
@@ -430,9 +459,10 @@ def extract(source_dir):
     aliases = overlay_quick_reference(objects, spec, report)
     slugs = merge_catalog(objects, git, spec, prov, report)
     resolve(objects, aliases, slugs, report)
-    for o in load_applications():
+    for o in load_applications() + load_scenarios():
         objects[o["id"]] = o
     report["applications"] = sum(1 for o in objects.values() if o.get("rubric"))
+    report["simulations"] = sum(1 for o in objects.values() if o.get("simulation"))
     report["accepted"] = len(objects)
     ir = {"schema": SCHEMA, "pack": {**spec["pack"], "source_repository": src["repository"],
                                      "source_commit": src["commit"]},
@@ -470,6 +500,15 @@ def validate(ir):
                     len(lv) != 3 or not lv[0] or not lv[1] or "|" in "".join(lv)
                     for lv in levels):
                 errors.append(f"{oid}: a scale needs a name and 2+ [code, label, meaning]")
+        sim = o.get("simulation")
+        for step in (sim or {}).get("steps", []):
+            ops = step.get("options", [])
+            if not step.get("prompt") or not 2 <= len(ops) <= 8 or any(
+                    op["consequence"]["impact"] not in SIM_IMPACTS
+                    or not isinstance(op["consequence"]["trust_delta"], int)
+                    or "|" in op["text"] + op["consequence"]["text"] + op["consequence"]["type"]
+                    for op in ops):
+                errors.append(f"{oid}: a simulation step needs a prompt and 2-8 valid options")
     for o in ir.get("objects", []):
         for r in o.get("relations", []):
             if r.get("type") not in RELATIONS:
@@ -494,6 +533,8 @@ def capabilities(o, has_quiz):
         caps.append("compare")
     if o.get("rubric"):
         caps.append("assess")
+    if o.get("simulation"):
+        caps.append("simulate")
     return caps
 
 
@@ -507,7 +548,7 @@ def mask(text, title):
 
 def derive_quiz(objects):
     """Definition recognition for every non-article object with a real definition (not the
-    assessments: they are tools, not terms), and one
+    assessments and simulations: they are tools, not terms), and one
     trainer question per catalogue example. Distractors come from the subject's own relations
     first (confusable by construction), then its category, then the pack, each in id order;
     the answer position is a deterministic function of the id, never a random seed."""
@@ -518,7 +559,8 @@ def derive_quiz(objects):
     ids = [o["id"] for o in objects]
     quiz = []
     for i, o in enumerate(objects):
-        if len(o["definition"]) >= 60 and o["kind"] != "article" and not o.get("rubric"):
+        if (len(o["definition"]) >= 60 and o["kind"] != "article" and not o.get("rubric")
+                and not o.get("simulation")):
             pool = [r["target"] for r in o["relations"]] + by_cat[o["category"]] + ids
             picks, titles = [], {fold(o["title"]).lower()}
             for cand in pool:
@@ -578,6 +620,16 @@ def object_items(o):
     for role in ITEM_ROLES:
         for text in o[role]:
             yield ITEM_TYPES[role], text
+    sim = o.get("simulation")
+    if sim:
+        yield ITEM_TYPES["sim_start"], str(sim["start_trust"])
+        for step in sim["steps"]:
+            yield ITEM_TYPES["sim_step"], step["prompt"]
+            for op in step["options"]:
+                c = op["consequence"]
+                yield ITEM_TYPES["sim_option"], "|".join(
+                    [op["risk"], c["impact"], str(c["trust_delta"]), c["type"], op["text"],
+                     c["text"]])
     for axis in o.get("rubric", []):
         yield ITEM_TYPES["axis"], axis["name"]
         for code, label, meaning in axis["levels"]:

@@ -101,3 +101,49 @@ provenance = { repository = "https://gitlab.com/korczis/prismatic-platform", com
     ["0.30", "Unlikely", "Weak evidence, contradictory indicators."],
     ["0.10", "Unconfirmed", "Insufficient evidence, speculation."],
   ]
+
+[[application]]
+id = "applications/estimative-probability"
+title = "Estimative language: say how likely, in words"
+code = "WEP"
+definition = "Prismatic's confidence calibration assigns analytic judgments a standard vocabulary: seven terms, each a probability range and a numeric score, from almost certain (95-99%) to remote (1-5%)."
+actions = [
+  "Assign probability estimates to analytic judgments with this standardized vocabulary.",
+]
+provenance = { repository = "https://gitlab.com/korczis/prismatic-platform", commit = "49adc18f7bac", path = "apps/prismatic_web/priv/content/glossary/intelligence-analysis.md" }
+
+  [[application.axis]]
+  name = "Likelihood"
+  levels = [
+    ["95-99%", "Almost Certain", "Numeric score 0.95-0.99."],
+    ["80-95%", "Very Likely", "Numeric score 0.80-0.95."],
+    ["55-80%", "Likely", "Numeric score 0.55-0.80."],
+    ["45-55%", "Roughly Even", "Numeric score 0.45-0.55."],
+    ["20-45%", "Unlikely", "Numeric score 0.20-0.45."],
+    ["5-20%", "Very Unlikely", "Numeric score 0.05-0.20."],
+    ["1-5%", "Remote", "Numeric score 0.01-0.05."],
+  ]
+
+[[application]]
+id = "applications/indicator-age"
+title = "Threat indicator: how much its age leaves of it"
+code = "IOC"
+definition = "An indicator of compromise loses confidence as it ages: an IP flagged six months ago may belong to someone else now. Prismatic's multi-tier decay model multiplies an indicator's confidence by a factor for its age."
+actions = [
+  "Apply the factor to the indicator's confidence score.",
+]
+validation = [
+  "IP addresses change hands faster than domain names, and file hashes stay stable; a production system applies type-specific decay curves rather than one model.",
+]
+provenance = { repository = "https://gitlab.com/korczis/prismatic-platform", commit = "49adc18f7bac", path = "apps/prismatic_web/priv/content/glossary/threat-intelligence.md" }
+
+  [[application.axis]]
+  name = "Age of the indicator"
+  levels = [
+    ["1.00", "Under 1 hour", "Fresh indicator, maximum confidence."],
+    ["0.95", "1-24 hours", "Very recent, minimal decay."],
+    ["0.80", "1-7 days", "Recent, slight decay for infrastructure changes."],
+    ["0.50", "7-30 days", "Moderate age, significant infrastructure churn."],
+    ["0.25", "30-90 days", "Old indicator, high probability of reassignment."],
+    ["0.10", "Over 90 days", "Very old, retained only for historical correlation."],
+  ]

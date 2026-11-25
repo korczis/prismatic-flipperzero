@@ -1,6 +1,7 @@
 #include "ui_app.h"
 
 #include "../core/pocket.h"
+#include "../core/simulate.h"
 #include "../version.h"
 #include "icons.h"
 
@@ -31,6 +32,11 @@
 #define T_GRADE        (15u << 24) /* argument: the grade chosen on the current scale */
 #define T_SAVE         (16u << 24) /* save the detector's marks as a session */
 #define SESSIONS_SHOWN 40u
+#define T_SIMULATE     (17u << 24) /* start (or restart) the frame object's simulation */
+#define T_SIM_PICK     (18u << 24) /* argument: the option chosen in the current step */
+#define T_SIM_NEXT     (19u << 24) /* the next step, or the outcome after the last */
+#define MAX_STEPS      12u
+#define MAX_OPTIONS    8u
 #define MAX_AXES       4u
 #define MAX_LEVELS     16u
 #define KIND_CAP       32u
@@ -59,7 +65,10 @@
     X(Compare)      \
     X(Assess)       \
     X(AssessResult) \
-    X(Sessions)
+    X(Sessions)     \
+    X(SimStep)      \
+    X(SimResult)    \
+    X(SimOutcome)
 
 typedef enum {
 #define SCREEN_ENUM(name) Scr##name,
@@ -84,6 +93,7 @@ enum {
     HomeRandomDetect,
     HomeReview,
     HomeAssess,
+    HomeSimulate,
     HomeForget,
     HomeForgetNow,
     HomeSessions,
@@ -113,7 +123,7 @@ struct UiApp {
     PkpStatus pack_status;
     uint32_t open_ms;
     uint32_t scan_ms;
-    uint16_t cap_count[6];
+    uint16_t cap_count[7];
     uint32_t quiz_kind_count[3];
     uint16_t kind_count[KIND_CAP];
 
@@ -134,6 +144,12 @@ struct UiApp {
     uint32_t axis_item[MAX_AXES];
     uint8_t axis_levels[MAX_AXES];
     uint8_t grade[MAX_AXES];
+    /* a simulation: its starting trust, each step's prompt item and option count, the picks */
+    int16_t sim_trust0;
+    uint8_t sim_steps;
+    uint32_t sim_step_item[MAX_STEPS];
+    uint8_t sim_step_options[MAX_STEPS];
+    uint8_t sim_pick[MAX_STEPS];
 
     PkpQuiz quiz;
     uint16_t quiz_asked; /* this session's answers, shown in the quiz header */
@@ -286,6 +302,7 @@ static uint32_t entry_count(UiApp* app, uint32_t entry) {
         [HomeRandomDetect] = app->cap_count[cap_index(PKP_CAP_DETECT)],
         [HomeReview] = progress_due_count(&app->progress),
         [HomeAssess] = app->cap_count[cap_index(PKP_CAP_ASSESS)],
+        [HomeSimulate] = app->cap_count[cap_index(PKP_CAP_SIMULATE)],
     };
     return entry < sizeof(counts) / sizeof(counts[0]) ? counts[entry] : 0;
 }
@@ -355,6 +372,12 @@ static const Hub hubs[] = {
        "Manipulative or benign",
        ShareQuestions},
       {UiIconCorrect, HomeReview, "Review", "%lu", "Due again: boxes 1 to 5", ShareNone},
+      {UiIconTrainer,
+       HomeSimulate,
+       "Crisis simulations",
+       "%lu",
+       "Decide, see what follows",
+       ShareNone},
       {UiIconArticle,
        HomeQuizzable,
        "Quiz an object",
@@ -494,7 +517,7 @@ static void render_objects(UiApp* app) {
 static void render_filter(UiApp* app) {
     Frame* f = top(app);
     static const char* const names[] = {
-        "Everything", "Detectors", "What to do", "Quiz", "Confusables", "Assess"};
+        "Everything", "Detectors", "What to do", "Quiz", "Confusables", "Assess", "Simulations"};
     char kind[24];
     bool by_kind = f->filter == 0;
     if(by_kind) pkp_kind_name(app->pack, (uint8_t)f->cat, kind, sizeof(kind));
@@ -654,6 +677,120 @@ static void render_assess_result(UiApp* app) {
     restore(app);
 }
 
+/* ------------------------------------------------------------------ simulations */
+
+static const char sim_disclaimer[] =
+    "A training exercise from the Prismatic Platform, not guidance for a real emergency. "
+    "In an emergency, call 112.";
+
+/* One option of a step, split into its fields; false when unreadable. */
+static bool sim_option(UiApp* app, uint8_t step, uint8_t k, SimOption* op) {
+    PkpItem it;
+    return pkp_item(app->pack, app->sim_step_item[step] + 1 + k, &it) == PKP_OK &&
+           sim_option_split((char*)str(app, it.text), op);
+}
+
+/* The run's state after the picks of steps 0..last, recomputed: Back and a new pick never
+ * count a decision twice. */
+static SimState sim_state(UiApp* app, int last) {
+    SimState st;
+    sim_start(&st, app->sim_trust0);
+    for(int k = 0; k <= last; k++) {
+        SimOption op;
+        if(sim_option(app, (uint8_t)k, app->sim_pick[k], &op)) sim_apply(&st, op.impact, op.delta);
+    }
+    return st;
+}
+
+static void render_sim_step(UiApp* app) {
+    Frame* f = top(app);
+    char line[200], pos[24];
+    PkpItem it;
+    if(app->sim_steps == 0 || pkp_item(app->pack, app->sim_step_item[f->aux], &it) != PKP_OK) {
+        page_reset(app->page, "Simulation");
+        page_add(app->page, PageNote, "This simulation could not be read.", 0);
+        restore(app);
+        return;
+    }
+    SimState st = sim_state(app, (int)f->aux - 1);
+    snprintf(line, sizeof(line), "Step %lu of %u", (unsigned long)f->aux + 1, app->sim_steps);
+    page_reset(app->page, line);
+    page_set_title_icon(app->page, UiIconTrainer);
+    snprintf(pos, sizeof(pos), "trust %d", st.trust);
+    page_set_position(app->page, pos);
+    page_add(app->page, PageParagraph, str(app, it.text), 0);
+    for(uint8_t k = 0; k < app->sim_step_options[f->aux]; k++) {
+        SimOption op;
+        if(!sim_option(app, (uint8_t)f->aux, k, &op)) continue;
+        snprintf(line, sizeof(line), "%.150s (%s risk)", op.option, op.risk);
+        page_add(app->page, PageLink, line, T_SIM_PICK | k);
+    }
+    if(f->aux == 0) page_add(app->page, PageNote, sim_disclaimer, 0);
+    restore(app);
+}
+
+/* What the pick led to: the consequence, and trust before and after. */
+static void render_sim_result(UiApp* app) {
+    Frame* f = top(app);
+    char line[64];
+    SimOption op;
+    page_reset(app->page, "Consequence");
+    if(!sim_option(app, (uint8_t)f->aux, app->sim_pick[f->aux], &op)) {
+        page_add(app->page, PageNote, "This step could not be read.", 0);
+        restore(app);
+        return;
+    }
+    char type[16];
+    snprintf(type, sizeof(type), "%s", op.type);
+    type[0] = (char)(type[0] >= 'a' && type[0] <= 'z' ? type[0] - 32 : type[0]);
+    page_reset(app->page, type);
+    page_set_title_icon(app->page, op.delta >= 0 ? UiIconCorrect : UiIconAlert);
+    page_add(app->page, PageMeta, op.option, 0);
+    page_add(app->page, PageParagraph, op.consequence, 0);
+    SimState before = sim_state(app, (int)f->aux - 1), after = sim_state(app, (int)f->aux);
+    snprintf(line, sizeof(line), "%d trust (%+d)", after.trust, after.trust - before.trust);
+    page_add(app->page, PageBig, line, 0);
+    snprintf(line, sizeof(line), "%d trust,%d to go", after.trust, 100 - after.trust);
+    page_add(app->page, PageBar, line, 0);
+    bool last = f->aux + 1 >= app->sim_steps;
+    page_add(app->page, PageLink, last ? "See the outcome" : "Next step", T_SIM_NEXT);
+    restore(app);
+}
+
+/* The outcome by the source's rules, then every decision with its trust change. */
+static void render_sim_outcome(UiApp* app) {
+    char line[200];
+    SimState st = sim_state(app, app->sim_steps - 1);
+    page_reset(app->page, "Outcome");
+    page_set_title_icon(app->page, UiIconTrainer);
+    page_add(app->page, PageTitle, sim_outcome_name(sim_outcome(&st)), 0);
+    snprintf(
+        line,
+        sizeof(line),
+        "Trust %d. %u positive and %u negative decisions of %u.",
+        st.trust,
+        st.positive,
+        st.negative,
+        st.decisions);
+    page_add(app->page, PageParagraph, line, 0);
+    page_add(app->page, PageHeading, "Your decisions", 0);
+    for(uint8_t k = 0; k < app->sim_steps; k++) {
+        SimOption op;
+        if(!sim_option(app, k, app->sim_pick[k], &op)) continue;
+        snprintf(line, sizeof(line), "%u. %+d %.150s", k + 1, op.delta, op.option);
+        page_add(app->page, PageBullet, line, 0);
+    }
+    page_add(app->page, PageLink, "Run it again", T_SIMULATE);
+    page_add(
+        app->page,
+        PageNote,
+        "Optimal: trust 70+ and more positive than negative decisions. Acceptable: trust 40+ and "
+        "no more negative than positive. Critical failure: trust under 20.",
+        0);
+    page_add(app->page, PageNote, sim_disclaimer, 0);
+    restore(app);
+}
+
 static void render_article(UiApp* app) {
     Frame* f = top(app);
     PkpObject o;
@@ -678,6 +815,8 @@ static void render_article(UiApp* app) {
     }
     if(o.caps & PKP_CAP_ASSESS)
         page_add_icon(app->page, PageChip, UiIconCorrect, "Assess", T_ASSESS);
+    if(o.caps & PKP_CAP_SIMULATE)
+        page_add_icon(app->page, PageChip, UiIconTrainer, "Run", T_SIMULATE);
     if(o.caps & PKP_CAP_QUIZ) page_add_icon(app->page, PageChip, UiIconQuiz, "Quiz", T_QUIZ);
     if(o.rel_count) {
         snprintf(line, sizeof(line), "%u", o.rel_count);
@@ -725,6 +864,7 @@ static void render_article(UiApp* app) {
     page_add(app->page, PageNote, "Markers describe; they never prove.", 0);
     if(markers) page_add_menu(app->page, "Run the detector", T_DETECT);
     if(o.caps & PKP_CAP_ASSESS) page_add_menu(app->page, "Assess", T_ASSESS);
+    if(o.caps & PKP_CAP_SIMULATE) page_add_menu(app->page, "Run the simulation", T_SIMULATE);
     if(markers && look_alikes(app, &o, NULL))
         page_add_menu(app->page, "Compare with a look-alike", T_PICK | f->obj);
     if(o.caps & PKP_CAP_QUIZ) page_add_menu(app->page, "Take the quiz", T_QUIZ);
@@ -1325,6 +1465,15 @@ static void render(UiApp* app) {
     case ScrSessions:
         render_sessions(app);
         break;
+    case ScrSimStep:
+        render_sim_step(app);
+        break;
+    case ScrSimResult:
+        render_sim_result(app);
+        break;
+    case ScrSimOutcome:
+        render_sim_outcome(app);
+        break;
     default:
         render_about(app);
         break;
@@ -1380,6 +1529,33 @@ static void start_assess(UiApp* app, uint16_t obj) {
     push(app, (Frame){.screen = ScrAssess, .obj = obj, .aux = 0});
 }
 
+/* A simulation's steps: the starting trust, each step's prompt item and its options. A run
+ * restarted from its outcome first leaves the run's own screens. */
+static void start_simulation(UiApp* app, uint16_t obj) {
+    while(app->depth > 1 && (top(app)->screen == ScrSimStep || top(app)->screen == ScrSimResult ||
+                             top(app)->screen == ScrSimOutcome))
+        app->depth--;
+    PkpObject o;
+    app->sim_steps = 0;
+    app->sim_trust0 = 50;
+    memset(app->sim_pick, 0, sizeof(app->sim_pick));
+    if(pkp_object(app->pack, obj, &o) != PKP_OK) o.items_count = 0;
+    for(uint32_t k = 0; k < o.items_count; k++) {
+        PkpItem it;
+        if(pkp_item(app->pack, o.items_first + k, &it) != PKP_OK) break;
+        if(it.type == PKP_ITEM_SIM_START) app->sim_trust0 = (int16_t)atoi(str(app, it.text));
+        if(it.type == PKP_ITEM_SIM_STEP && app->sim_steps < MAX_STEPS) {
+            app->sim_step_item[app->sim_steps] = o.items_first + k;
+            app->sim_step_options[app->sim_steps++] = 0;
+        } else if(
+            it.type == PKP_ITEM_SIM_OPTION && app->sim_steps &&
+            app->sim_step_options[app->sim_steps - 1] < MAX_OPTIONS) {
+            app->sim_step_options[app->sim_steps - 1]++;
+        }
+    }
+    push(app, (Frame){.screen = ScrSimStep, .obj = obj, .aux = 0});
+}
+
 /* q < 0 (no readable question) opens the quiz screen anyway, which says it could not read one. */
 static void start_quiz(UiApp* app, int32_t q, uint16_t obj) {
     push(app, (Frame){.screen = ScrQuiz, .aux = q < 0 ? UINT32_MAX : (uint32_t)q, .obj = obj});
@@ -1423,6 +1599,7 @@ static void home(UiApp* app, uint32_t entry) {
         [HomeAll] = PKP_CAP_BROWSE,
         [HomeQuizzable] = PKP_CAP_QUIZ,
         [HomeAssess] = PKP_CAP_ASSESS,
+        [HomeSimulate] = PKP_CAP_SIMULATE,
     };
     switch(entry) {
     case HomeTop:
@@ -1443,6 +1620,7 @@ static void home(UiApp* app, uint32_t entry) {
     case HomeAll:
     case HomeQuizzable:
     case HomeAssess:
+    case HomeSimulate:
         push(app, (Frame){.screen = ScrFilter, .filter = filters[entry]});
         break;
     case HomeInfo:
@@ -1527,6 +1705,19 @@ static void open_target(UiApp* app, uint32_t target, bool long_press) {
         break;
     case T_SAVE:
         save_session(app);
+        break;
+    case T_SIMULATE:
+        start_simulation(app, f->obj);
+        break;
+    case T_SIM_PICK:
+        app->sim_pick[f->aux] = (uint8_t)T_ARG(target);
+        push(app, (Frame){.screen = ScrSimResult, .obj = f->obj, .aux = f->aux});
+        break;
+    case T_SIM_NEXT:
+        if(f->aux + 1 < app->sim_steps)
+            push(app, (Frame){.screen = ScrSimStep, .obj = f->obj, .aux = f->aux + 1});
+        else
+            push(app, (Frame){.screen = ScrSimOutcome, .obj = f->obj});
         break;
     case T_GRADE:
         app->grade[f->aux] = (uint8_t)T_ARG(target);
@@ -1631,7 +1822,7 @@ void ui_app_set_pack(UiApp* app, PkpReader* pack, PkpStatus status, uint32_t ope
         for(uint32_t i = 0; i < pkp_count(pack, PKP_SEC_OBJECTS); i++) {
             PkpObject o;
             if(pkp_object(pack, i, &o) != PKP_OK) continue;
-            for(uint8_t bit = 1; bit <= PKP_CAP_ASSESS; bit <<= 1) {
+            for(uint8_t bit = 1; bit <= PKP_CAP_SIMULATE; bit <<= 1) {
                 if(o.caps & bit) app->cap_count[cap_index(bit)]++;
             }
             if(o.kind < KIND_CAP) app->kind_count[o.kind]++;

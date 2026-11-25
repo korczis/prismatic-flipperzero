@@ -60,6 +60,8 @@ Generated from the repository's history by [`tools/docs.py`](../tools/docs.py). 
 | `e0830aa` | 12:18 | test(tools): validate the repository's applications only where the file exists |
 | `f87e677` | 12:25 | docs(readme): FAEL-style landing: title, tagline, generated explainer and modules |
 | `619187f` | 12:30 | feat(site): assessments are interactive on the explorer too |
+| `aa9bd09` | 13:09 | feat(sessions): save a detector's marks as JSON Lines, only when asked |
+| `5e934ff` | 13:11 | fix(sessions): drop an unreachable empty-list note; restore covers an empty page |
 <!-- docs:end timeline -->
 
 ## What made it fast
@@ -138,20 +140,20 @@ The pack this session produced:
 <!-- docs:begin pack-stats -->
 | | |
 |---|---:|
-| Knowledge objects | **2 227** |
-| Categories | **65** |
+| Knowledge objects | **2 238** |
+| Categories | **66** |
 | Typed relations (links between objects) | **37 567** |
 | Objects with a detector (observable markers) | **1 212** |
-| Objects with what-to-do steps | **1 544** |
+| Objects with what-to-do steps | **1 546** |
 | Objects with confusables to rule out | **1 128** |
 | Quiz questions | **2 856** |
 |   of which: recognise the term from its definition | **1 671** |
 |   of which: manipulative or benign? (catalogue examples) | **1 185** |
 | Markers (indicators) | **4 246** |
-| Actions and escalation steps | **4 563** |
-| Chapters | **16 789** |
+| Actions and escalation steps | **4 565** |
+| Chapters | **16 807** |
 
-Pack `kompendium.pkp`: 20 653 128 bytes, sha256 `b8412a9c09234926…`, rebuilt byte-for-byte identical by CI from the pinned source.
+Pack `kompendium.pkp`: 20 701 996 bytes, sha256 `ff00e4dd709bd1ea…`, rebuilt byte-for-byte identical by CI from the pinned source.
 <!-- docs:end pack-stats -->
 
 ## What it would have taken otherwise

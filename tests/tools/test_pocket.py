@@ -508,6 +508,43 @@ class PackTest(unittest.TestCase):
         if own.exists():
             pocket.validate({"schema": pocket.SCHEMA, "objects": pocket.load_applications(own)})
 
+    def test_simulations(self):
+        """A simulation becomes its start, step and option items and the simulate capability."""
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "scenarios.json"
+            self.assertEqual(pocket.load_scenarios(path), [])  # no file, no simulations
+            option = {"id": "a", "text": "Calm", "risk": "low",
+                      "consequence": {"text": "Good.", "type": "success", "impact": "positive",
+                                      "trust_delta": 15}}
+            path.write_text(json.dumps({
+                "source": {"repository": "r", "commit": "c", "path": "p"}, "start_trust": 50,
+                "scenarios": [{"id": "fire_drill", "briefing": "B", "objectives": ["O"],
+                               "rules": ["R"], "steps": [{"prompt": "P?",
+                                                          "options": [option, option]}]}]}))
+            (o,) = pocket.load_scenarios(path)
+        self.assertEqual((o["id"], o["title"], o["kind"]),
+                         ("simulations/fire-drill", "Fire drill", "scenario"))
+        ir = tiny_ir(5)
+        ir["objects"].append(o)
+        dump = pocket.decode(pocket.encode(ir))
+        got = next(x for x in dump["objects"] if x["id"] == o["id"])
+        self.assertIn("simulate", got["caps"])
+        self.assertIn({"type": pocket.ITEM_TYPES["sim_start"], "text": "50"}, got["items"])
+        self.assertIn({"type": pocket.ITEM_TYPES["sim_option"],
+                       "text": "low|positive|15|success|Calm|Good."}, got["items"])
+        step = o["simulation"]["steps"][0]
+        for broken in ({"prompt": "", "options": [option, option]},
+                       {"prompt": "P", "options": [option]},
+                       {"prompt": "P", "options": [option, {**option, "text": "a|b"}]},
+                       {"prompt": "P", "options": [option, {**option, "consequence": {
+                           **option["consequence"], "impact": "odd"}}]},
+                       {"prompt": "P", "options": [option, {**option, "consequence": {
+                           **option["consequence"], "trust_delta": "x"}}]}):
+            o["simulation"]["steps"] = [broken]
+            with self.assertRaisesRegex(pocket.PocketError, "a simulation step needs"):
+                pocket.validate(ir)
+        o["simulation"]["steps"] = [step]
+
     def test_too_many_objects(self):
         ir = tiny_ir(1)
         base = ir["objects"][0]

@@ -77,6 +77,21 @@ def ir():
                                {"name": "Axis two", "levels": [["1", "One", ""],
                                                                ["2", "Two", "second"],
                                                                ["3", "Three", ""]]}]))
+    # a simulation whose picks reach every outcome: A,C optimal; A,E acceptable; A,D suboptimal;
+    # B,D critical failure
+    def op(oid, text, impact, delta, kind="info"):
+        return {"id": oid, "text": text, "risk": "low",
+                "consequence": {"text": f"after {text}", "type": kind, "impact": impact,
+                                "trust_delta": delta}}
+    objects.append(obj("drill", "Drill", "E simulate", kind="scenario", definition="Short.",
+                       simulation={"start_trust": 50, "steps": [
+                           {"prompt": "First step?", "options": [
+                               op("a", "Opt A", "positive", 25, "success"),
+                               op("b", "Opt B", "negative", -30, "danger")]},
+                           {"prompt": "Second step?", "options": [
+                               op("c", "Opt C", "positive", 10),
+                               op("d", "Opt D", "critical", -40, "danger"),
+                               op("e", "Opt E", "neutral", -10)]}]}))
     return {"schema": pocket.SCHEMA,
             "pack": {"id": "ui", "title": "UI test pack", "version": "1",
                      "source_repository": "r", "source_commit": "c"},

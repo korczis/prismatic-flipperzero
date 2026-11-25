@@ -10,6 +10,7 @@
 #include "../../app/core/pocket.h"
 #include "../../app/core/progress.h"
 #include "../../app/core/session.h"
+#include "../../app/core/simulate.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -407,9 +408,11 @@ static int dump(const uint8_t* d, uint32_t size) {
     static const char* const metas[] = {"pack_id", "title", "version", "source_repository",
                                         "source_commit", "generator", "licence"};
     /* sorted by name, as the Python reference prints them */
-    static const char* const caps[] = {"apply", "assess", "browse", "compare", "detect", "quiz"};
+    static const char* const caps[] = {"apply", "assess", "browse", "compare",
+                                       "detect", "quiz", "simulate"};
     static const uint8_t capbit[] = {PKP_CAP_APPLY, PKP_CAP_ASSESS, PKP_CAP_BROWSE,
-                                     PKP_CAP_COMPARE, PKP_CAP_DETECT, PKP_CAP_QUIZ};
+                                     PKP_CAP_COMPARE, PKP_CAP_DETECT, PKP_CAP_QUIZ,
+                                     PKP_CAP_SIMULATE};
     Mem m = {d, size, -1};
     PkpReader r;
     PkpStatus st = pkp_open(&r, mem_read, &m, size);
@@ -704,6 +707,42 @@ static void test_session(void) {
     CHECK(!session_parse("{\"v\":1,\"t\":\"a\",\"c\":[{\"id\":\"x\",\"i\":1}]}", 35, &v));
 }
 
+/* The crisis simulation's rules, case by case as the source orders them. */
+static void test_simulate(void) {
+    SimState s;
+    sim_start(&s, 150);
+    CHECK(s.trust == 100);
+    sim_start(&s, -5);
+    CHECK(s.trust == 0);
+    sim_start(&s, 50);
+    sim_apply(&s, "positive", 15);
+    sim_apply(&s, "positive", 10);
+    sim_apply(&s, "neutral", 0);
+    CHECK(s.trust == 75 && s.positive == 2 && s.negative == 0 && s.decisions == 3);
+    CHECK(sim_outcome(&s) == SIM_OPTIMAL);
+    sim_apply(&s, "negative", -10);
+    sim_apply(&s, "critical", -5);
+    CHECK(s.trust == 60 && s.negative == 2);
+    CHECK(sim_outcome(&s) == SIM_ACCEPTABLE); /* 2 positive, 2 negative, trust 60 */
+    sim_apply(&s, "negative", -100);
+    CHECK(s.trust == 0 && sim_outcome(&s) == SIM_CRITICAL_FAILURE);
+    sim_start(&s, 30);
+    sim_apply(&s, "negative", 0);
+    CHECK(sim_outcome(&s) == SIM_SUBOPTIMAL); /* trust 30: neither >= 40 nor < 20 */
+    sim_start(&s, 80);
+    sim_apply(&s, "negative", 0);
+    sim_apply(&s, "positive", 0);
+    CHECK(sim_outcome(&s) == SIM_ACCEPTABLE); /* trust 80 but positive == negative */
+    CHECK(strcmp(sim_outcome_name(SIM_CRITICAL_FAILURE), "Critical failure") == 0);
+    char text[] = "low|positive|15|success|Ask how they are.|They calm down.";
+    SimOption o;
+    CHECK(sim_option_split(text, &o));
+    CHECK(strcmp(o.risk, "low") == 0 && strcmp(o.impact, "positive") == 0 && o.delta == 15);
+    CHECK(strcmp(o.type, "success") == 0 && strcmp(o.consequence, "They calm down.") == 0);
+    char bad[] = "low|positive|15";
+    CHECK(!sim_option_split(bad, &o));
+}
+
 int main(int argc, char** argv) {
     if(argc != 3) {
         fprintf(stderr, "usage: test_pkp test|dump|walk <path>\n");
@@ -724,6 +763,7 @@ int main(int argc, char** argv) {
         test_cache(pack, size);
         test_progress();
         test_session();
+        test_simulate();
         printf("native: %s (%d failure(s))\n", failures ? "FAIL" : "PASS", failures);
         rc = failures ? 1 : 0;
     }

@@ -22,7 +22,10 @@
   "Compare",
   "Assess",
   "AssessResult",
-  "Sessions"
+  "Sessions",
+  "SimStep",
+  "SimResult",
+  "SimOutcome"
  ],
  "frames": [
   {
@@ -235,7 +238,7 @@
   {
    "name": "compare-pick",
    "pack": "ui",
-   "keys": "ok,ok,up,up,ok,ok,ok:long,down,down,ok",
+   "keys": "ok,ok,up,up,up,ok,ok,ok:long,down,down,ok",
    "view": "Compare",
    "caption": "Compare with a look-alike: only those with markers of their own",
    "file": "24-compare-pick.png",
@@ -244,7 +247,7 @@
   {
    "name": "compare-result",
    "pack": "ui",
-   "keys": "ok,ok,up,up,ok,ok,ok:long,down,down,ok,ok,right,right,left,right,ok:long,right",
+   "keys": "ok,ok,up,up,up,ok,ok,ok:long,down,down,ok,ok,right,right,left,right,ok:long,right",
    "view": "DetectResult",
    "caption": "Side by side: your marks for both, a count and a bar each, no ranking",
    "file": "25-compare-result.png",
@@ -269,12 +272,39 @@
    "screen": "AssessResult"
   },
   {
+   "name": "sim-step",
+   "pack": "kompendium",
+   "keys": "down,right,ok,down,down,ok,ok,down,ok",
+   "view": "SimStep",
+   "caption": "A crisis simulation from the Prismatic Platform: the situation, your options and their risk",
+   "file": "28-sim-step.png",
+   "screen": "SimStep"
+  },
+  {
+   "name": "sim-result",
+   "pack": "kompendium",
+   "keys": "down,right,ok,down,down,ok,ok,down,ok,down,down,down,ok",
+   "view": "SimResult",
+   "caption": "The consequence of a decision, and trust before and after it",
+   "file": "29-sim-result.png",
+   "screen": "SimResult"
+  },
+  {
+   "name": "sim-outcome",
+   "pack": "kompendium",
+   "keys": "down,right,ok,down,down,ok,ok,down,ok,down,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,ok,down,down,down,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,ok,down,down,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,ok,down,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,ok,down,ok",
+   "view": "SimOutcome",
+   "caption": "The outcome by the source's rules, and every decision with its trust change",
+   "file": "30-sim-outcome.png",
+   "screen": "SimOutcome"
+  },
+  {
    "name": "quiz",
    "pack": "kompendium",
    "keys": "down,right,ok,ok",
    "view": "Quiz",
    "caption": "Which term? The definition with the name masked",
-   "file": "28-quiz.png",
+   "file": "31-quiz.png",
    "screen": "Quiz"
   },
   {
@@ -283,7 +313,7 @@
    "keys": "down,right,ok,ok,ok",
    "view": "QuizOptions",
    "caption": "Distractors are the objects the page calls confusable",
-   "file": "29-quiz-options.png",
+   "file": "32-quiz-options.png",
    "screen": "QuizOptions"
   },
   {
@@ -292,7 +322,7 @@
    "keys": "down,right,ok,ok,ok,ok",
    "view": "QuizResult",
    "caption": "The answer, the definition, a link to the article",
-   "file": "30-quiz-result.png",
+   "file": "33-quiz-result.png",
    "screen": "QuizResult"
   },
   {
@@ -301,7 +331,7 @@
    "keys": "down,right,ok,down,ok",
    "view": "Quiz",
    "caption": "Manipulative or benign? A catalogue example",
-   "file": "31-trainer.png",
+   "file": "34-trainer.png",
    "screen": "Quiz"
   },
   {
@@ -310,7 +340,7 @@
    "keys": "down,right,ok,down,ok,left",
    "view": "QuizResult",
    "caption": "Why, and a good response, from the catalogue",
-   "file": "32-trainer-result.png",
+   "file": "35-trainer-result.png",
    "screen": "QuizResult"
   },
   {
@@ -319,7 +349,7 @@
    "keys": "down,right,ok,ok,ok,ok,restart,restart,down,right,ok,down,down,ok,ok,ok,down,down,ok",
    "view": "Quiz",
    "caption": "Review: questions come back by their Leitner box; here nothing is due",
-   "file": "33-review-empty.png",
+   "file": "36-review-empty.png",
    "screen": "Quiz"
   },
   {
@@ -328,7 +358,7 @@
    "keys": "down,right,ok,ok,ok,ok,back:long,down,down,ok,right,right,right,right,right,down,ok",
    "view": "Forget",
    "caption": "Forgetting your progress asks first; Back keeps it",
-   "file": "34-forget.png",
+   "file": "37-forget.png",
    "screen": "Forget"
   },
   {
@@ -337,7 +367,7 @@
    "keys": "ok,ok,down,ok,down,ok,down,ok,right,right,left,down,down,ok,back:long,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,up,ok",
    "view": "Sessions",
    "caption": "Saved sessions, newest first: only those you chose to save",
-   "file": "35-sessions.png",
+   "file": "38-sessions.png",
    "screen": "Sessions"
   },
   {
@@ -346,7 +376,7 @@
    "keys": "down,down,ok",
    "view": "Info",
    "caption": "Pack & device: what the pack is and where it came from",
-   "file": "36-info.png",
+   "file": "39-info.png",
    "screen": "Info"
   },
   {
@@ -355,7 +385,7 @@
    "keys": "down,down,ok,right,right,right",
    "view": "Info",
    "caption": "Measured here: open time, scan time, the read cache's hits",
-   "file": "37-info-cache.png",
+   "file": "40-info-cache.png",
    "screen": "Info"
   },
   {
@@ -364,7 +394,7 @@
    "keys": "down,down,right,ok",
    "view": "About",
    "caption": "About: what the app is and the keys",
-   "file": "38-about.png",
+   "file": "41-about.png",
    "screen": "About"
   },
   {
@@ -373,7 +403,7 @@
    "keys": "",
    "view": "Home",
    "caption": "No pack: Info and About still work and say what to do",
-   "file": "39-no-pack.png",
+   "file": "42-no-pack.png",
    "screen": "Home"
   }
  ]
