@@ -502,10 +502,11 @@ class PackTest(unittest.TestCase):
             self.assertEqual(o["category"], pocket.APPLICATIONS_CATEGORY)
             self.assertEqual(o["rubric"][0]["levels"][1], ["B", "b", "x"])
             self.assertNotIn("links", o)
-        # the repository's own file: every application validates
-        apps = pocket.load_applications(pocket.ROOT / pocket.APPLICATIONS)
-        self.assertTrue(apps)
-        pocket.validate({"schema": pocket.SCHEMA, "objects": apps})
+        # the repository's own file, where there is one (the gate's self-test runs on a copy of
+        # tools/ and tests/ only): every application validates
+        own = pocket.ROOT / pocket.APPLICATIONS
+        if own.exists():
+            pocket.validate({"schema": pocket.SCHEMA, "objects": pocket.load_applications(own)})
 
     def test_too_many_objects(self):
         ir = tiny_ir(1)
