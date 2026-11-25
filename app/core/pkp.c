@@ -49,12 +49,14 @@ uint32_t pkp_crc32(uint32_t crc, const uint8_t* data, size_t len) {
     if(table[1] == 0) {
         for(uint32_t i = 0; i < 256; i++) {
             uint32_t c = i;
-            for(int k = 0; k < 8; k++) c = (c >> 1) ^ (0xEDB88320u & (0u - (c & 1u)));
+            for(int k = 0; k < 8; k++)
+                c = (c >> 1) ^ (0xEDB88320u & (0u - (c & 1u)));
             table[i] = c;
         }
     }
     crc = ~crc;
-    for(size_t i = 0; i < len; i++) crc = table[(crc ^ data[i]) & 0xFFu] ^ (crc >> 8);
+    for(size_t i = 0; i < len; i++)
+        crc = table[(crc ^ data[i]) & 0xFFu] ^ (crc >> 8);
     return ~crc;
 }
 
@@ -71,7 +73,8 @@ static bool crc_range(PkpReadFn read, void* ctx, uint32_t from, uint32_t to, uin
 }
 
 /* Reads entry `index` of section `type` into buf (entry size bytes). */
-static PkpStatus read_entry(const PkpReader* r, PkpSectionType type, uint32_t index, uint8_t* buf) {
+static PkpStatus
+    read_entry(const PkpReader* r, PkpSectionType type, uint32_t index, uint8_t* buf) {
     const PkpSection* s = &r->sec[type];
     if(r->size == 0 || index >= s->count) return PKP_E_RANGE; /* closed or failed open */
     uint32_t size = pkp_entry_size[type];
@@ -277,12 +280,8 @@ PkpStatus pkp_string(const PkpReader* r, PkpStr s, char* buf, size_t cap) {
     return PKP_OK;
 }
 
-static PkpStatus name_of(
-    const PkpReader* r,
-    PkpSectionType type,
-    uint8_t one_based,
-    char* buf,
-    size_t cap) {
+static PkpStatus
+    name_of(const PkpReader* r, PkpSectionType type, uint8_t one_based, char* buf, size_t cap) {
     PkpStr s;
     if(cap) buf[0] = '\0';
     if(one_based == 0) return PKP_E_RANGE;

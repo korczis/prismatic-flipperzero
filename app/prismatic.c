@@ -23,22 +23,22 @@
 #include "reader.h"
 #include "version.h"
 
-#define TAG "Prismatic"
-#define PACK_DIR EXT_PATH("apps_data/prismatic")
-#define PAGE 40u
+#define TAG         "Prismatic"
+#define PACK_DIR    EXT_PATH("apps_data/prismatic")
+#define PAGE        40u
 #define MAX_MARKERS 64u
-#define STACK 24u
-#define SCRATCH (PKP_MAX_STRING + 1u)
+#define STACK       24u
+#define SCRATCH     (PKP_MAX_STRING + 1u)
 
 /* Reader link targets: kind in the top byte, argument below. */
-#define LINK_OBJECT (1u << 24)
-#define LINK_CHAPTER (2u << 24) /* item offset inside the current object */
-#define LINK_DETECT (3u << 24)
-#define LINK_QUIZ (4u << 24)
+#define LINK_OBJECT    (1u << 24)
+#define LINK_CHAPTER   (2u << 24) /* item offset inside the current object */
+#define LINK_DETECT    (3u << 24)
+#define LINK_QUIZ      (4u << 24)
 #define LINK_NEXT_QUIZ (5u << 24) /* argument: quiz kind */
-#define LINK_CATEGORY (6u << 24)
-#define LINK_KIND(t) ((t) & 0xFF000000u)
-#define LINK_ARG(t) ((t) & 0x00FFFFFFu)
+#define LINK_CATEGORY  (6u << 24)
+#define LINK_KIND(t)   ((t) & 0xFF000000u)
+#define LINK_ARG(t)    ((t) & 0x00FFFFFFu)
 
 typedef enum {
     ViewMenu,
@@ -195,8 +195,7 @@ static void pack_open(App* app) {
         app->pf.file = storage_file_alloc(app->storage);
         app->pack_status = PKP_E_IO;
         if(storage_file_open(
-               app->pf.file, furi_string_get_cstr(app->pack_path), FSAM_READ,
-               FSOM_OPEN_EXISTING)) {
+               app->pf.file, furi_string_get_cstr(app->pack_path), FSAM_READ, FSOM_OPEN_EXISTING)) {
             uint32_t size = (uint32_t)storage_file_size(app->pf.file);
             uint32_t t0 = furi_get_tick();
             app->pack_status = pkp_open(&app->pack, pack_read, &app->pf, size);
@@ -219,8 +218,11 @@ static void pack_open(App* app) {
         if(pkp_quiz(&app->pack, i, &q) == PKP_OK && q.kind < 3) app->quiz_kind_count[q.kind]++;
     }
     app->scan_ms = furi_get_tick() - t0;
-    FURI_LOG_I(TAG, "pack open %lu ms, scan %lu ms", (unsigned long)app->open_ms,
-               (unsigned long)app->scan_ms);
+    FURI_LOG_I(
+        TAG,
+        "pack open %lu ms, scan %lu ms",
+        (unsigned long)app->open_ms,
+        (unsigned long)app->scan_ms);
 }
 
 static const char* str(App* app, PkpStr s) {
@@ -317,8 +319,10 @@ static int32_t quiz_for(App* app, uint16_t obj, uint8_t kind) {
     while(lo < hi) {
         uint32_t mid = lo + (hi - lo) / 2;
         if(pkp_quiz(&app->pack, mid, &q) != PKP_OK) return -1;
-        if(quiz_subject(&q) < obj) lo = mid + 1;
-        else hi = mid;
+        if(quiz_subject(&q) < obj)
+            lo = mid + 1;
+        else
+            hi = mid;
     }
     for(uint32_t i = lo; i < pkp_count(&app->pack, PKP_SEC_QUIZ); i++) {
         if(pkp_quiz(&app->pack, i, &q) != PKP_OK || quiz_subject(&q) != obj) break;
@@ -348,21 +352,32 @@ static void render_home(App* app) {
     submenu_reset(app->menu);
     submenu_set_header(app->menu, "Prismatic Pocket");
     if(app->pack_status == PKP_OK) {
-        snprintf(label, sizeof(label), "Browse (%lu)",
-                 (unsigned long)pkp_count(&app->pack, PKP_SEC_OBJECTS));
+        snprintf(
+            label,
+            sizeof(label),
+            "Browse (%lu)",
+            (unsigned long)pkp_count(&app->pack, PKP_SEC_OBJECTS));
         submenu_add_item(app->menu, label, EV(EvHome, HomeBrowse), menu_cb, app);
-        snprintf(label, sizeof(label), "Detectors (%u)", app->cap_count[cap_index(PKP_CAP_DETECT)]);
+        snprintf(
+            label, sizeof(label), "Detectors (%u)", app->cap_count[cap_index(PKP_CAP_DETECT)]);
         submenu_add_item(app->menu, label, EV(EvHome, HomeDetect), menu_cb, app);
-        snprintf(label, sizeof(label), "What to do (%u)", app->cap_count[cap_index(PKP_CAP_APPLY)]);
+        snprintf(
+            label, sizeof(label), "What to do (%u)", app->cap_count[cap_index(PKP_CAP_APPLY)]);
         submenu_add_item(app->menu, label, EV(EvHome, HomeApply), menu_cb, app);
-        snprintf(label, sizeof(label), "Confusables (%u)",
-                 app->cap_count[cap_index(PKP_CAP_COMPARE)]);
+        snprintf(
+            label, sizeof(label), "Confusables (%u)", app->cap_count[cap_index(PKP_CAP_COMPARE)]);
         submenu_add_item(app->menu, label, EV(EvHome, HomeCompare), menu_cb, app);
-        snprintf(label, sizeof(label), "Quiz: terms (%lu)",
-                 (unsigned long)app->quiz_kind_count[PKP_QUIZ_DEFINITION]);
+        snprintf(
+            label,
+            sizeof(label),
+            "Quiz: terms (%lu)",
+            (unsigned long)app->quiz_kind_count[PKP_QUIZ_DEFINITION]);
         submenu_add_item(app->menu, label, EV(EvHome, HomeTrainDefinition), menu_cb, app);
-        snprintf(label, sizeof(label), "Quiz: manip.? (%lu)",
-                 (unsigned long)app->quiz_kind_count[PKP_QUIZ_TRAINER]);
+        snprintf(
+            label,
+            sizeof(label),
+            "Quiz: manip.? (%lu)",
+            (unsigned long)app->quiz_kind_count[PKP_QUIZ_TRAINER]);
         submenu_add_item(app->menu, label, EV(EvHome, HomeTrainExample), menu_cb, app);
     }
     submenu_add_item(app->menu, "Pack & device info", EV(EvHome, HomeInfo), menu_cb, app);
@@ -387,8 +402,8 @@ static void render_categories(App* app) {
 
 static void header_with_page(App* app, const char* name, uint32_t page, uint32_t pages) {
     char head[40], num[12];
-    snprintf(num, sizeof(num), " %lu/%lu", (unsigned long)page + 1,
-             (unsigned long)(pages ? pages : 1));
+    snprintf(
+        num, sizeof(num), " %lu/%lu", (unsigned long)page + 1, (unsigned long)(pages ? pages : 1));
     size_t room = sizeof(head) - strlen(num) - 1;
     if(room > 18) room = 18;
     strlcpy(head, name, room + 1);
@@ -412,7 +427,8 @@ static void render_objects(App* app) {
         label_of(app, o.title, label, sizeof(label));
         submenu_add_item(app->menu, label, EV(EvObject, c.first + i), menu_cb, app);
     }
-    if(from + PAGE < c.count) submenu_add_item(app->menu, "next >", EV(EvPageNext, 0), menu_cb, app);
+    if(from + PAGE < c.count)
+        submenu_add_item(app->menu, "next >", EV(EvPageNext, 0), menu_cb, app);
     restore_selection(app);
     view_dispatcher_switch_to_view(app->vd, ViewMenu);
 }
@@ -517,7 +533,8 @@ static void render_article(App* app) {
         snprintf(in, sizeof(in), "In: %s", str(app, c.name));
         reader_add(app->reader, ReaderLink, in, LINK_CATEGORY | o.category);
     }
-    reader_add(app->reader, ReaderNote, "Source: Kompendium. Markers describe; they never prove.", 0);
+    reader_add(
+        app->reader, ReaderNote, "Source: Kompendium. Markers describe; they never prove.", 0);
     reader_show(app->reader);
     view_dispatcher_switch_to_view(app->vd, ViewReader);
 }
@@ -570,8 +587,10 @@ static void render_detect_result(App* app) {
         }
     }
     reader_add(
-        app->reader, ReaderNote,
-        "Marks only: not a score, not a probability, not a diagnosis of anyone.", 0);
+        app->reader,
+        ReaderNote,
+        "Marks only: not a score, not a probability, not a diagnosis of anyone.",
+        0);
     uint8_t confused = relation_type(app, "confused_with");
     if(count_items(app, &o, PKP_ITEM_ALTERNATIVE) || confused) {
         reader_add(app->reader, ReaderHeading, "Rule out first", 0);
@@ -601,9 +620,11 @@ static void render_quiz_result(App* app) {
     bool ok = pocket_quiz_correct(&app->quiz, f->pick);
     reader_add(app->reader, ReaderTitle, ok ? "Correct" : "Not quite", 0);
     if(app->quiz.kind == PKP_QUIZ_TRAINER) {
-        reader_add(app->reader, ReaderMeta,
-                   app->quiz.answer ? "This example is benign." : "This example is manipulative.",
-                   0);
+        reader_add(
+            app->reader,
+            ReaderMeta,
+            app->quiz.answer ? "This example is benign." : "This example is manipulative.",
+            0);
         reader_add(app->reader, ReaderNote, str(app, app->quiz.prompt), 0);
         reader_add(app->reader, ReaderHeading, "Why", 0);
         reader_add(app->reader, ReaderParagraph, str(app, app->quiz.explanation), 0);
@@ -626,11 +647,16 @@ static void render_info(App* app) {
     reader_add(app->reader, ReaderTitle, "Pack & device", 0);
     if(app->pack_status != PKP_OK) {
         reader_add(app->reader, ReaderHeading, "No usable knowledge pack", 0);
-        reader_add(app->reader, ReaderParagraph,
-                   app->pack_status == PKP_E_MISSING ? "None found." :
-                                                       pkp_status_text(app->pack_status), 0);
-        reader_add(app->reader, ReaderParagraph,
-                   "Copy a .pkp file to SD/apps_data/prismatic/ (computer: just deploy-pack).", 0);
+        reader_add(
+            app->reader,
+            ReaderParagraph,
+            app->pack_status == PKP_E_MISSING ? "None found." : pkp_status_text(app->pack_status),
+            0);
+        reader_add(
+            app->reader,
+            ReaderParagraph,
+            "Copy a .pkp file to SD/apps_data/prismatic/ (computer: just deploy-pack).",
+            0);
     } else {
         static const char* const labels[PKP_META_COUNT] = {
             "Pack", "Title", "Version", "Source", "Commit", "Built by", "Licence"};
@@ -643,14 +669,20 @@ static void render_info(App* app) {
             }
         }
         reader_add(app->reader, ReaderHeading, "Contents", 0);
-        snprintf(line, sizeof(line), "%lu objects in %lu categories",
-                 (unsigned long)pkp_count(&app->pack, PKP_SEC_OBJECTS),
-                 (unsigned long)pkp_count(&app->pack, PKP_SEC_CATEGORIES));
+        snprintf(
+            line,
+            sizeof(line),
+            "%lu objects in %lu categories",
+            (unsigned long)pkp_count(&app->pack, PKP_SEC_OBJECTS),
+            (unsigned long)pkp_count(&app->pack, PKP_SEC_CATEGORIES));
         reader_add(app->reader, ReaderBullet, line, 0);
-        snprintf(line, sizeof(line), "%lu items, %lu links, %lu quiz items",
-                 (unsigned long)pkp_count(&app->pack, PKP_SEC_ITEMS),
-                 (unsigned long)pkp_count(&app->pack, PKP_SEC_RELATIONS),
-                 (unsigned long)pkp_count(&app->pack, PKP_SEC_QUIZ));
+        snprintf(
+            line,
+            sizeof(line),
+            "%lu items, %lu links, %lu quiz items",
+            (unsigned long)pkp_count(&app->pack, PKP_SEC_ITEMS),
+            (unsigned long)pkp_count(&app->pack, PKP_SEC_RELATIONS),
+            (unsigned long)pkp_count(&app->pack, PKP_SEC_QUIZ));
         reader_add(app->reader, ReaderBullet, line, 0);
         reader_add(app->reader, ReaderHeading, "Measured on this device", 0);
         snprintf(line, sizeof(line), "Open + index CRC: %lu ms", (unsigned long)app->open_ms);
@@ -660,8 +692,12 @@ static void render_info(App* app) {
         snprintf(line, sizeof(line), "Pack size: %lu B", (unsigned long)app->pack.size);
         reader_add(app->reader, ReaderBullet, line, 0);
     }
-    snprintf(line, sizeof(line), "Free heap: %lu B (largest %lu B)",
-             (unsigned long)memmgr_get_free_heap(), (unsigned long)memmgr_heap_get_max_free_block());
+    snprintf(
+        line,
+        sizeof(line),
+        "Free heap: %lu B (largest %lu B)",
+        (unsigned long)memmgr_get_free_heap(),
+        (unsigned long)memmgr_heap_get_max_free_block());
     reader_add(app->reader, ReaderBullet, line, 0);
     snprintf(line, sizeof(line), "App v%s", PRISMATIC_VERSION);
     reader_add(app->reader, ReaderBullet, line, 0);
@@ -675,17 +711,22 @@ static void render_about(App* app) {
     reader_add(app->reader, ReaderTitle, "Prismatic Pocket", 0);
     snprintf(line, sizeof(line), "v%s - offline - evidence-first", PRISMATIC_VERSION);
     reader_add(app->reader, ReaderMeta, line, 0);
-    reader_add(app->reader, ReaderParagraph,
-               "Every screen is derived from the knowledge pack on the SD card: articles, "
-               "detectors, what-to-do steps, confusables and quizzes.", 0);
+    reader_add(
+        app->reader,
+        ReaderParagraph,
+        "Every screen is derived from the knowledge pack on the SD card: articles, "
+        "detectors, what-to-do steps, confusables and quizzes.",
+        0);
     reader_add(app->reader, ReaderHeading, "Controls", 0);
     reader_add(app->reader, ReaderBullet, "Up / Down: scroll", 0);
     reader_add(app->reader, ReaderBullet, "Left / Right: previous / next link", 0);
     reader_add(app->reader, ReaderBullet, "OK: open the link", 0);
     reader_add(app->reader, ReaderBullet, "Back: one step back", 0);
-    reader_add(app->reader, ReaderNote,
-               "The detector counts what you mark. It does not score, rank or diagnose anyone.",
-               0);
+    reader_add(
+        app->reader,
+        ReaderNote,
+        "The detector counts what you mark. It does not score, rank or diagnose anyone.",
+        0);
     reader_add(app->reader, ReaderMeta, "github.com/korczis/prismatic-flipperzero", 0);
     reader_show(app->reader);
     view_dispatcher_switch_to_view(app->vd, ViewReader);
@@ -859,13 +900,18 @@ static bool on_custom(void* ctx, uint32_t event) {
     if(action != EvLink && action != EvMark) f->sel = event; /* restore on the way back */
     switch(action) {
     case EvHome:
-        if(arg == HomeBrowse) push(app, (Frame){.screen = ScrCategories});
-        else if(arg == HomeDetect) push(app, (Frame){.screen = ScrFilter, .filter = PKP_CAP_DETECT});
-        else if(arg == HomeApply) push(app, (Frame){.screen = ScrFilter, .filter = PKP_CAP_APPLY});
+        if(arg == HomeBrowse)
+            push(app, (Frame){.screen = ScrCategories});
+        else if(arg == HomeDetect)
+            push(app, (Frame){.screen = ScrFilter, .filter = PKP_CAP_DETECT});
+        else if(arg == HomeApply)
+            push(app, (Frame){.screen = ScrFilter, .filter = PKP_CAP_APPLY});
         else if(arg == HomeCompare)
             push(app, (Frame){.screen = ScrFilter, .filter = PKP_CAP_COMPARE});
-        else if(arg == HomeInfo) push(app, (Frame){.screen = ScrInfo});
-        else if(arg == HomeAbout) push(app, (Frame){.screen = ScrAbout});
+        else if(arg == HomeInfo)
+            push(app, (Frame){.screen = ScrInfo});
+        else if(arg == HomeAbout)
+            push(app, (Frame){.screen = ScrAbout});
         else
             start_quiz(
                 app,

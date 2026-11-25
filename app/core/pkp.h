@@ -17,10 +17,10 @@
 #include <stdint.h>
 
 #define PKP_FORMAT_VERSION 1
-#define PKP_MAX_STRING 2048u
-#define PKP_HEADER_SIZE 32u
-#define PKP_SECTION_SIZE 16u
-#define PKP_MAX_SECTIONS 32u
+#define PKP_MAX_STRING     2048u
+#define PKP_HEADER_SIZE    32u
+#define PKP_SECTION_SIZE   16u
+#define PKP_MAX_SECTIONS   32u
 
 typedef enum {
     PKP_OK = 0,

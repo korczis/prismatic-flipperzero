@@ -4,13 +4,13 @@
 #include <gui/canvas.h>
 #include <gui/elements.h>
 
-#define TEXT_CAP 12288u
+#define TEXT_CAP  12288u
 #define BLOCK_CAP 200u
-#define LINE_CAP 800u
-#define LEFT 2 /* page margin */
-#define RIGHT 124 /* last text column; the scrollbar lives right of it */
-#define SCREEN_H 64
-#define BAR_H 12 /* button bar height when buttons are shown */
+#define LINE_CAP  800u
+#define LEFT      2 /* page margin */
+#define RIGHT     124 /* last text column; the scrollbar lives right of it */
+#define SCREEN_H  64
+#define BAR_H     12 /* button bar height when buttons are shown */
 #define LABEL_CAP 12
 
 typedef struct {
@@ -82,7 +82,8 @@ static int view_height(const Model* m) {
     return has_buttons(m) ? SCREEN_H - BAR_H : SCREEN_H;
 }
 
-static void push_line(Model* m, uint16_t block, uint16_t off, uint16_t len, uint8_t h, bool first) {
+static void
+    push_line(Model* m, uint16_t block, uint16_t off, uint16_t len, uint8_t h, bool first) {
     if(m->lines_n >= LINE_CAP) return;
     Line* l = &m->lines[m->lines_n++];
     l->block = block;
@@ -180,7 +181,8 @@ static void draw_line(Canvas* canvas, const Model* m, const Line* l, int y, char
     case ReaderMeta:
         canvas_draw_str(canvas, x, base, buf);
         if(last) {
-            for(int dx = LEFT; dx < RIGHT; dx += 3) canvas_draw_dot(canvas, dx, y + l->height - 1);
+            for(int dx = LEFT; dx < RIGHT; dx += 3)
+                canvas_draw_dot(canvas, dx, y + l->height - 1);
         }
         break;
     case ReaderBullet:
@@ -292,8 +294,10 @@ static bool input_cb(InputEvent* event, void* context) {
                 if(n >= 0) {
                     m->focus = n;
                     int16_t ln = line_of(m, n);
-                    if(ln < m->top) m->top = ln;
-                    else if(ln > m->top + 3) m->top = ln - 3 > mt ? mt : (int16_t)(ln - 3);
+                    if(ln < m->top)
+                        m->top = ln;
+                    else if(ln > m->top + 3)
+                        m->top = ln - 3 > mt ? mt : (int16_t)(ln - 3);
                 } else {
                     m->top = dir > 0 ? mt : 0;
                 }
@@ -394,7 +398,8 @@ void reader_set_buttons(Reader* r, const char* left, const char* center, const c
 
 static void add_locked(Model* m, ReaderStyle style, const char* text, uint32_t target) {
     size_t n = strlen(text);
-    while(n && text[n - 1] == ' ') n--;
+    while(n && text[n - 1] == ' ')
+        n--;
     if(m->truncated || n == 0) return;
     if((uint32_t)m->blocks_n + 1 >= BLOCK_CAP || m->text_len + n + 32 >= TEXT_CAP) {
         m->truncated = true;

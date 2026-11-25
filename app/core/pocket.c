@@ -11,7 +11,8 @@ static const char* const pocket_names[POCKET_STATES] = {
 };
 
 void pocket_summarize(const uint8_t* answers, size_t n, PocketSummary* out) {
-    for(int i = 0; i < POCKET_STATES; i++) out->counts[i] = 0;
+    for(int i = 0; i < POCKET_STATES; i++)
+        out->counts[i] = 0;
     out->total = 0;
     for(size_t i = 0; i < n; i++) {
         uint8_t a = answers[i] < POCKET_STATES ? answers[i] : POCKET_UNANSWERED;
