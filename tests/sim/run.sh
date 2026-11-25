@@ -18,6 +18,13 @@ else
   cc=("${CLANG:-clang}"); cov=("${LLVM_COV:-${v:-llvm-cov}}")
   prof=("${LLVM_PROFDATA:-${v/llvm-cov/llvm-profdata}}")
 fi
+# GCC warns where clang does not (format truncation); CI's cc is GCC, so build with one here too
+for g in gcc-16 gcc-15 gcc-14 gcc-13 gcc; do
+  if command -v "$g" >/dev/null 2>&1 && "$g" --version 2>/dev/null | grep -q GCC; then
+    CC="$g" tests/sim/build.sh >/dev/null || { echo "ui: the GCC build ($g) failed" >&2; exit 1; }
+    break
+  fi
+done
 CC="${cc[*]}" tests/sim/build.sh -O0 -fprofile-instr-generate -fcoverage-mapping \
   -fsanitize=address,undefined -fno-sanitize-recover=all
 trim() { local s="$1"; s="${s#"${s%%[![:space:]]*}"}"; printf '%s' "${s%"${s##*[![:space:]]}"}"; }

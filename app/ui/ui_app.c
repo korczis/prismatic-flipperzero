@@ -413,7 +413,7 @@ static void render_categories(UiApp* app) {
 }
 
 static void paging(UiApp* app, uint32_t page, uint32_t pages, bool before) {
-    char pos[12];
+    char pos[24]; /* "p" and two 32-bit counts */
     if(pages <= 1) return;
     if(before && page > 0) page_add_row(app->page, 0, "< Previous page", NULL, T_PAGE | 0);
     if(!before && page + 1 < pages) page_add_row(app->page, 0, "Next page >", NULL, T_PAGE | 1);
