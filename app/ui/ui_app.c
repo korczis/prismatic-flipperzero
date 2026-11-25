@@ -93,7 +93,7 @@ enum {
     CALC_PRIOR, /* a stepper: Left/Right move the prior */
     CALC_UNDO,
     CALC_RESET,
-    CALC_ADD, /* CALC_ADD + k: add a source at the k-th choice */
+    CALC_ADD, /* a stepper: Left/Right choose a confidence, OK adds a source at it */
 };
 
 enum {
@@ -187,6 +187,7 @@ struct UiApp {
     uint8_t calc_prior;
     uint8_t calc_src[CALC_MAX_SOURCES];
     uint8_t calc_n;
+    uint8_t calc_pick; /* the confidence the add stepper shows, an index into calc.choices */
 
     PkpQuiz quiz;
     uint16_t quiz_asked; /* this session's answers, shown in the quiz header */
@@ -986,16 +987,9 @@ static void render_calc(UiApp* app) {
     int at = snprintf(hint, sizeof(hint), "%s; from %u%%:", status, app->calc_prior);
     for(uint8_t k = 0; k < app->calc_n && at < (int)sizeof(hint) - 5; k++)
         at += snprintf(hint + at, sizeof(hint) - (size_t)at, " %u", app->calc_src[k]);
-    snprintf(line, sizeof(line), "%.1f %% %s", (double)p, status);
-    page_add(app->page, PageBig, line, 0);
-    int belief = (int)(p + 0.5f);
-    snprintf(line, sizeof(line), "%d belief,%d doubt", belief, 100 - belief);
-    page_add(app->page, PageBar, line, 0);
-    for(uint8_t k = 0; k < app->calc.n_choices; k++) {
-        snprintf(line, sizeof(line), "Add a source at %u%%", app->calc.choices[k]);
-        page_add_row(app->page, UiIconDetect, line, NULL, T_CALC | (CALC_ADD + k));
-        page_set_hint(app->page, hint);
-    }
+    snprintf(line, sizeof(line), "%u%%", app->calc.choices[app->calc_pick]);
+    page_add_stepper(app->page, UiIconDetect, "Add a source", line, T_CALC | CALC_ADD);
+    page_set_hint(app->page, hint);
     char prior[8];
     snprintf(prior, sizeof(prior), "%u%%", app->calc_prior);
     page_add_stepper(app->page, 0, "Prior", prior, T_CALC | CALC_PRIOR);
@@ -1004,6 +998,13 @@ static void render_calc(UiApp* app) {
     page_set_hint(app->page, hint);
     page_add_row(app->page, 0, "Start over", NULL, T_CALC | CALC_RESET);
     page_set_hint(app->page, hint);
+    /* the controls come first, so they are on the first screen; the picture of the belief
+     * follows for a closer look (the header and status line already carry it) */
+    snprintf(line, sizeof(line), "%.1f %% %s", (double)p, status);
+    page_add(app->page, PageBig, line, 0);
+    int belief = (int)(p + 0.5f);
+    snprintf(line, sizeof(line), "%d belief,%d doubt", belief, 100 - belief);
+    page_add(app->page, PageBar, line, 0);
     restore(app);
 }
 
@@ -1014,6 +1015,7 @@ static void start_calc(UiApp* app, uint16_t obj) {
         app->calc.algorithm[0] = '\0';
     app->calc_prior = app->calc.prior;
     app->calc_n = 0;
+    app->calc_pick = (uint8_t)(app->calc.n_choices / 2); /* the middle of the choices */
     push(app, (Frame){.screen = ScrCalc, .obj = obj});
 }
 
@@ -1025,8 +1027,8 @@ static void calc_step_prior(UiApp* app, int dir) {
 
 /* One action of the calculator; the focus stays on the row pressed. */
 static void calc_action(UiApp* app, uint32_t action) {
-    if(action >= CALC_ADD && app->calc_n < CALC_MAX_SOURCES)
-        app->calc_src[app->calc_n++] = app->calc.choices[action - CALC_ADD];
+    if(action == CALC_ADD && app->calc_n < CALC_MAX_SOURCES)
+        app->calc_src[app->calc_n++] = app->calc.choices[app->calc_pick];
     if(action == CALC_PRIOR) calc_step_prior(app, 1); /* OK on the prior steps it up */
     if(action == CALC_UNDO && app->calc_n) app->calc_n--;
     if(action == CALC_RESET) {
@@ -1987,8 +1989,12 @@ static void adjust(UiApp* app, uint32_t target, int dir) {
             app->sc_pick[k] =
                 (uint8_t)((app->sc_pick[k] + app->sc_q_choices[k] + dir) % app->sc_q_choices[k]);
         break;
-    default: /* T_CALC | CALC_PRIOR, the only other stepper */
-        calc_step_prior(app, dir);
+    default: /* the calculator's steppers: the confidence to add, or the prior */
+        if(k == CALC_ADD)
+            app->calc_pick =
+                (uint8_t)((app->calc_pick + app->calc.n_choices + dir) % app->calc.n_choices);
+        else
+            calc_step_prior(app, dir);
         break;
     }
     top(app)->sel = target;

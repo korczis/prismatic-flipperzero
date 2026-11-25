@@ -67,6 +67,7 @@ Generated from the repository's history by [`tools/docs.py`](../tools/docs.py). 
 | `30d303a` | 13:44 | feat(calculate): the Prismatic Platform's Bayesian fusion as an interactive calculator |
 | `e694aa4` | 13:46 | fix(calculate): single precision for the Flipper's FPU |
 | `b528ea4` | 14:30 | feat(site): simulations, scorecards and calculators are interactive in the browser |
+| `7fc8536` | 14:42 | feat(ui): live tools on the device: steppers change values in real time |
 <!-- docs:end timeline -->
 
 ## What made it fast

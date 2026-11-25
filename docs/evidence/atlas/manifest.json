@@ -322,9 +322,9 @@
   {
    "name": "calc",
    "pack": "kompendium",
-   "keys": "down,ok,down,down,down,down,ok,ok,down,ok,down,down,down,down,ok,down,ok,down,down,right",
+   "keys": "down,ok,down,down,down,down,ok,ok,down,ok,right,ok,right,ok,down,right",
    "view": "Calc",
-   "caption": "A calculator: add sources, Left/Right move the prior, the belief and its status follow at once",
+   "caption": "A calculator: Left/Right choose a source's confidence or move the prior, OK adds; the belief follows at once",
    "file": "33-calc.png",
    "screen": "Calc"
   },

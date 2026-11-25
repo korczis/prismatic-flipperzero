@@ -88,6 +88,6 @@ score-again          | ui  | ok,ok,up,ok,ok,down,ok,down,down,ok,down,ok,back | 
 score-unreadable     | ui  | ok,ok,up,ok,ok,down,eject,ok,insert | This scorecard could not
 score-eject-live     | ui  | ok,ok,up,ok,ok,down,ok,eject,right,insert | # Score [50 ];>See the result
 score-lost-result    | ui  | ok,ok,up,ok,ok,down,ok,down,down,eject,ok,insert | This scorecard could not
-calc                 | ui  | down,ok,down,down,down,down,ok,ok,down,ok,down,ok,down,right,right,left,down,ok | # algorithm;>Zeta calculator;# Bayes update [50.0%];# Bayes update [90.0%];~ confirmed;>Prior < 70% >;# Bayes update [95.5%];# Bayes update [93.1%];# Bayes update [60.0%];~ tentative; from 60%:
-calc-prior-undo      | ui  | down,ok,down,down,down,down,ok,ok,down,ok,down,down,left,left,left,left,left,right,right,right,right,right,right,right,right,right,ok,down,ok,down,ok | >Prior < 10% >;~ rejected;>Prior < 90% >;# Bayes update [90.0%];# Bayes update [50.0%];~ tentative
+calc                 | ui  | down,ok,down,down,down,down,ok,ok,down,ok,ok,ok,left,ok,down,right,right,left,down,ok | # algorithm;>Zeta calculator;# Bayes update [50.0%];>Add a source < 90% >;# Bayes update [90.0%];~ confirmed;# Bayes update [98.8%];>Add a source < 10% >;>Prior < 70% >;# Bayes update [99.2%];from 60%: 90 90
+calc-prior-undo      | ui  | down,ok,down,down,down,down,ok,ok,down,ok,down,left,left,left,left,left,right,right,right,right,right,right,right,right,right,ok,down,ok,down,ok | >Prior < 10% >;~ rejected;>Prior < 90% >;# Bayes update [90.0%];# Bayes update [50.0%];~ tentative
 calc-unreadable      | ui  | down,ok,down,down,down,down,ok,ok,down,eject,ok,insert | This calculator could not

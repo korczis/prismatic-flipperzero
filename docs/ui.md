@@ -106,8 +106,10 @@ that moved it with its note. The base, weights, clamp and bands are the source's
 
 Act > Calculators holds the Prismatic Platform's portable algorithms with their parameters as
 data. The first is its Bayesian fusion of independent sources (`CorrelationEngine.bayesian_fusion`):
-add sources at a confidence, move the prior with Left/Right on its stepper, take the last source
-back or start over, and the
+choose a source's confidence with Left/Right on the "Add a source" stepper and add it with OK,
+move the prior on its own stepper, take the last source back or start over; all of it fits the
+first screen, the picture of the belief (a big number and a belief/doubt bar) follows below, and
+the
 belief stays in view in the header with its status (confirmed at 90% or above, rejected at 10%
 or below, as the platform's hypothesis lifecycle says) in the status line. The device computes
 what the source's code computes; its documentation's example (0.8, 0.7, 0.9 giving 0.976) does
@@ -176,7 +178,7 @@ of existing blocks, not new drawing code.
 | Chip | rounded box with an icon and a count; focused = inverted | an article's actions: detector, quiz, map |
 | Row bar | 14 px mini bar before a row's count (square-root scale) | hub entries, chapters, kinds |
 | Tile | 16 px icon, bold label, caption count; focused = inverted rounded box, others open with dotted rules | the Home grid |
-| Stepper | a row whose value sits in `< >` on the right, at most two thirds of the width so the label shows; a long value is shortened inside the arrows | assessments, scorecards, the calculator's prior |
+| Stepper | a row whose value sits in `< >` on the right, at most two thirds of the width so the label shows; a long value is shortened inside the arrows | assessments, scorecards, the calculator's source and prior |
 | Status line | dotted rule, then the focused block's hint in the caption face | Home and hubs |
 
 Two more surfaces sit on top of pages:
