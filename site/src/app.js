@@ -117,8 +117,9 @@
         </div>
       </div>`;
     fetch('data/gallery.json').then((r) => r.ok ? r.json() : null).then((g) => {
-      if (!g) return;
-      document.getElementById('gallery').innerHTML = g.frames.slice(0, 6).map((f) =>
+      const box = document.getElementById('gallery'); // gone if the reader already left
+      if (!g || !box) return;
+      box.innerHTML = g.frames.slice(0, 6).map((f) =>
         `<img class="lcd rounded border border-gray-200 dark:border-gray-700" src="screens/${esc(f.file)}" alt="${esc(f.caption)}" title="${esc(f.caption)}" loading="lazy">`).join('');
     });
     Viz.afterPaint(() => { renderKinds(); renderCaps(); renderTree(); });

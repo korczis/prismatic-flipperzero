@@ -201,6 +201,19 @@ test('theme toggle persists and re-renders; missing gallery is tolerated', async
   await expect(page.locator('#gallery img')).toHaveCount(0);
 });
 
+test('leaving the overview before the gallery arrives is harmless', async ({ page }) => {
+  let release;
+  const held = new Promise((r) => { release = r; });
+  await page.route('**/data/gallery.json', async (route) => { await held; await route.continue(); });
+  await page.goto('/');
+  await ready(page);
+  await page.click('[data-nav="explore"]');
+  await expect(page.locator('[data-result]').first()).toBeVisible();
+  release();
+  await page.waitForResponse('**/data/gallery.json');
+  await page.waitForTimeout(200); // a pageerror here fails the test
+});
+
 test('light system theme and reduced motion', async ({ browser }) => {
   const ctx = await browser.newContext({ colorScheme: 'light', reducedMotion: 'reduce' });
   const page = await ctx.newPage();
