@@ -259,16 +259,16 @@
   {
    "name": "assess-scale",
    "pack": "kompendium",
-   "keys": "down,ok,down,down,ok,ok,down,ok,down",
+   "keys": "down,ok,down,down,ok,ok,down,ok,right,down,right",
    "view": "Assess",
-   "caption": "An assessment, one scale at a time: the focused grade's meaning in the status line",
+   "caption": "An assessment on one screen: each scale a stepper, Left/Right change its grade, the code builds in the header",
    "file": "26-assess-scale.png",
    "screen": "Assess"
   },
   {
    "name": "assess-result",
    "pack": "kompendium",
-   "keys": "down,ok,down,down,ok,ok,down,ok,down,ok,down,ok",
+   "keys": "down,ok,down,down,ok,ok,down,ok,right,down,right,down,ok",
    "view": "AssessResult",
    "caption": "The grade: the codes together, each grade's meaning, then what to do with it",
    "file": "27-assess-result.png",
@@ -304,16 +304,16 @@
   {
    "name": "score",
    "pack": "kompendium",
-   "keys": "down,ok,down,down,down,ok,ok,down,ok,down",
+   "keys": "down,ok,down,down,down,ok,ok,down,ok,right,down,right",
    "view": "Score",
-   "caption": "A scorecard from the Prismatic Platform: each answer's weight, the note it carries",
+   "caption": "A scorecard on one screen: Left/Right change an answer, the score and band follow live, the red flag in the status line",
    "file": "31-score.png",
    "screen": "Score"
   },
   {
    "name": "score-result",
    "pack": "kompendium",
-   "keys": "down,ok,down,down,down,ok,ok,down,ok,down,ok,ok,down,ok,ok,ok,down,ok",
+   "keys": "down,ok,down,down,down,ok,ok,down,ok,right,down,right,down,down,down,down,down,ok",
    "view": "ScoreResult",
    "caption": "The score, its band, and what moved it, with each red flag's evidence",
    "file": "32-score-result.png",
@@ -322,9 +322,9 @@
   {
    "name": "calc",
    "pack": "kompendium",
-   "keys": "down,ok,down,down,down,down,ok,ok,down,ok,down,down,down,down,ok,down,down,ok",
+   "keys": "down,ok,down,down,down,down,ok,ok,down,ok,down,down,down,down,ok,down,ok,down,down,right",
    "view": "Calc",
-   "caption": "A calculator from the Prismatic Platform: add sources, the belief and its status stay in view",
+   "caption": "A calculator: add sources, Left/Right move the prior, the belief and its status follow at once",
    "file": "33-calc.png",
    "screen": "Calc"
   },

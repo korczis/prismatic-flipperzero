@@ -63,10 +63,10 @@ progress-forget      | ui  | down,right,ok,ok,ok,ok,back:long,down,down,ok,right
 progress-stale-entry | ui  | down,right,ok,ok,ok,ok,back,ok,ok,ok,rekey,restart,restart,restart,down,right,ok,down,down,ok | # Review;Nothing is due now.
 compare              | ui  | ok,ok,up,up,up,up,ok,ok,ok:long,down,down,ok,ok,right,right,left,right,ok:long,right,down,down,down,down,down,down,ok | # Compare with;>Full object with every section;# Pair with the full object [1/5];# Full object with every section [3/5];# Side by side;2/2 markers observed;1/3 markers observed;# Full object with every section
 eject-compare        | ui  | ok,ok,up,up,up,up,ok,ok,ok:long,down,down,ok,eject,ok,insert | This marker could not be
-assess               | ui  | down,ok,down,down,ok,ok,down,ok,down,ok,ok,down,down,down,down,down,down,down,ok,back,back | # Assess;>Rate a source;# Axis one [1/2];~ first meaning;# Axis two [2/2];# Your grade;B1 R;# What to do with it;>Assess again;# D assess
+assess               | ui  | down,ok,down,down,ok,ok,down,ok,right,down,ok,right:repeat,left,right:long,down,ok,down,down,down,down,down,down,down,down,ok,back,back | # Assess [A1];>Axis one < A Alpha >;~ first meaning;# Assess [B1];# Assess [B2];# Assess [B3];~ second;~ Left/Right change a grade;# Your grade;B2 R;# What to do with it;>Assess again;# D assess
 assess-scales        | ui  | down,ok,down,down,ok,ok,right,right | # Axis one [1/4];A  Alpha: first meaning;# Axis two [2/4];2  Two: second
 assess-unreadable    | ui  | down,ok,down,down,ok,ok,eject,down,ok,insert | This assessment could not
-assess-lost-result   | ui  | down,ok,down,down,ok,ok,down,ok,ok,eject,ok,insert | # Your grade;This assessment could not
+assess-lost-result   | ui  | down,ok,down,down,ok,ok,down,ok,down,down,eject,ok,insert | # Your grade;This assessment could not
 session-save-list    | ui  | ok,ok,down,ok,down,ok,down,ok,right,right,left,down,down,ok,back:long,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,up,ok,ok | Saved: 1. Only when you;# Saved sessions;>11-25 12:00 Full object with every section;~ 2026-11-25T12:00:00;# B short
 session-foreign-torn | ui  | foreign,tornsession,ok,ok,down,ok,down,ok,down,ok,right,right,left,down,down,ok,back:long,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,up,ok | Saved: 2.;>11-25 12:00 Full object with every section;01-02 03:04 elsewhere/x
 session-card-full    | ui  | full,ok,ok,down,ok,down,ok,down,ok,right,right,left,down,down,ok,down,down | Not saved: the card is
@@ -82,11 +82,12 @@ sim-back-repick      | ui  | ok,ok,up,up,ok,ok,down,ok,down,ok,back,down,ok | 75
 sim-again            | ui  | ok,ok,up,up,ok,ok,down,ok,down,ok,down,down,down,ok,down,ok,down,down,down,ok,down,down,down,ok,back | >Run it again;# Step 1 of 2 [trust 50];# E simulate
 sim-unreadable       | ui  | ok,ok,up,up,ok,ok,down,eject,ok,insert | This simulation could not
 sim-lost-step        | ui  | ok,ok,up,up,ok,ok,down,ok,down,eject,ok,insert | This step could not
-score-high           | ui  | ok,ok,up,ok,ok,down,ok,down,ok,ok | # Question 1 of 2 [50];~ raised a lot;# Question 2 of 2 [90];# Your score;90 HI High
-score-low            | ui  | ok,ok,up,ok,ok,down,ok,ok,down,ok,down,down | -60 Yes;# Your score;0 LO Low;below thirty
-score-again          | ui  | ok,ok,up,ok,ok,down,ok,ok,ok,down,down,ok,back | 50 MID Middle;>Score again;# Question 1 of 2 [50];# F score
+score-high           | ui  | ok,ok,up,ok,ok,down,ok,right,down,down,ok | # Score [50 MID];>Raise? < +0 No >;~ raised a lot;# Score [90 HI];~ Left/Right change an answer;# Your score;90 HI High
+score-low            | ui  | ok,ok,up,ok,ok,down,ok,down,left,ok,ok,down,ok,down,down | >Lower? < -60 Yes >;# Score [0 LO];# Your score;0 LO Low;below thirty
+score-again          | ui  | ok,ok,up,ok,ok,down,ok,down,down,ok,down,ok,back | 50 MID Middle;>Score again;# Score [50 MID];# F score
 score-unreadable     | ui  | ok,ok,up,ok,ok,down,eject,ok,insert | This scorecard could not
-score-lost-result    | ui  | ok,ok,up,ok,ok,down,ok,ok,eject,ok,insert | This scorecard could not
-calc                 | ui  | down,ok,down,down,down,down,ok,ok,down,ok,down,ok,ok,down,ok | # algorithm;>Zeta calculator;# Bayes update [50.0%];# Bayes update [90.0%];~ confirmed;# Bayes update [98.2%];from 40%: 90 90
-calc-prior-undo      | ui  | down,ok,down,down,down,down,ok,ok,down,ok,down,down,ok,ok,ok,ok,ok,down,ok,ok,ok,ok,ok,ok,ok,ok,ok,up,up,up,ok,down,ok,down,down,down,ok,down,ok | # Bayes update [10.0%];~ rejected;from 90%: 10 90;# Bayes update [50.0%];~ tentative
+score-eject-live     | ui  | ok,ok,up,ok,ok,down,ok,eject,right,insert | # Score [50 ];>See the result
+score-lost-result    | ui  | ok,ok,up,ok,ok,down,ok,down,down,eject,ok,insert | This scorecard could not
+calc                 | ui  | down,ok,down,down,down,down,ok,ok,down,ok,down,ok,down,right,right,left,down,ok | # algorithm;>Zeta calculator;# Bayes update [50.0%];# Bayes update [90.0%];~ confirmed;>Prior < 70% >;# Bayes update [95.5%];# Bayes update [93.1%];# Bayes update [60.0%];~ tentative; from 60%:
+calc-prior-undo      | ui  | down,ok,down,down,down,down,ok,ok,down,ok,down,down,left,left,left,left,left,right,right,right,right,right,right,right,right,right,ok,down,ok,down,ok | >Prior < 10% >;~ rejected;>Prior < 90% >;# Bayes update [90.0%];# Bayes update [50.0%];~ tentative
 calc-unreadable      | ui  | down,ok,down,down,down,down,ok,ok,down,eject,ok,insert | This calculator could not

@@ -31,14 +31,16 @@
 #define T_PICK         (12u << 24) /* argument: object whose look-alikes to list */
 #define T_COMPARE      (13u << 24) /* argument: the look-alike to compare the frame's object with */
 #define T_ASSESS       (14u << 24) /* start the frame object's assessment */
-#define T_GRADE        (15u << 24) /* argument: the grade chosen on the current scale */
 #define T_SAVE         (16u << 24) /* save the detector's marks as a session */
 #define SESSIONS_SHOWN 40u
 #define T_SIMULATE     (17u << 24) /* start (or restart) the frame object's simulation */
 #define T_SIM_PICK     (18u << 24) /* argument: the option chosen in the current step */
 #define T_SIM_NEXT     (19u << 24) /* the next step, or the outcome after the last */
 #define T_SCORE        (20u << 24) /* start (or restart) the frame object's scorecard */
-#define T_SCORE_PICK   (21u << 24) /* argument: the choice made on the current question */
+#define T_SCORE_Q      (21u << 24) /* argument: a question whose answer Left/Right/OK change */
+#define T_SCORE_DONE   (24u << 24) /* the scorecard's result */
+#define T_AXIS         (25u << 24) /* argument: a scale whose grade Left/Right/OK change */
+#define T_GRADE_DONE   (26u << 24) /* the assessment's grade */
 #define T_CALC         (22u << 24) /* argument: a calculator action (CALC_*) */
 #define T_CALC_OPEN    (23u << 24) /* open the frame object's calculator */
 #define MAX_QUESTIONS  12u
@@ -88,8 +90,7 @@ typedef enum {
 } Screen;
 
 enum {
-    CALC_PRIOR_DOWN,
-    CALC_PRIOR_UP,
+    CALC_PRIOR, /* a stepper: Left/Right move the prior */
     CALC_UNDO,
     CALC_RESET,
     CALC_ADD, /* CALC_ADD + k: add a source at the k-th choice */
@@ -661,30 +662,37 @@ static void render_compare(UiApp* app) {
     restore(app);
 }
 
-/* One scale of an assessment: its grades as rows, the focused grade's meaning in the status
- * line; OK chooses it and moves to the next scale. */
+/* An assessment on one screen: each scale a stepper whose grade Left/Right change at once; the
+ * code builds in the header as you go, the focused grade's meaning in the status line. */
 static void render_assess(UiApp* app) {
-    Frame* f = top(app);
-    char pos[16], row[96]; /* pos: two counts, "4294967295/255" */
+    char code[24], value[96], name[64];
     PkpItem it;
-    if(app->axes == 0 || pkp_item(app->pack, app->axis_item[f->aux], &it) != PKP_OK) {
-        page_reset(app->page, "Assess");
+    page_reset(app->page, "Assess");
+    page_set_title_icon(app->page, UiIconCorrect);
+    if(app->axes == 0) {
         page_add(app->page, PageNote, "This assessment could not be read.", 0);
         restore(app);
         return;
     }
-    page_reset(app->page, str(app, it.text));
-    page_set_title_icon(app->page, UiIconCorrect);
-    snprintf(pos, sizeof(pos), "%lu/%u", (unsigned long)f->aux + 1, app->axes);
-    page_set_position(app->page, pos);
-    for(uint8_t l = 0; l < app->axis_levels[f->aux]; l++) {
-        if(pkp_item(app->pack, app->axis_item[f->aux] + 1 + l, &it) != PKP_OK) continue;
-        const char *code, *label, *meaning;
-        split_level((char*)str(app, it.text), &code, &label, &meaning);
-        snprintf(row, sizeof(row), "%s  %s", code, label);
-        page_add_row(app->page, 0, row, NULL, T_GRADE | l);
-        if(*meaning) page_set_hint(app->page, meaning);
+    size_t at = 0;
+    for(uint8_t a = 0; a < app->axes; a++) {
+        const char *lcode, *label, *meaning;
+        snprintf(
+            name,
+            sizeof(name),
+            "%s",
+            pkp_item(app->pack, app->axis_item[a], &it) == PKP_OK ? str(app, it.text) : "?");
+        if(pkp_item(app->pack, app->axis_item[a] + 1 + app->grade[a], &it) != PKP_OK) continue;
+        split_level((char*)str(app, it.text), &lcode, &label, &meaning);
+        at += (size_t)snprintf(code + at, sizeof(code) - at, "%s", lcode);
+        if(at >= sizeof(code)) at = sizeof(code) - 1;
+        snprintf(value, sizeof(value), "%.10s %.60s", lcode, label);
+        page_add_stepper(app->page, 0, name, value, T_AXIS | a);
+        page_set_hint(app->page, *meaning ? meaning : "Left/Right change the grade");
     }
+    page_set_position(app->page, code);
+    page_add_row(app->page, UiIconCorrect, "See the grade", NULL, T_GRADE_DONE);
+    page_set_hint(app->page, "Left/Right change a grade");
     restore(app);
 }
 
@@ -858,33 +866,55 @@ static int score_total(UiApp* app, int last) {
     return score_clamp(sum, app->sc_min, app->sc_max);
 }
 
-/* One question: its choices as rows with their weight; the focused one's note as a hint. */
+/* The band of a score: the first whose top it does not exceed, its texts kept in the app (the
+ * string reader reuses its buffer). */
+static bool score_band_of(UiApp* app, int score, ScoreBand* band) {
+    for(uint8_t b = 0; b < app->sc_bands; b++) {
+        PkpItem it;
+        if(pkp_item(app->pack, app->sc_band_item + b, &it) != PKP_OK) continue;
+        snprintf(app->sc_band_text, sizeof(app->sc_band_text), "%s", str(app, it.text));
+        if(score_band(app->sc_band_text, band) && score <= band->top) return true;
+    }
+    return false;
+}
+
+/* A scorecard on one screen: each question a stepper whose answer Left/Right change at once;
+ * the score and its band follow in the header, the focused answer's note (or the question) in
+ * the status line. */
 static void render_score(UiApp* app) {
-    Frame* f = top(app);
-    char title[32], right[12]; /* title: "Question " and two 32-bit counts */
-    PkpItem it;
-    if(app->sc_questions == 0 || pkp_item(app->pack, app->sc_q_item[f->aux], &it) != PKP_OK) {
-        page_reset(app->page, "Score");
+    char pos[24], value[64];
+    page_reset(app->page, "Score");
+    page_set_title_icon(app->page, UiIconCorrect);
+    if(app->sc_questions == 0) {
         page_add(app->page, PageNote, "This scorecard could not be read.", 0);
         restore(app);
         return;
     }
-    snprintf(
-        title, sizeof(title), "Question %lu of %u", (unsigned long)f->aux + 1, app->sc_questions);
-    page_reset(app->page, title);
-    page_set_title_icon(app->page, UiIconCorrect);
-    snprintf(right, sizeof(right), "%d", score_total(app, (int)f->aux - 1));
-    page_set_position(app->page, right);
-    page_add(app->page, PageParagraph, str(app, it.text), 0);
-    for(uint8_t c = 0; c < app->sc_q_choices[f->aux]; c++) {
+    int score = score_total(app, app->sc_questions - 1);
+    ScoreBand band;
+    snprintf(pos, sizeof(pos), "%d %s", score, score_band_of(app, score, &band) ? band.code : "");
+    page_set_position(app->page, pos);
+    for(uint8_t q = 0; q < app->sc_questions; q++) {
+        PkpItem it;
         ScoreChoice ch;
-        if(pkp_item(app->pack, app->sc_q_item[f->aux] + 1 + c, &it) == PKP_OK &&
-           score_choice((char*)str(app, it.text), &ch)) {
-            snprintf(right, sizeof(right), "%+d", ch.weight);
-            page_add_row(app->page, 0, ch.label, right, T_SCORE_PICK | c);
-            if(*ch.note) page_set_hint(app->page, ch.note);
-        }
+        char question[160];
+        bool read = pkp_item(app->pack, app->sc_q_item[q], &it) == PKP_OK;
+        if(read) snprintf(question, sizeof(question), "%s", str(app, it.text));
+        read = read &&
+               pkp_item(app->pack, app->sc_q_item[q] + 1 + app->sc_pick[q], &it) == PKP_OK &&
+               score_choice((char*)str(app, it.text), &ch);
+        if(!read) continue; /* the card went away: the row is left out */
+        snprintf(
+            value,
+            sizeof(value),
+            "%+d %.30s",
+            ch.weight,
+            ch.label); /* the weight first: it survives shortening */
+        page_add_stepper(app->page, 0, question, value, T_SCORE_Q | q);
+        page_set_hint(app->page, *ch.note ? ch.note : question);
     }
+    page_add_row(app->page, UiIconCorrect, "See the result", NULL, T_SCORE_DONE);
+    page_set_hint(app->page, "Left/Right change an answer");
     restore(app);
 }
 
@@ -902,34 +932,7 @@ static void render_score_result(UiApp* app) {
     }
     int score = score_total(app, app->sc_questions - 1);
     ScoreBand band = {0, "?", "", ""};
-    app->sc_band_text[0] = '\0';
-    for(uint8_t b = 0; b < app->sc_bands; b++) {
-        PkpItem it;
-        ScoreBand x;
-        if(pkp_item(app->pack, app->sc_band_item + b, &it) == PKP_OK &&
-           score_band((char*)str(app, it.text), &x) && score <= x.top) {
-            snprintf(
-                app->sc_band_text,
-                sizeof(app->sc_band_text),
-                "%s|%s|%s",
-                x.code,
-                x.label,
-                x.meaning);
-            break;
-        }
-    }
-    char* code = app->sc_band_text;
-    char* bar = strchr(code, '|');
-    if(bar) { /* code|label|meaning, kept in the app because str() reuses its buffer */
-        *bar = '\0';
-        band.code = code;
-        band.label = bar + 1;
-        bar = strchr(bar + 1, '|');
-        if(bar) {
-            *bar = '\0';
-            band.meaning = bar + 1;
-        }
-    }
+    score_band_of(app, score, &band);
     snprintf(line, sizeof(line), "%d %s %s", score, band.code, band.label);
     page_add(app->page, PageBig, line, 0);
     snprintf(line, sizeof(line), "%d score,%d to max", score - app->sc_min, app->sc_max - score);
@@ -993,12 +996,14 @@ static void render_calc(UiApp* app) {
         page_add_row(app->page, UiIconDetect, line, NULL, T_CALC | (CALC_ADD + k));
         page_set_hint(app->page, hint);
     }
-    static const char* const more[] = {
-        "Prior -10", "Prior +10", "Remove the last source", "Start over"};
-    for(uint32_t k = 0; k < 4; k++) {
-        page_add_row(app->page, 0, more[k], NULL, T_CALC | (CALC_PRIOR_DOWN + k));
-        page_set_hint(app->page, hint);
-    }
+    char prior[8];
+    snprintf(prior, sizeof(prior), "%u%%", app->calc_prior);
+    page_add_stepper(app->page, 0, "Prior", prior, T_CALC | CALC_PRIOR);
+    page_set_hint(app->page, hint);
+    page_add_row(app->page, 0, "Remove the last source", NULL, T_CALC | CALC_UNDO);
+    page_set_hint(app->page, hint);
+    page_add_row(app->page, 0, "Start over", NULL, T_CALC | CALC_RESET);
+    page_set_hint(app->page, hint);
     restore(app);
 }
 
@@ -1012,12 +1017,17 @@ static void start_calc(UiApp* app, uint16_t obj) {
     push(app, (Frame){.screen = ScrCalc, .obj = obj});
 }
 
+/* The prior in steps of ten, within 10..90 (a belief of 0 or 100 no source could move). */
+static void calc_step_prior(UiApp* app, int dir) {
+    if(dir < 0 && app->calc_prior > 10) app->calc_prior -= 10;
+    if(dir > 0 && app->calc_prior < 90) app->calc_prior += 10;
+}
+
 /* One action of the calculator; the focus stays on the row pressed. */
 static void calc_action(UiApp* app, uint32_t action) {
     if(action >= CALC_ADD && app->calc_n < CALC_MAX_SOURCES)
         app->calc_src[app->calc_n++] = app->calc.choices[action - CALC_ADD];
-    if(action == CALC_PRIOR_DOWN && app->calc_prior > 10) app->calc_prior -= 10;
-    if(action == CALC_PRIOR_UP && app->calc_prior < 90) app->calc_prior += 10;
+    if(action == CALC_PRIOR) calc_step_prior(app, 1); /* OK on the prior steps it up */
     if(action == CALC_UNDO && app->calc_n) app->calc_n--;
     if(action == CALC_RESET) {
         app->calc_n = 0;
@@ -1762,8 +1772,11 @@ static void start_detect(UiApp* app, uint16_t obj, int16_t other) {
 
 /* An assessment's scales: each axis item and the grades right after it (bounded). */
 static void start_assess(UiApp* app, uint16_t obj) {
+    while(app->depth > 1 && (top(app)->screen == ScrAssess || top(app)->screen == ScrAssessResult))
+        app->depth--;
     PkpObject o;
     app->axes = 0;
+    memset(app->grade, 0, sizeof(app->grade));
     if(pkp_object(app->pack, obj, &o) != PKP_OK) o.items_count = 0;
     for(uint32_t k = 0; k < o.items_count; k++) {
         PkpItem it;
@@ -1959,6 +1972,29 @@ static void home(UiApp* app, uint32_t entry) {
     }
 }
 
+/* A stepper's value, one step left or right, wrapping through the choices; the screen redraws
+ * at once with the focus kept, so a held key runs through the values in real time. */
+static void adjust(UiApp* app, uint32_t target, int dir) {
+    uint32_t k = T_ARG(target);
+    switch(T_KIND(target)) {
+    case T_AXIS:
+        if(app->axis_levels[k])
+            app->grade[k] =
+                (uint8_t)((app->grade[k] + app->axis_levels[k] + dir) % app->axis_levels[k]);
+        break;
+    case T_SCORE_Q:
+        if(app->sc_q_choices[k])
+            app->sc_pick[k] =
+                (uint8_t)((app->sc_pick[k] + app->sc_q_choices[k] + dir) % app->sc_q_choices[k]);
+        break;
+    default: /* T_CALC | CALC_PRIOR, the only other stepper */
+        calc_step_prior(app, dir);
+        break;
+    }
+    top(app)->sel = target;
+    render(app);
+}
+
 static void open_target(UiApp* app, uint32_t target, bool long_press) {
     Frame* f = top(app);
     switch(T_KIND(target)) {
@@ -1987,8 +2023,14 @@ static void open_target(UiApp* app, uint32_t target, bool long_press) {
         start_detect(app, f->obj, (int16_t)T_ARG(target));
         break;
     case T_ASSESS:
-        if(f->screen == ScrAssessResult) app->depth -= (uint8_t)(app->axes + 1); /* again */
-        start_assess(app, top(app)->obj);
+        start_assess(app, f->obj);
+        break;
+    case T_AXIS:
+    case T_SCORE_Q:
+        adjust(app, target, 1); /* OK steps forward, like Right */
+        break;
+    case T_GRADE_DONE:
+        push(app, (Frame){.screen = ScrAssessResult, .obj = f->obj});
         break;
     case T_SAVE:
         save_session(app);
@@ -1999,18 +2041,14 @@ static void open_target(UiApp* app, uint32_t target, bool long_press) {
     case T_SCORE:
         start_score(app, f->obj);
         break;
+    case T_SCORE_DONE:
+        push(app, (Frame){.screen = ScrScoreResult, .obj = f->obj});
+        break;
     case T_CALC_OPEN:
         start_calc(app, f->obj);
         break;
     case T_CALC:
         calc_action(app, T_ARG(target));
-        break;
-    case T_SCORE_PICK:
-        app->sc_pick[f->aux] = (uint8_t)T_ARG(target);
-        if(f->aux + 1 < app->sc_questions)
-            push(app, (Frame){.screen = ScrScore, .obj = f->obj, .aux = f->aux + 1});
-        else
-            push(app, (Frame){.screen = ScrScoreResult, .obj = f->obj});
         break;
     case T_SIM_PICK:
         app->sim_pick[f->aux] = (uint8_t)T_ARG(target);
@@ -2021,13 +2059,6 @@ static void open_target(UiApp* app, uint32_t target, bool long_press) {
             push(app, (Frame){.screen = ScrSimStep, .obj = f->obj, .aux = f->aux + 1});
         else
             push(app, (Frame){.screen = ScrSimOutcome, .obj = f->obj});
-        break;
-    case T_GRADE:
-        app->grade[f->aux] = (uint8_t)T_ARG(target);
-        if(f->aux + 1 < app->axes)
-            push(app, (Frame){.screen = ScrAssess, .obj = f->obj, .aux = f->aux + 1});
-        else
-            push(app, (Frame){.screen = ScrAssessResult, .obj = f->obj});
         break;
     case T_QUIZ:
         start_quiz(app, quiz_for(app, f->obj), f->obj);
@@ -2176,6 +2207,9 @@ bool ui_app_input(UiApp* app, PageKey key, PagePress press) {
         break;
     case PageActHome:
         if(app->depth > 1) home(app, HomeTop);
+        break;
+    case PageActAdjust:
+        adjust(app, act.target, act.dir);
         break;
     default:
         break;

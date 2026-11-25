@@ -55,6 +55,12 @@ Rules behind it:
 - **Grids move in two dimensions.** In the grid the d-pad moves to the neighbouring tile; Left
   and Right stop at the edge instead of wrapping, and Up from below enters the last row at its
   left tile.
+- **Values change in place, in real time.** A stepper row ("label  < value >") takes Left and
+  Right as "previous" and "next" value, on every press and on key repeat, and OK as "next". The
+  screen recomputes from a few bytes of state (a choice index per scale or question) and redraws
+  at once with the focus kept, so the result in the header moves as the reader runs through the
+  values; nothing waits for a confirm. The status line says what the focused value means, or
+  "Left/Right change ..." when the source gives no meaning.
 
 ### Review: spaced repetition
 
@@ -73,12 +79,14 @@ markers in a row, the header naming whose marker is on screen, and the result sh
 object's marks as a count and a bar, with a link to each article. It never ranks the two or says
 which one "it is": two sets of the reader's own marks, side by side, are what the screen shows.
 
-### Applications: assessments one scale at a time
+### Applications: assessments on one live screen
 
 Objects with the capability `assess` (Act > Assess) are tools for grading: the Admiralty code
 (source A-F, claim 1-6), the due-diligence evidence level (0-9) and the OSINT confidence levels,
-from `knowledge/applications.toml`. **Assess** (a chip and a menu entry) asks one scale per
-screen: its grades are rows, and the status line shows what the focused grade means. The result
+from `knowledge/applications.toml`. **Assess** (a chip and a menu entry) shows every scale on
+one screen as a stepper: Left/Right run through its grades, the code builds in the header as
+you go ("B2"), and the status line shows what the focused grade means. **See the grade** opens
+the result, which
 puts the chosen codes together ("B2"), then each scale's grade with its meaning, then what to do
 with the grade and how to grade. The device never computes a grade; the reader chooses, the
 screen records and explains. A new scale is data, not code.
@@ -87,9 +95,10 @@ screen records and explains. A new scale is data, not code.
 
 Act > Score a case runs the Prismatic Platform's deterministic scoring rules: the executive
 frame (a deal's risk rating A to F from gaps in its intake) and the nominee-shareholder check
-(evidence for and against a front owner). One question per screen, each answer with its weight;
-the header keeps the running score, and the status line shows the note an answer carries (a red
-flag and its evidence). The result is the score, its band and what it means, and every answer
+(evidence for and against a front owner). Every question is a stepper on one screen, its answer
+shown with the weight first (`< +10 No, empty ... >`); Left/Right change an answer and the score
+and band in the header follow at once, and the status line shows the note the focused answer
+carries (a red flag and its evidence). The result is the score, its band and what it means, and every answer
 that moved it with its note. The base, weights, clamp and bands are the source's, as data in
 `knowledge/applications.toml`; a new scorecard needs no code.
 
@@ -97,7 +106,8 @@ that moved it with its note. The base, weights, clamp and bands are the source's
 
 Act > Calculators holds the Prismatic Platform's portable algorithms with their parameters as
 data. The first is its Bayesian fusion of independent sources (`CorrelationEngine.bayesian_fusion`):
-add sources at a confidence, move the prior, take the last source back or start over, and the
+add sources at a confidence, move the prior with Left/Right on its stepper, take the last source
+back or start over, and the
 belief stays in view in the header with its status (confirmed at 90% or above, rejected at 10%
 or below, as the platform's hypothesis lifecycle says) in the status line. The device computes
 what the source's code computes; its documentation's example (0.8, 0.7, 0.9 giving 0.976) does
@@ -166,6 +176,7 @@ of existing blocks, not new drawing code.
 | Chip | rounded box with an icon and a count; focused = inverted | an article's actions: detector, quiz, map |
 | Row bar | 14 px mini bar before a row's count (square-root scale) | hub entries, chapters, kinds |
 | Tile | 16 px icon, bold label, caption count; focused = inverted rounded box, others open with dotted rules | the Home grid |
+| Stepper | a row whose value sits in `< >` on the right, at most two thirds of the width so the label shows; a long value is shortened inside the arrows | assessments, scorecards, the calculator's prior |
 | Status line | dotted rule, then the focused block's hint in the caption face | Home and hubs |
 
 Two more surfaces sit on top of pages:

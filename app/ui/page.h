@@ -39,6 +39,7 @@ typedef enum {
     PageBadge, /* kind as an inverted pill, then a caption: text "KIND\tcaption" */
     PageChip, /* selectable: icon + short text; consecutive chips share one row */
     PageTile, /* selectable: big icon, label, caption; consecutive tiles form a 2-column grid */
+    PageStepper, /* selectable row with a value Left/Right change in place: "label  < value >" */
 } PageStyle;
 
 typedef enum {
@@ -62,12 +63,14 @@ typedef enum {
     PageActSoftkey, /* softkey `target` (0..2) pressed; `long_press` for a held OK */
     PageActBack,
     PageActHome, /* Back held: straight to the first screen */
+    PageActAdjust, /* Left/Right on a focused stepper: change `target`'s value by `dir` */
 } PageActKind;
 
 typedef struct {
     PageActKind kind;
     uint32_t target;
     bool long_press;
+    int8_t dir; /* PageActAdjust: -1 or +1 */
 } PageAction;
 
 typedef struct Page Page;
@@ -83,6 +86,14 @@ void page_set_position(Page* page, const char* position);
 void page_add(Page* page, PageStyle style, const char* text, uint32_t target);
 /* A row: icon (0 = none, see ui_icons.h), label, right-aligned text (may be NULL). */
 void page_add_row(Page* page, uint8_t icon, const char* label, const char* right, uint32_t target);
+/* A stepper: a row whose value (shown "< value >") Left/Right change in place, at once and on
+ * key repeat; the app recomputes and redraws, the focus stays. OK opens `target` like a row. */
+void page_add_stepper(
+    Page* page,
+    uint8_t icon,
+    const char* label,
+    const char* value,
+    uint32_t target);
 /* A tile of a two-column grid (Home): a 16 px icon, a bold label and a caption under it. The d-pad
  * moves in two dimensions inside the grid; Up/Down past its edge leave it. */
 void page_add_tile(

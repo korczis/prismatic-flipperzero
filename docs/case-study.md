@@ -64,6 +64,9 @@ Generated from the repository's history by [`tools/docs.py`](../tools/docs.py). 
 | `5e934ff` | 13:11 | fix(sessions): drop an unreachable empty-list note; restore covers an empty page |
 | `3761ede` | 13:25 | feat(simulate): the Prismatic Platform's crisis simulations, as data, offline |
 | `56fadfc` | 13:35 | feat(score): the Prismatic Platform's scorecards as data: executive frame, nominee risk |
+| `30d303a` | 13:44 | feat(calculate): the Prismatic Platform's Bayesian fusion as an interactive calculator |
+| `e694aa4` | 13:46 | fix(calculate): single precision for the Flipper's FPU |
+| `b528ea4` | 14:30 | feat(site): simulations, scorecards and calculators are interactive in the browser |
 <!-- docs:end timeline -->
 
 ## What made it fast

@@ -255,6 +255,14 @@ void page_add_row(Page* p, uint8_t icon, const char* label, const char* right, u
     p->dirty = true;
 }
 
+void page_add_stepper(Page* p, uint8_t icon, const char* label, const char* value, uint32_t target) {
+    char shown[48];
+    snprintf(shown, sizeof(shown), "< %.40s >", value);
+    page_add_row(p, icon, label, shown, target);
+    if(p->blocks_n && p->blocks[p->blocks_n - 1].target == target)
+        p->blocks[p->blocks_n - 1].style = PageStepper;
+}
+
 void page_add_tile(Page* p, uint8_t icon, const char* label, const char* caption, uint32_t target) {
     page_add_row(p, icon, label, caption, target);
     if(p->blocks_n && p->blocks[p->blocks_n - 1].target == target) {
@@ -299,7 +307,7 @@ void page_add_icon(Page* p, PageStyle style, uint8_t icon, const char* text, uin
 
 static bool selectable(const Block* b) {
     return b->style == PageLink || b->style == PageRow || b->style == PageChip ||
-           b->style == PageTile;
+           b->style == PageTile || b->style == PageStepper;
 }
 
 uint16_t page_block_count(const Page* p) {
@@ -538,6 +546,7 @@ static void layout(Page* p, Canvas* canvas) {
         bool next_same = b + 1 < p->blocks_n && p->blocks[b + 1].style == st;
         switch(st) {
         case PageRow:
+        case PageStepper:
             push_line(p, b, 0, 0, ROW_H, LINE_FIRST | LINE_LAST | LINE_BODY);
             break;
         case PageBig:
@@ -760,6 +769,9 @@ static int row_label_room(Canvas* canvas, const Page* p, const Block* blk, int* 
         memcpy(buf, p->text + blk->right_off, blk->right_len);
         buf[blk->right_len] = '\0';
         rw = canvas_string_width(canvas, buf) + 4;
+        /* a stepper's value keeps at most two thirds of the row, so its label shows */
+        int most = (RIGHT - 2 - *x) * 2 / 3;
+        if(blk->style == PageStepper && rw > most) rw = most;
     }
     if(blk->bar) rw += 18;
     return RIGHT - 2 - rw - *x;
@@ -774,7 +786,19 @@ static void draw_row(Canvas* canvas, const Page* p, const Block* blk, int y, boo
     }
     if(blk->icon) draw_icon(canvas, blk->icon, LEFT + 2, y + 3);
     set_role(canvas, RoleCaption);
-    if(blk->right_len) {
+    if(blk->style == PageStepper) {
+        /* "< value >": the arrows always show, a value too long for its share is shortened */
+        char value[200];
+        int arrows = canvas_string_width(canvas, "<  >");
+        fit(canvas,
+            p->text + blk->right_off + 2,
+            (size_t)(blk->right_len - 4),
+            rw - 4 - arrows,
+            value,
+            sizeof(value));
+        snprintf(buf, sizeof(buf), "< %s >", value);
+        canvas_draw_str(canvas, RIGHT - 2 - canvas_string_width(canvas, buf), y + 9, buf);
+    } else if(blk->right_len) {
         memcpy(buf, p->text + blk->right_off, blk->right_len);
         buf[blk->right_len] = '\0';
         canvas_draw_str(canvas, RIGHT - 2 - canvas_string_width(canvas, buf), y + 9, buf);
@@ -802,7 +826,9 @@ static void measure_marquee(Page* p, Canvas* canvas) {
         p->marquee_wait = MARQUEE_START;
     }
     p->marquee_room = 0;
-    if(p->focus < 0 || p->blocks[p->focus].style != PageRow) return;
+    if(p->focus < 0 ||
+       (p->blocks[p->focus].style != PageRow && p->blocks[p->focus].style != PageStepper))
+        return;
     const Block* blk = &p->blocks[p->focus];
     char buf[256];
     int x, room = row_label_room(canvas, p, blk, &x);
@@ -958,6 +984,7 @@ static void draw_line(Canvas* canvas, const Page* p, const Line* l, int y) {
     }
     switch(blk->style) {
     case PageRow:
+    case PageStepper:
         draw_row(canvas, p, blk, y, focused);
         return;
     case PageBig:
@@ -1558,7 +1585,7 @@ static void jump(Page* p, int dir) {
 }
 
 static PageAction overlay_input(Page* p, PageKey key, PagePress press) {
-    PageAction act = {PageActNone, 0, false};
+    PageAction act = {PageActNone, 0, false, 0};
     int n = overlay_count(p);
     if(key == PageKeyBack || (key == PageKeyOk && press == PagePressLong)) {
         p->overlay = OverlayNone; /* dismiss; Back does not leave the page */
@@ -1593,7 +1620,7 @@ static PageAction overlay_input(Page* p, PageKey key, PagePress press) {
 static PageAction graph_input(Page* p, PageKey key, PagePress press) {
     static const int8_t side_of[] = {
         [PageKeyUp] = 1, [PageKeyRight] = 2, [PageKeyDown] = 3, [PageKeyLeft] = 4};
-    PageAction act = {PageActNone, 0, false};
+    PageAction act = {PageActNone, 0, false, 0};
     if(key == PageKeyOk) {
         int i = node_at(p, p->node_focus);
         act.kind = PageActOpen;
@@ -1616,7 +1643,7 @@ static PageAction graph_input(Page* p, PageKey key, PagePress press) {
 }
 
 PageAction page_input(Page* p, PageKey key, PagePress press) {
-    PageAction act = {PageActNone, 0, false};
+    PageAction act = {PageActNone, 0, false, 0};
     if(p->overlay != OverlayNone) return overlay_input(p, key, press);
     if(key == PageKeyBack) {
         if(press == PagePressShort) act.kind = PageActBack;
@@ -1639,6 +1666,13 @@ PageAction page_input(Page* p, PageKey key, PagePress press) {
             act.target = (uint32_t)slot;
             act.long_press = press == PagePressLong;
         }
+        return act;
+    }
+    if((key == PageKeyLeft || key == PageKeyRight) && press != PagePressLong && p->focus >= 0 &&
+       p->blocks[p->focus].style == PageStepper) {
+        act.kind = PageActAdjust; /* real time: the value changes on every press and repeat */
+        act.target = p->blocks[p->focus].target;
+        act.dir = key == PageKeyRight ? 1 : -1;
         return act;
     }
     if(key == PageKeyOk) {
@@ -1713,7 +1747,7 @@ uint16_t page_visible_lines(const Page* p, char out[][64], uint16_t cap) {
         if(!(l->flags & LINE_BODY)) continue; /* a gap */
         bool whole = blk->style == PageRow || blk->style == PageBig || blk->style == PageBar ||
                      blk->style == PageSteps || blk->style == PageBadge ||
-                     blk->style == PageChip || blk->style == PageTile;
+                     blk->style == PageChip || blk->style == PageTile || blk->style == PageStepper;
         const char* s = p->text + (whole ? blk->off : l->off);
         size_t len = whole ? blk->len : l->len;
         if(len == 0) continue;
@@ -1728,7 +1762,7 @@ uint16_t page_visible_lines(const Page* p, char out[][64], uint16_t cap) {
                 out[n][k++] = s[c];
             }
         }
-        if(blk->style == PageTile) { /* "[Label] caption" */
+        if(blk->style == PageTile || blk->style == PageStepper) { /* "label caption" */
             size_t rn = blk->right_len < 62 - k - 1 ? blk->right_len : 62 - k - 1;
             out[n][k++] = ' ';
             memcpy(out[n] + k, p->text + blk->right_off, rn);
