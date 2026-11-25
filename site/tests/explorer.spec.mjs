@@ -301,3 +301,101 @@ test('assess: an application graded scale by scale, the code built live and kept
   const regraded = [o.rubric[0].levels[0][0], ...picks.slice(1).map((l, a) => o.rubric[a + 1].levels[l][0])].join('');
   await expect(page.locator('[data-grade-code]')).toHaveText(regraded);
 });
+
+const firstOf = async (page, query) => {
+  await page.goto(`/#/explore?${query}`);
+  await ready(page);
+  await page.locator('[data-result]').first().click();
+  await page.waitForFunction(() => /#\/o\/\d+/.test(location.hash));
+  return page.evaluate(() => fetch(`data/o/${location.hash.match(/o\/(\d+)/)[1]}.json`).then((r) => r.json()));
+};
+
+test('tools on the overview: every interactive tool kind, counted and linked', async ({ page }) => {
+  await page.goto('/');
+  await ready(page);
+  const data = await db(page);
+  const tiles = page.locator('[data-tools] a');
+  await expect(tiles).toHaveCount(4);
+  await expect(tiles.nth(1).locator('[data-stat]')).toHaveText(String(data.capCounts.score));
+  await tiles.nth(2).click();
+  await expect(page).toHaveURL(/cap=simulate/);
+  await expect(page.locator('[data-nav="simulate"].bg-gray-100')).toHaveCount(1);
+});
+
+test('score: answers move the score live, the band and red flags follow, the URL keeps them', async ({ page }) => {
+  const o = await firstOf(page, 'cap=score');
+  await expect(page.locator('[data-nav="explore"].bg-gray-100')).toHaveCount(1);
+  const c = o.scorecard;
+  await expect(page.locator('[data-score]')).toHaveText(String(c.base));
+  for (const n of c.questions.keys()) await page.locator(`[data-act="score:${n}:1"]`).click();
+  const total = Math.max(c.min, Math.min(c.max, c.base + c.questions.reduce((s, q) => s + q.choices[1][1], 0)));
+  const band = c.bands.find((b) => total <= b[0]);
+  await expect(page.locator('[data-score]')).toHaveText(String(total));
+  await expect(page.locator('[data-band]')).toHaveText(`${band[1]} ${band[2]}`);
+  await expect(page.locator('[data-flags] li')).toHaveCount(c.questions.filter((q) => q.choices[1][2]).length);
+  await page.reload();
+  await ready(page);
+  await expect(page.locator('[data-score]')).toHaveText(String(total));
+  await page.locator('#score h3').click(); // not a button: nothing changes
+  await page.locator('[data-act="score:0:0"]').click();
+  const back = Math.max(c.min, Math.min(c.max, total - c.questions[0].choices[1][1] + c.questions[0].choices[0][1]));
+  await expect(page.locator('[data-score]')).toHaveText(String(back));
+});
+
+test('simulate: decide step by step, trust and the outcome follow the rules, undo and start over', async ({ page }) => {
+  const o = await firstOf(page, 'cap=simulate');
+  const sim = o.simulation;
+  await expect(page.locator('[data-trust]')).toHaveText(String(sim.start_trust));
+  let trust = sim.start_trust; let pos = 0; let neg = 0;
+  for (const [n, step] of sim.steps.entries()) {
+    await expect(page.locator('[data-step]')).toContainText(`Step ${n + 1} of ${sim.steps.length}`);
+    const k = n % step.options.length;
+    await page.locator(`#simulate [data-act="sim:${k}"]`).click();
+    const c = step.options[k].consequence;
+    trust = Math.max(0, Math.min(100, trust + c.trust_delta));
+    if (c.impact === 'positive') pos++;
+    if (c.impact === 'negative' || c.impact === 'critical') neg++;
+    await expect(page.locator('[data-trust]')).toHaveText(String(trust));
+  }
+  const outcome = trust >= 70 && pos > neg ? 'Optimal' : trust >= 40 && pos >= neg ? 'Acceptable'
+    : trust < 20 ? 'Critical failure' : 'Suboptimal';
+  await expect(page.locator('[data-outcome]')).toHaveText(outcome);
+  await expect(page).toHaveURL(/sim=/);
+  await page.reload();
+  await ready(page);
+  await expect(page.locator('[data-outcome]')).toHaveText(outcome);
+  await page.locator('[data-act="sim:undo"]').click();
+  await expect(page.locator('[data-outcome]')).toHaveCount(0);
+  await expect(page.locator('[data-step]')).toContainText(`Step ${sim.steps.length} of`);
+  await page.locator('[data-act="sim:reset"]').click();
+  await expect(page.locator('[data-trust]')).toHaveText(String(sim.start_trust));
+  await expect(page).not.toHaveURL(/sim=/);
+  await page.locator('#simulate h3').click(); // not a button
+  await page.locator('#simulate [data-act="sim:0"]').click(); // deciding again after the reload
+  await expect(page.locator('[data-step]')).toContainText('Step 2 of');
+});
+
+test('calculate: sources fuse by Bayes as the source code does, prior moves, sources come and go', async ({ page }) => {
+  const o = await firstOf(page, 'kind=algorithm');
+  await page.goto('/#/explore?kind=algorithm');
+  await expect(page.locator('[data-nav="calculate"].bg-gray-100')).toHaveCount(1);
+  await page.goBack();
+  await expect(page.locator('[data-belief]')).toHaveText(`${o.calculator.prior.toFixed(1)}%`);
+  for (const x of [80, 70, 90]) await page.locator(`[data-act="calc:add:${x}"]`).click();
+  await expect(page.locator('[data-belief]')).toHaveText('98.8%'); // the code's 0.9882, not the docstring's 0.976
+  await expect(page.locator('[data-status]')).toHaveText('confirmed');
+  await page.reload();
+  await ready(page);
+  await expect(page.locator('[data-belief]')).toHaveText('98.8%');
+  await page.locator('[data-act="calc:rm:0"]').click(); // 70, 90 from 50%
+  await expect(page.locator('[data-belief]')).toHaveText('95.5%');
+  for (let k = 0; k < 6; k++) await page.locator('[data-act="calc:prior:-10"]').click();
+  await expect(page.locator('[data-prior]')).toHaveText('10%');
+  await page.locator('[data-act="calc:prior:10"]').click();
+  await expect(page.locator('[data-prior]')).toHaveText('20%');
+  await page.locator('[data-act="calc:reset"]').click();
+  await expect(page.locator('[data-belief]')).toHaveText(`${o.calculator.prior.toFixed(1)}%`);
+  await expect(page.locator('[data-sources]')).toHaveText('none yet');
+  await page.locator('[data-act="calc:add:10"]').click();
+  await expect(page.locator('[data-status]')).toHaveText('rejected');
+});

@@ -80,6 +80,12 @@ back; an assessment records **your** grade and explains it; a marker describes, 
 > its relation tree, the detector and both quizzes. Object *n* there is object *n* on the device.
 > [The device](https://korczis.github.io/prismatic-flipperzero/#/device) page shows every screen
 > of the app full size, filterable by screen, with the keys that reach it.
+> The interactive tools run there too, with the same rules as on the device and their state in
+> the address, so every run is a link:
+> [simulations](https://korczis.github.io/prismatic-flipperzero/#/explore?cap=simulate),
+> [scorecards](https://korczis.github.io/prismatic-flipperzero/#/explore?cap=score),
+> [calculators](https://korczis.github.io/prismatic-flipperzero/#/explore?kind=algorithm),
+> [assessments](https://korczis.github.io/prismatic-flipperzero/#/explore?cap=assess).
 
 ---
 

@@ -109,6 +109,12 @@
         ${stat('typed links', DB.relations, '#/explore')}
         ${stat('quiz questions', QUIZ.length, '#/quiz?kind=1')}
       </div>
+      <div class="grid gap-4 mt-4 sm:grid-cols-2 xl:grid-cols-4" data-tools>
+        ${stat('assessments to grade with', DB.capCounts.assess || 0, '#/explore?cap=assess')}
+        ${stat('scorecards to answer', DB.capCounts.score || 0, '#/explore?cap=score')}
+        ${stat('crisis simulations to run', DB.capCounts.simulate || 0, '#/explore?cap=simulate')}
+        ${stat('calculators to drive', DB.kindCounts.algorithm || 0, '#/explore?kind=algorithm')}
+      </div>
       <div class="grid gap-4 mt-4 xl:grid-cols-2">
         ${Viz.frame('tree', 'The whole pack', 'Categories sized by objects; click a category to open it, an object to read it')}
         <div class="grid gap-4">
@@ -272,7 +278,8 @@
   }
 
   function explore(params) {
-    markActive(['detect', 'apply', 'assess'].includes(params.get('cap')) ? params.get('cap') : 'explore');
+    const nav = params.get('kind') === 'algorithm' ? 'calculate' : params.get('cap');
+    markActive(['detect', 'apply', 'assess', 'score', 'simulate', 'calculate'].includes(nav) ? nav : 'explore');
     const hits = [];
     DB.objects.forEach((o, i) => { if (matches(o, i, params)) hits.push(i); });
     const page = Math.max(0, +(params.get('page') || 0));
@@ -323,7 +330,7 @@
   /* An assessment, interactive: one grade per scale, the code built as you choose, every
    * choice in the URL (?g=<level>,<level>), so a graded claim is a link. Nothing is computed:
    * the reader chooses, the page records and explains. */
-  function assessCard(i, o, params) {
+  function assessCard(o, params) {
     const picks = (params.get('g') || '').split(',').map((x) => (x === '' ? -1 : Number(x)));
     const chosen = o.rubric.map((axis, a) => axis.levels[picks[a]]);
     const done = chosen.every(Boolean);
@@ -331,7 +338,7 @@
       <h4 class="mt-4 mb-2 text-sm font-semibold text-gray-500 uppercase dark:text-gray-400">${esc(axis.name)}</h4>
       <div class="grid gap-2 sm:grid-cols-2">${axis.levels.map(([code, label, meaning], l) => {
         const on = picks[a] === l;
-        return `<button type="button" data-grade="${a}:${l}" aria-pressed="${on}" class="text-left p-3 rounded-lg border ${on ? 'border-primary-600 bg-primary-50 dark:bg-gray-700' : 'border-gray-200 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-700'}">
+        return `<button type="button" data-act="g:${a}:${l}" data-grade="${a}:${l}" aria-pressed="${on}" class="text-left p-3 rounded-lg border ${on ? 'border-primary-600 bg-primary-50 dark:bg-gray-700' : 'border-gray-200 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-700'}">
           <span class="font-bold text-gray-900 dark:text-white">${esc(code)}</span> <span class="text-gray-800 dark:text-gray-200">${esc(label)}</span>
           ${meaning ? `<span class="block mt-1 text-sm text-gray-500 dark:text-gray-400">${esc(meaning)}</span>` : ''}</button>`;
       }).join('')}</div>`).join('');
@@ -342,6 +349,170 @@
         <ul class="mt-2 text-sm text-gray-700 dark:text-gray-300">${chosen.map((x, a) => `<li><b>${esc(o.rubric[a].name)}:</b> ${esc(x[0])} ${esc(x[1])}${x[2] ? ` (${esc(x[2])})` : ''}</li>`).join('')}</ul>
       </div>` : '<p class="mt-4 text-sm text-gray-500 dark:text-gray-400" data-grade-result>Choose a grade on every scale.</p>';
     return `<h3 class="text-xl font-bold text-gray-900 dark:text-white">Assess</h3>${scales}${result}`;
+  }
+
+  /* ------------------------------------------------------------------ interactive tools */
+  /* Scorecards, simulations and calculators, as on the device: the same rules ported from the
+   * Prismatic Platform, the state in the URL so every run is a link. Each tool is a section
+   * whose buttons carry data-act="<tool>:<arg>"; one handler applies the act to the URL and
+   * re-renders the section. Nothing here judges anyone: the reader chooses, the page explains. */
+
+  const btn = (act, label, on, extra = '') =>
+    `<button type="button" data-act="${act}" aria-pressed="${!!on}" class="text-left px-3 py-2 rounded-lg border ${on ? 'border-primary-600 bg-primary-50 dark:bg-gray-700' : 'border-gray-200 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-700'} ${extra}">${label}</button>`;
+  const list = (p, key) => (p.get(key) || '').split(',').filter((x) => x !== '').map(Number);
+  const meter = (value, max, label) => `<div class="w-full h-3 bg-gray-200 rounded-full dark:bg-gray-700" role="img" aria-label="${esc(label)}">
+      <div class="h-3 rounded-full bg-primary-600" style="width:${Math.max(0, Math.min(100, (100 * value) / max))}%"></div></div>`;
+
+  /* Scorecard: base + the weights chosen, clamped; the band is the first whose top it does not exceed. */
+  function scoreCard(o, p) {
+    const c = o.scorecard;
+    const picks = list(p, 's');
+    const chosen = c.questions.map((q, n) => q.choices[picks[n]]);
+    const total = Math.max(c.min, Math.min(c.max, c.base + chosen.reduce((s, x) => s + (x ? x[1] : 0), 0)));
+    const band = c.bands.find((b) => total <= b[0]);
+    const qs = c.questions.map((q, n) => `
+      <p class="mt-4 mb-2 font-medium text-gray-900 dark:text-white">${n + 1}. ${esc(q.text)}</p>
+      <div class="flex flex-wrap gap-2">${q.choices.map((ch, k) => btn(`score:${n}:${k}`,
+        `${esc(ch[0])} <span class="text-gray-500 dark:text-gray-400">${ch[1] > 0 ? '+' : ''}${ch[1]}</span>`, picks[n] === k)).join('')}</div>`).join('');
+    const notes = chosen.filter((x) => x && x[2]).map((x) => `<li>${esc(x[2])}</li>`).join('');
+    return `<h3 class="text-xl font-bold text-gray-900 dark:text-white">Score it</h3>
+      <div class="mt-3 p-4 rounded-lg bg-gray-50 dark:bg-gray-900" data-score-result>
+        <span class="text-3xl font-bold text-gray-900 dark:text-white" data-score>${total}</span>
+        <span class="ml-2 font-semibold text-gray-700 dark:text-gray-300" data-band>${esc(band[1])} ${esc(band[2])}</span>
+        <div class="mt-2">${meter(total - c.min, c.max - c.min, `score ${total}`)}</div>
+        ${band[3] ? `<p class="mt-2 text-sm text-gray-600 dark:text-gray-400">${esc(band[3])}</p>` : ''}
+        ${notes ? `<ul class="mt-2 text-sm list-disc list-inside text-orange-700 dark:text-orange-400" data-flags>${notes}</ul>` : ''}
+      </div>${qs}`;
+  }
+
+  /* Simulation: trust from the start, clamped 0..100 per decision; the outcome by the source's rules. */
+  function simState(sim, picks) {
+    let trust = sim.start_trust;
+    let pos = 0;
+    let neg = 0;
+    picks.forEach((k, n) => {
+      const c = sim.steps[n].options[k].consequence;
+      trust = Math.max(0, Math.min(100, trust + c.trust_delta));
+      if (c.impact === 'positive') pos++;
+      if (c.impact === 'negative' || c.impact === 'critical') neg++;
+    });
+    const outcome = trust >= 70 && pos > neg ? 'Optimal' : trust >= 40 && pos >= neg ? 'Acceptable'
+      : trust < 20 ? 'Critical failure' : 'Suboptimal';
+    return { trust, pos, neg, outcome };
+  }
+
+  function simCard(o, p) {
+    const sim = o.simulation;
+    const picks = list(p, 'sim').slice(0, sim.steps.length);
+    const st = simState(sim, picks);
+    const done = picks.length === sim.steps.length;
+    const history = picks.map((k, n) => {
+      const op = sim.steps[n].options[k];
+      return `<li class="mb-3"><p class="text-sm text-gray-500 dark:text-gray-400">Step ${n + 1}: ${esc(sim.steps[n].prompt)}</p>
+        <p class="font-medium text-gray-900 dark:text-white">${esc(op.text)}</p>
+        <p class="text-sm text-gray-700 dark:text-gray-300">${badge(op.consequence.type, op.consequence.trust_delta >= 0 ? 'green' : 'orange')} ${esc(op.consequence.text)}
+          <b>${op.consequence.trust_delta >= 0 ? '+' : ''}${op.consequence.trust_delta}</b></p></li>`;
+    }).join('');
+    const step = done ? '' : `<p class="mt-4 font-medium text-gray-900 dark:text-white" data-step>Step ${picks.length + 1} of ${sim.steps.length}: ${esc(sim.steps[picks.length].prompt)}</p>
+      <div class="grid gap-2 mt-2">${sim.steps[picks.length].options.map((op, k) => btn(`sim:${k}`,
+        `${esc(op.text)} <span class="text-sm text-gray-500 dark:text-gray-400">(${esc(op.risk)} risk)</span>`, false)).join('')}</div>`;
+    const outcome = done ? `<div class="mt-4 p-4 rounded-lg bg-gray-50 dark:bg-gray-900">
+        <span class="text-2xl font-bold text-gray-900 dark:text-white" data-outcome>${esc(st.outcome)}</span>
+        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Trust ${st.trust}. ${st.pos} positive and ${st.neg} negative decisions of ${picks.length}.</p></div>` : '';
+    return `<h3 class="text-xl font-bold text-gray-900 dark:text-white">Run the simulation</h3>
+      <div class="flex items-center gap-3 mt-3"><span class="text-sm text-gray-500 dark:text-gray-400">Trust</span>
+        <span class="font-bold text-gray-900 dark:text-white" data-trust>${st.trust}</span><div class="flex-1">${meter(st.trust, 100, `trust ${st.trust}`)}</div></div>
+      ${history ? `<ol class="mt-4">${history}</ol>` : ''}${step}${outcome}
+      <div class="flex gap-2 mt-4">${picks.length ? btn('sim:undo', 'Take back the last decision') + btn('sim:reset', 'Start over') : ''}</div>
+      <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">A training exercise from the Prismatic Platform, not guidance for a real emergency. In an emergency, call 112.</p>`;
+  }
+
+  /* Calculator: Bayesian fusion of independent sources, one at a time, from the prior. */
+  function bayesFuse(prior, sources) {
+    return sources.reduce((pr, c) => {
+      const den = c * pr + (1 - c) * (1 - pr);
+      return den > 0 ? (c * pr) / den : pr;
+    }, prior);
+  }
+
+  function calcCard(o, p) {
+    const c = o.calculator;
+    const prior = p.has('prior') ? Number(p.get('prior')) : c.prior;
+    const src = list(p, 'src');
+    const belief = 100 * bayesFuse(prior / 100, src.map((x) => x / 100));
+    const status = belief >= c.confirm ? 'confirmed' : belief <= c.reject ? 'rejected' : 'tentative';
+    return `<h3 class="text-xl font-bold text-gray-900 dark:text-white">Calculate</h3>
+      <div class="mt-3 p-4 rounded-lg bg-gray-50 dark:bg-gray-900">
+        <span class="text-3xl font-bold text-gray-900 dark:text-white" data-belief>${belief.toFixed(1)}%</span>
+        <span class="ml-2 font-semibold text-gray-700 dark:text-gray-300" data-status>${status}</span>
+        <div class="mt-2">${meter(belief, 100, `belief ${belief.toFixed(1)}%`)}</div></div>
+      <p class="mt-4 mb-2 text-sm text-gray-600 dark:text-gray-400">Prior <b data-prior>${prior}%</b></p>
+      <div class="flex gap-2">${btn('calc:prior:-10', 'Prior -10')}${btn('calc:prior:10', 'Prior +10')}</div>
+      <p class="mt-4 mb-2 text-sm text-gray-600 dark:text-gray-400">Add an independent source at a confidence</p>
+      <div class="flex flex-wrap gap-2">${c.choices.map((x) => btn(`calc:add:${x}`, `${x}%`)).join('')}</div>
+      <p class="mt-4 mb-2 text-sm text-gray-600 dark:text-gray-400">Sources so far (click one to remove it)</p>
+      <div class="flex flex-wrap gap-2" data-sources>${src.length ? src.map((x, k) => btn(`calc:rm:${k}`, `${x}% ×`)).join('') : '<span class="text-sm text-gray-500">none yet</span>'}</div>
+      <div class="mt-4">${btn('calc:reset', 'Start over')}</div>`;
+  }
+
+  /* Each act changes the URL parameters only; the section re-renders from them. */
+  const ACTS = {
+    g(o, p, [a, l]) {
+      const picks = (p.get('g') || '').split(',');
+      while (picks.length < o.rubric.length) picks.push('');
+      picks[a] = String(l);
+      p.set('g', picks.join(','));
+    },
+    score(o, p, [n, k]) {
+      const picks = (p.get('s') || '').split(',');
+      while (picks.length < o.scorecard.questions.length) picks.push('');
+      picks[n] = String(k);
+      p.set('s', picks.join(','));
+    },
+    sim(o, p, [what]) {
+      const picks = list(p, 'sim');
+      if (what === 'reset') picks.length = 0;
+      else if (what === 'undo') picks.pop();
+      else picks.push(Number(what));
+      if (picks.length) p.set('sim', picks.join(',')); else p.delete('sim');
+    },
+    calc(o, p, [what, arg]) {
+      const src = list(p, 'src');
+      const prior = p.has('prior') ? Number(p.get('prior')) : o.calculator.prior;
+      if (what === 'prior') p.set('prior', String(Math.max(10, Math.min(90, prior + Number(arg)))));
+      if (what === 'add') src.push(Number(arg));
+      if (what === 'rm') src.splice(Number(arg), 1);
+      if (what === 'reset') { src.length = 0; p.delete('prior'); }
+      if (src.length) p.set('src', src.join(',')); else p.delete('src');
+    },
+  };
+
+  const TOOLS = [
+    { field: 'rubric', id: 'assess', render: (o, p) => assessCard(o, p) },
+    { field: 'scorecard', id: 'score', render: scoreCard },
+    { field: 'simulation', id: 'simulate', render: simCard },
+    { field: 'calculator', id: 'calculate', render: calcCard },
+  ];
+  const present = (o, t) => (Array.isArray(o[t.field]) ? o[t.field].length : !!o[t.field]);
+
+  function toolSections(o, p) {
+    return TOOLS.filter((t) => present(o, t)).map((t) =>
+      `<section id="${t.id}" class="p-4 bg-white rounded-lg shadow sm:p-6 dark:bg-gray-800">${t.render(o, p)}</section>`).join('');
+  }
+
+  function bindTools(i, o) {
+    TOOLS.filter((t) => present(o, t)).forEach((t) => {
+      const box = document.getElementById(t.id);
+      box.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-act]');
+        if (!b) return;
+        const [tool, ...args] = b.getAttribute('data-act').split(':');
+        const p = route().params;
+        ACTS[tool](o, p, args);
+        history.replaceState(null, '', `#/o/${i}${p.toString() ? '?' + p : ''}`);
+        box.innerHTML = t.render(o, p);
+      });
+    });
   }
 
   async function article(i) {
@@ -379,7 +550,7 @@
             ${o.aliases.length ? `<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Also: ${esc(o.aliases.join(' · '))}</p>` : ''}
             <p class="mt-3 text-lg text-gray-700 dark:text-gray-300">${esc(o.definition)}</p>
             ${o.caps.includes('quiz') ? `<a href="#/quiz?obj=${i}" class="inline-block mt-4 text-white bg-primary-700 hover:bg-primary-800 focus:ring-4 focus:ring-primary-300 font-medium rounded-lg text-sm px-4 py-2.5">Take the quiz</a>` : ''}`)}
-          ${o.rubric && o.rubric.length ? `<section id="assess" class="p-4 bg-white rounded-lg shadow sm:p-6 dark:bg-gray-800">${assessCard(i, o, route().params)}</section>` : ''}
+          ${toolSections(o, route().params)}
           ${roles}
           ${examples ? card(`<h3 class="text-xl font-bold text-gray-900 dark:text-white">Examples from the catalogue</h3>${examples}`) : ''}
           ${chapters ? card(`<h3 class="text-xl font-bold text-gray-900 dark:text-white mb-1">Chapters</h3>${chapters}`) : ''}
@@ -394,21 +565,7 @@
         </div>
       </div>`;
     if (o.relations.length) Viz.afterPaint(() => renderNeighbours(i, o, groups));
-    const assess = document.getElementById('assess');
-    if (assess) {
-      assess.addEventListener('click', (e) => {
-        const b = e.target.closest('[data-grade]');
-        if (!b) return;
-        const [a, l] = b.getAttribute('data-grade').split(':').map(Number);
-        const params = route().params;
-        const picks = (params.get('g') || '').split(',');
-        while (picks.length < o.rubric.length) picks.push('');
-        picks[a] = String(l);
-        params.set('g', picks.join(','));
-        history.replaceState(null, '', `#/o/${i}?${params}`);
-        assess.innerHTML = assessCard(i, o, params);
-      });
-    }
+    bindTools(i, o);
     window.scrollTo(0, 0);
   }
 
