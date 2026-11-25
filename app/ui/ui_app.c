@@ -14,26 +14,28 @@
 #define SCRATCH     (PKP_MAX_STRING + 1u)
 
 /* Targets of selectable blocks: kind in the top byte, argument below. Zero means none. */
-#define T_OBJECT    (1u << 24)
-#define T_CHAPTER   (2u << 24) /* item offset inside the current object */
-#define T_DETECT    (3u << 24)
-#define T_QUIZ      (4u << 24)
-#define T_NEXT_QUIZ (5u << 24) /* argument: quiz kind */
-#define T_CATEGORY  (6u << 24)
-#define T_HOME      (7u << 24) /* argument: a home entry */
-#define T_PAGE      (8u << 24) /* argument: 0 previous, 1 next */
-#define T_OPTION    (9u << 24) /* argument: quiz option */
-#define T_MAP       (10u << 24) /* argument: object at the centre of a map */
-#define T_OF_KIND   (11u << 24) /* argument: object kind */
-#define T_PICK      (12u << 24) /* argument: object whose look-alikes to list */
-#define T_COMPARE   (13u << 24) /* argument: the look-alike to compare the frame's object with */
-#define T_ASSESS    (14u << 24) /* start the frame object's assessment */
-#define T_GRADE     (15u << 24) /* argument: the grade chosen on the current scale */
-#define MAX_AXES    4u
-#define MAX_LEVELS  16u
-#define KIND_CAP    32u
-#define T_KIND(t)   ((t) & 0xFF000000u)
-#define T_ARG(t)    ((t) & 0x00FFFFFFu)
+#define T_OBJECT       (1u << 24)
+#define T_CHAPTER      (2u << 24) /* item offset inside the current object */
+#define T_DETECT       (3u << 24)
+#define T_QUIZ         (4u << 24)
+#define T_NEXT_QUIZ    (5u << 24) /* argument: quiz kind */
+#define T_CATEGORY     (6u << 24)
+#define T_HOME         (7u << 24) /* argument: a home entry */
+#define T_PAGE         (8u << 24) /* argument: 0 previous, 1 next */
+#define T_OPTION       (9u << 24) /* argument: quiz option */
+#define T_MAP          (10u << 24) /* argument: object at the centre of a map */
+#define T_OF_KIND      (11u << 24) /* argument: object kind */
+#define T_PICK         (12u << 24) /* argument: object whose look-alikes to list */
+#define T_COMPARE      (13u << 24) /* argument: the look-alike to compare the frame's object with */
+#define T_ASSESS       (14u << 24) /* start the frame object's assessment */
+#define T_GRADE        (15u << 24) /* argument: the grade chosen on the current scale */
+#define T_SAVE         (16u << 24) /* save the detector's marks as a session */
+#define SESSIONS_SHOWN 40u
+#define MAX_AXES       4u
+#define MAX_LEVELS     16u
+#define KIND_CAP       32u
+#define T_KIND(t)      ((t) & 0xFF000000u)
+#define T_ARG(t)       ((t) & 0x00FFFFFFu)
 
 /* Every screen, once: the enum and the names (tests, the screen atlas) both come from here. */
 #define SCREENS(X)  \
@@ -56,7 +58,8 @@
     X(Forget)       \
     X(Compare)      \
     X(Assess)       \
-    X(AssessResult)
+    X(AssessResult) \
+    X(Sessions)
 
 typedef enum {
 #define SCREEN_ENUM(name) Scr##name,
@@ -83,6 +86,9 @@ enum {
     HomeAssess,
     HomeForget,
     HomeForgetNow,
+    HomeSessions,
+    HomeForgetSessions,
+    HomeForgetSessionsNow,
     HomeHub, /* HomeHub + n: hub n of the hubs table */
 };
 
@@ -802,6 +808,130 @@ static void render_detect(UiApp* app) {
     page_set_softkeys(app->page, "No", "Unsure", "Yes");
 }
 
+/* Saving is the reader's choice: a link until pressed, then what became of it. */
+static void save_link(UiApp* app) {
+    uint8_t saved = top(app)->pick;
+    if(saved == 1)
+        page_add(app->page, PageNote, "Saved: Info > Saved sessions.", 0);
+    else if(saved == 2)
+        page_add(
+            app->page, PageNote, "Not saved: the card is missing or the sessions are full.", 0);
+    else
+        page_add(app->page, PageLink, "Save these marks", T_SAVE);
+}
+
+/* True when the sessions file ends inside a line (a torn append). */
+static bool session_tail_open(UiApp* app) {
+    char chunk[256];
+    char last = '\n';
+    uint32_t pos = 0;
+    for(size_t got;
+        (got = app->platform.session_read(app->platform.ctx, pos, chunk, sizeof(chunk)));
+        pos += (uint32_t)got)
+        last = chunk[got - 1];
+    return last != '\n';
+}
+
+/* The detector's marks as one session line, appended by the platform. */
+static void save_session(UiApp* app) {
+    char time[24], pack[64], ids[SESSION_MAX_CANDS][96];
+    SessionCand c[SESSION_MAX_CANDS];
+    PkpStr s;
+    app->platform.now(app->platform.ctx, time, sizeof(time));
+    snprintf(
+        pack,
+        sizeof(pack),
+        "%s",
+        pkp_meta(app->pack, PKP_META_PACK_ID, &s) == PKP_OK ? str(app, s) : "?");
+    uint16_t at = 0;
+    for(uint8_t k = 0; k < app->cands; k++) {
+        PkpObject o;
+        snprintf(
+            ids[k],
+            sizeof(ids[k]),
+            "%s",
+            pkp_object(app->pack, app->cand_obj[k], &o) == PKP_OK ? str(app, o.id) : "?");
+        c[k] = (SessionCand){ids[k], app->cand_obj[k], app->marks + at, app->cand_count[k]};
+        at = (uint16_t)(at + app->cand_count[k]);
+    }
+    /* a line torn off by a lost write is closed first, so this one starts on its own line */
+    char line[SESSION_MAX_LINE + 1];
+    size_t lead = session_tail_open(app) ? 1 : 0;
+    line[0] = '\n';
+    size_t n = session_line(line + lead, sizeof(line) - lead, time, pack, c, app->cands);
+    bool ok = n && app->platform.session_append(app->platform.ctx, line, n + lead);
+    top(app)->pick = ok ? 1 : 2;
+    top(app)->sel = 0;
+    render(app);
+}
+
+/* Every whole session line in the file, oldest first: `found` gets each one's offset and
+ * length (the newest SESSIONS_SHOWN of them, in a ring); returns how many there are. */
+static uint32_t scan_sessions(UiApp* app, uint32_t* offs, uint16_t* lens) {
+    char chunk[256], line[SESSION_MAX_LINE];
+    uint32_t pos = 0, start = 0, total = 0;
+    size_t len = 0;
+    for(size_t got;
+        (got = app->platform.session_read(app->platform.ctx, pos, chunk, sizeof(chunk)));
+        pos += (uint32_t)got) {
+        for(size_t i = 0; i < got; i++) {
+            if(chunk[i] != '\n') {
+                if(len < sizeof(line)) line[len] = chunk[i];
+                len++;
+                continue;
+            }
+            SessionView v;
+            if(len < sizeof(line) && session_parse(line, len, &v)) {
+                offs[total % SESSIONS_SHOWN] = start;
+                lens[total % SESSIONS_SHOWN] = (uint16_t)len;
+                total++;
+            }
+            start = pos + (uint32_t)i + 1;
+            len = 0;
+        }
+    }
+    return total;
+}
+
+/* Saved sessions, newest first: when, what, and the marks observed; OK opens the object. */
+static void render_sessions(UiApp* app) {
+    static uint32_t offs[SESSIONS_SHOWN];
+    static uint16_t lens[SESSIONS_SHOWN];
+    char line[SESSION_MAX_LINE], label[128], right[16];
+    page_reset(app->page, "Saved sessions");
+    page_set_title_icon(app->page, UiIconArticle);
+    uint32_t total = scan_sessions(app, offs, lens);
+    uint32_t shown = total < SESSIONS_SHOWN ? total : SESSIONS_SHOWN;
+    for(uint32_t k = 0; k < shown; k++) {
+        uint32_t r = (total - 1 - k) % SESSIONS_SHOWN; /* newest first */
+        SessionView v;
+        size_t n = app->platform.session_read(app->platform.ctx, offs[r], line, lens[r]);
+        if(n != lens[r] || !session_parse(line, n, &v)) continue;
+        PkpObject o;
+        bool here = pkp_object(app->pack, v.index[0], &o) == PKP_OK &&
+                    strcmp(str(app, o.id), v.id[0]) == 0;
+        /* "11-25 12:00 Title": the date and time without the year and seconds */
+        snprintf(
+            label,
+            sizeof(label),
+            "%.5s %.5s %.100s",
+            v.time + 5,
+            v.time + 11,
+            here ? str(app, o.title) : v.id[0]);
+        snprintf(
+            right, sizeof(right), "%u/%u%s", v.observed[0], v.total[0], v.cands > 1 ? "+" : "");
+        if(!here) { /* about an object this pack does not have: shown, not openable */
+            page_add(app->page, PageMeta, label, 0);
+            continue;
+        }
+        page_add_row(app->page, UiIconDetect, label, right, T_OBJECT | v.index[0]);
+        page_set_hint(app->page, v.time);
+    }
+    if(total == 0)
+        page_add(app->page, PageNote, "Nothing saved. A detector's result offers Save.", 0);
+    restore(app);
+}
+
 /* Two candidates' marks side by side: a count and a bar each, never a ranking. */
 static void render_compare_result(UiApp* app) {
     char line[64];
@@ -832,6 +962,7 @@ static void render_compare_result(UiApp* app) {
         PageNote,
         "Two sets of your marks, side by side. Neither count is a score or a verdict.",
         0);
+    save_link(app);
     restore(app);
 }
 
@@ -862,6 +993,7 @@ static void render_detect_result(UiApp* app) {
         s.counts[POCKET_NOT_APPLICABLE]);
     page_add(app->page, PageBar, line, 0);
     page_add(app->page, PageNote, "Your marks only: not a score, not a diagnosis of anyone.", 0);
+    save_link(app);
     page_add(app->page, PageLink, str(app, o.title), T_OBJECT | f->obj);
     uint8_t confused = relation_type(app, "confused_with");
     if(count_items(app, &o, PKP_ITEM_ALTERNATIVE)) {
@@ -1073,18 +1205,34 @@ static void render_info(UiApp* app) {
     if(!app->progress_ok) page_add(app->page, PageNote, "The last save failed.", 0);
     if(app->progress.count)
         page_add(app->page, PageLink, "Forget my progress", T_HOME | HomeForget);
+    static uint32_t offs[SESSIONS_SHOWN];
+    static uint16_t lens[SESSIONS_SHOWN];
+    uint32_t saved = scan_sessions(app, offs, lens);
+    page_add(app->page, PageHeading, "Saved sessions", 0);
+    snprintf(line, sizeof(line), "Saved: %lu. Only when you press Save.", (unsigned long)saved);
+    page_add(app->page, PageParagraph, line, 0);
+    if(saved) {
+        page_add(app->page, PageLink, "Open saved sessions", T_HOME | HomeSessions);
+        page_add(app->page, PageLink, "Delete saved sessions", T_HOME | HomeForgetSessions);
+    }
     restore(app);
 }
 
 static void render_forget(UiApp* app) {
-    page_reset(app->page, "Forget progress?");
+    bool sessions = top(app)->filter;
+    page_reset(app->page, sessions ? "Delete sessions?" : "Forget progress?");
     page_set_title_icon(app->page, UiIconAlert);
     page_add(
         app->page,
         PageParagraph,
-        "Deletes every answer and box on the SD card. The pack is not touched.",
+        sessions ? "Deletes every saved session on the SD card. The pack is not touched." :
+                   "Deletes every answer and box on the SD card. The pack is not touched.",
         0);
-    page_add(app->page, PageLink, "Forget it", T_HOME | HomeForgetNow);
+    page_add(
+        app->page,
+        PageLink,
+        sessions ? "Delete them" : "Forget it",
+        T_HOME | (sessions ? HomeForgetSessionsNow : HomeForgetNow));
     page_add(app->page, PageMeta, "Back keeps it.", 0);
     restore(app);
 }
@@ -1175,6 +1323,9 @@ static void render(UiApp* app) {
         break;
     case ScrAssessResult:
         render_assess_result(app);
+        break;
+    case ScrSessions:
+        render_sessions(app);
         break;
     default:
         render_about(app);
@@ -1321,6 +1472,17 @@ static void home(UiApp* app, uint32_t entry) {
         app->depth--; /* back to Info, which now shows the empty progress */
         render(app);
         break;
+    case HomeSessions:
+        push(app, (Frame){.screen = ScrSessions});
+        break;
+    case HomeForgetSessions:
+        push(app, (Frame){.screen = ScrForget, .filter = 1});
+        break;
+    case HomeForgetSessionsNow:
+        app->platform.session_forget(app->platform.ctx);
+        app->depth--; /* back to Info, which now shows none */
+        render(app);
+        break;
     case HomeQuizTerm:
     case HomeQuizExample:
         start_quiz(
@@ -1364,6 +1526,9 @@ static void open_target(UiApp* app, uint32_t target, bool long_press) {
     case T_ASSESS:
         if(f->screen == ScrAssessResult) app->depth -= (uint8_t)(app->axes + 1); /* again */
         start_assess(app, top(app)->obj);
+        break;
+    case T_SAVE:
+        save_session(app);
         break;
     case T_GRADE:
         app->grade[f->aux] = (uint8_t)T_ARG(target);

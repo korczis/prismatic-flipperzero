@@ -80,6 +80,17 @@ puts the chosen codes together ("B2"), then each scale's grade with its meaning,
 with the grade and how to grade. The device never computes a grade; the reader chooses, the
 screen records and explains. A new scale is data, not code.
 
+### Saved sessions
+
+A detector's result, single or side by side, offers **Save these marks**; nothing is stored
+until the reader presses it. A saved session is one line of JSON appended to
+`SD:/apps_data/prismatic/sessions.jsonl` (at most 32 KiB): the time from the device clock, the
+pack, and for each object its stable id, its index and the marks, one letter each (O observed,
+N not observed, U unknown, A not applicable). The file is its own export: copy it to a computer
+and read it with any JSON Lines tool. Info lists the sessions newest first and deletes them
+behind a confirmation. A line torn off by a lost write is skipped, and the next save starts on a
+new line so it is not lost with it.
+
 ## Typography
 
 There are three roles, all from one family:

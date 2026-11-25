@@ -11,7 +11,7 @@ out=build/native
 mkdir -p "$out"
 cc="${CC:-cc}"
 flags=(-std=c99 -Wall -Wextra -Werror -Wshadow -Wconversion -Wno-sign-conversion -g)
-src=(app/core/pkp.c app/core/pocket.c app/core/cache.c app/core/progress.c tests/native/test_pkp.c)
+src=(app/core/pkp.c app/core/pocket.c app/core/cache.c app/core/progress.c app/core/session.c tests/native/test_pkp.c)
 
 [ -f build/packs/kompendium.ir.json ] || python3 tools/pocket.py extract >/dev/null
 python3 tools/pocket.py compile --out "$out/full.pkp" --report "$out/full.report.json" >/dev/null

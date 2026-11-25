@@ -21,7 +21,8 @@
   "Forget",
   "Compare",
   "Assess",
-  "AssessResult"
+  "AssessResult",
+  "Sessions"
  ],
  "frames": [
   {
@@ -331,12 +332,21 @@
    "screen": "Forget"
   },
   {
+   "name": "sessions",
+   "pack": "ui",
+   "keys": "ok,ok,down,ok,down,ok,down,ok,right,right,left,down,down,ok,back:long,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,up,ok",
+   "view": "Sessions",
+   "caption": "Saved sessions, newest first: only those you chose to save",
+   "file": "35-sessions.png",
+   "screen": "Sessions"
+  },
+  {
    "name": "info",
    "pack": "kompendium",
    "keys": "down,down,ok",
    "view": "Info",
    "caption": "Pack & device: what the pack is and where it came from",
-   "file": "35-info.png",
+   "file": "36-info.png",
    "screen": "Info"
   },
   {
@@ -345,7 +355,7 @@
    "keys": "down,down,ok,right,right,right",
    "view": "Info",
    "caption": "Measured here: open time, scan time, the read cache's hits",
-   "file": "36-info-cache.png",
+   "file": "37-info-cache.png",
    "screen": "Info"
   },
   {
@@ -354,7 +364,7 @@
    "keys": "down,down,right,ok",
    "view": "About",
    "caption": "About: what the app is and the keys",
-   "file": "37-about.png",
+   "file": "38-about.png",
    "screen": "About"
   },
   {
@@ -363,7 +373,7 @@
    "keys": "",
    "view": "Home",
    "caption": "No pack: Info and About still work and say what to do",
-   "file": "38-no-pack.png",
+   "file": "39-no-pack.png",
    "screen": "Home"
   }
  ]

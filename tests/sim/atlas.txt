@@ -38,6 +38,7 @@ trainer          | kompendium | down,right,ok,down,ok | Quiz | Manipulative or b
 trainer-result   | kompendium | down,right,ok,down,ok,left | QuizResult | Why, and a good response, from the catalogue
 review-empty     | ui | down,right,ok,ok,ok,ok,restart,restart,down,right,ok,down,down,ok,ok,ok,down,down,ok | Quiz | Review: questions come back by their Leitner box; here nothing is due
 forget           | ui | down,right,ok,ok,ok,ok,back:long,down,down,ok,right,right,right,right,right,down,ok | Forget | Forgetting your progress asks first; Back keeps it
+sessions         | ui | ok,ok,down,ok,down,ok,down,ok,right,right,left,down,down,ok,back:long,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,up,ok | Sessions | Saved sessions, newest first: only those you chose to save
 info             | kompendium | down,down,ok | Info | Pack & device: what the pack is and where it came from
 info-cache       | kompendium | down,down,ok,right,right,right | Info | Measured here: open time, scan time, the read cache's hits
 about            | kompendium | down,down,right,ok | About | About: what the app is and the keys

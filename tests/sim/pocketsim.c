@@ -79,6 +79,42 @@ static void progress_forget(void* ctx) {
     remove(path);
 }
 
+/* Saved sessions in the run's folder, as JSON Lines; "full" refuses them too. */
+static bool session_append(void* ctx, const char* line, size_t len) {
+    (void)ctx;
+    char path[512];
+    snprintf(path, sizeof(path), "%s/sessions.jsonl", progress_dir);
+    FILE* f = fopen(path, "ab");
+    if(!f) return false;
+    long size = ftell(f);
+    bool ok = !card_full && size >= 0 && (size_t)size + len <= SESSION_MAX_FILE &&
+              fwrite(line, 1, len, f) == len;
+    return fclose(f) == 0 && ok;
+}
+
+static size_t session_read(void* ctx, uint32_t offset, char* buf, size_t cap) {
+    (void)ctx;
+    char path[512];
+    snprintf(path, sizeof(path), "%s/sessions.jsonl", progress_dir);
+    FILE* f = fopen(path, "rb");
+    if(!f) return 0;
+    size_t n = fseek(f, (long)offset, SEEK_SET) == 0 ? fread(buf, 1, cap, f) : 0;
+    fclose(f);
+    return n;
+}
+
+static void session_forget(void* ctx) {
+    (void)ctx;
+    char path[512];
+    snprintf(path, sizeof(path), "%s/sessions.jsonl", progress_dir);
+    remove(path);
+}
+
+static void now(void* ctx, char* buf, size_t cap) {
+    (void)ctx;
+    snprintf(buf, cap, "2026-11-25T12:00:00"); /* a fixed clock: runs are reproducible */
+}
+
 static uint32_t seed = 12345;
 static uint32_t rnd(void* ctx) {
     (void)ctx;
@@ -143,7 +179,18 @@ int main(int argc, char** argv) {
     static PkpCache cache;
     bool nocache = getenv("POCKET_NOCACHE") != NULL;
     UiPlatform platform = {
-        rnd, tick, heap, NULL, &cache, progress_read, progress_write, progress_forget};
+        rnd,
+        tick,
+        heap,
+        NULL,
+        &cache,
+        progress_read,
+        progress_write,
+        progress_forget,
+        session_append,
+        session_read,
+        session_forget,
+        now};
     snprintf(progress_dir, sizeof(progress_dir), "%s", argv[2]);
     UiApp* app = ui_app_alloc(&platform);
     Canvas* canvas = sim_canvas_alloc();
@@ -188,14 +235,25 @@ int main(int argc, char** argv) {
             continue;
         }
         if(strcmp(tok, "restart") == 0 || strcmp(tok, "full") == 0 || strcmp(tok, "tear") == 0 ||
-           strcmp(tok, "norename") == 0 || strcmp(tok, "rekey") == 0) {
+           strcmp(tok, "norename") == 0 || strcmp(tok, "rekey") == 0 ||
+           strcmp(tok, "tornsession") == 0 || strcmp(tok, "foreign") == 0) {
             /* restart: quit and start again over the same files; full: writes fail from now;
              * tear: the next save stops halfway through the copy (power lost); norename: later
              * saves leave the temporary copy and never rename it (power lost in between);
-             * rekey: the first entry's key stops matching its question */
-            if(tok[0] == 'f') card_full = true;
+             * rekey: the first entry's key stops matching its question; tornsession and foreign
+             * write session lines (below) */
+            if(strcmp(tok, "full") == 0) card_full = true;
             if(tok[0] == 't') tear = true;
             if(tok[0] == 'n') no_rename = true;
+            /* tornsession: a session line cut off mid-write; foreign: a whole session about an
+             * object this pack does not have */
+            if(strcmp(tok, "tornsession") == 0) session_append(NULL, "{\"v\":1,\"t\":\"20", 14);
+            if(strcmp(tok, "foreign") == 0) {
+                static const char line[] =
+                    "{\"v\":1,\"t\":\"2026-01-02T03:04:05\",\"pack\":\"x\",\"c\":[{\"id\":\"elsewhere/x\","
+                    "\"i\":0,\"m\":\"O\"}]}\n";
+                session_append(NULL, line, sizeof(line) - 1);
+            }
             if(tok[1] == 'e' && tok[2] == 'k') {
                 /* rekey: the first answered question's key no longer matches its prompt, as
                  * after a pack rebuild that changed the question's text */

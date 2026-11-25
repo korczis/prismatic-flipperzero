@@ -12,6 +12,7 @@
 #include "../core/cache.h"
 #include "../core/pkp.h"
 #include "../core/progress.h"
+#include "../core/session.h"
 #include "page.h"
 
 typedef struct {
@@ -25,6 +26,13 @@ typedef struct {
     size_t (*progress_read)(void* ctx, int copy, uint8_t* buf, size_t cap);
     bool (*progress_write)(void* ctx, const uint8_t* data, size_t len);
     void (*progress_forget)(void* ctx);
+    /* saved sessions (app/core/session.h): append one line (false when the card refuses it or
+     * the file would pass SESSION_MAX_FILE), read bytes at an offset, delete the file */
+    bool (*session_append)(void* ctx, const char* line, size_t len);
+    size_t (*session_read)(void* ctx, uint32_t offset, char* buf, size_t cap);
+    void (*session_forget)(void* ctx);
+    /* the clock's local time as "YYYY-MM-DDTHH:MM:SS" */
+    void (*now)(void* ctx, char* buf, size_t cap);
 } UiPlatform;
 
 typedef struct UiApp UiApp;

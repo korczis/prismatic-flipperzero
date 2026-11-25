@@ -9,6 +9,7 @@
 #include "../../app/core/pkp.h"
 #include "../../app/core/pocket.h"
 #include "../../app/core/progress.h"
+#include "../../app/core/session.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -672,6 +673,37 @@ static void test_progress(void) {
     CHECK(progress_next_due(&p) == -1); /* nothing due in session 0 */
 }
 
+/* Saved sessions: a line round-trips, quotes cannot break it, a short buffer refuses it, and
+ * anything but a whole line written by session_line is rejected. */
+static void test_session(void) {
+    static char line[SESSION_MAX_LINE];
+    static const uint8_t a[] = {POCKET_OBSERVED, POCKET_NOT_OBSERVED, POCKET_UNKNOWN,
+                                POCKET_NOT_APPLICABLE, POCKET_UNANSWERED, 99};
+    static const uint8_t b[] = {POCKET_OBSERVED, POCKET_OBSERVED};
+    SessionCand c[2] = {{"kompendium/x", 173, a, 6}, {"kompendium/y\"q", 9, b, 2}};
+    SessionView v;
+    size_t n = session_line(line, sizeof(line), "2026-11-25T12:00:00", "pack \"1\"", c, 2);
+    CHECK(n > 0 && line[n - 1] == '\n');
+    CHECK(strstr(line, "\"m\":\"ONUA--\"") != NULL);
+    CHECK(strstr(line, "pack ?1?") != NULL && strstr(line, "y?q") != NULL);
+    CHECK(session_parse(line, n - 1, &v));
+    CHECK(strcmp(v.time, "2026-11-25T12:00:00") == 0 && v.cands == 2);
+    CHECK(strcmp(v.id[0], "kompendium/x") == 0 && v.index[0] == 173);
+    CHECK(v.observed[0] == 1 && v.total[0] == 6 && v.observed[1] == 2 && v.total[1] == 2);
+    CHECK(session_line(line, 20, "t", "p", c, 2) == 0); /* does not fit */
+    n = session_line(line, sizeof(line), "t", "p", c, 1);
+    CHECK(session_parse(line, n - 1, &v) && v.cands == 1);
+    CHECK(!session_parse(line, n - 5, &v)); /* torn */
+    CHECK(!session_parse("{\"v\":2,", 7, &v));
+    CHECK(!session_parse("x", 1, &v));
+    CHECK(!session_parse("{\"v\":1,\"x\":1}", 13, &v)); /* no time */
+    CHECK(!session_parse("{\"v\":1,\"t\":\"a", 14, &v)); /* time never closed */
+    CHECK(!session_parse("{\"v\":1,\"t\":1}", 13, &v)); /* time not a string */
+    CHECK(!session_parse("{\"v\":1,\"t\":\"a\",\"c\":[]}", 22, &v)); /* no candidates */
+    CHECK(!session_parse("{\"v\":1,\"t\":\"a\",\"c\":[{\"id\":\"x\",\"q\":1}]}", 35, &v));
+    CHECK(!session_parse("{\"v\":1,\"t\":\"a\",\"c\":[{\"id\":\"x\",\"i\":1}]}", 35, &v));
+}
+
 int main(int argc, char** argv) {
     if(argc != 3) {
         fprintf(stderr, "usage: test_pkp test|dump|walk <path>\n");
@@ -691,6 +723,7 @@ int main(int argc, char** argv) {
         test_detect();
         test_cache(pack, size);
         test_progress();
+        test_session();
         printf("native: %s (%d failure(s))\n", failures ? "FAIL" : "PASS", failures);
         rc = failures ? 1 : 0;
     }

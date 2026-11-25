@@ -6,6 +6,7 @@
  */
 #include <furi.h>
 #include <furi_hal_random.h>
+#include <furi_hal_rtc.h>
 #include <gui/gui.h>
 #include <storage/storage.h>
 
@@ -17,6 +18,7 @@
 #define PACK_DIR      EXT_PATH("apps_data/prismatic")
 #define PROGRESS_FILE PACK_DIR "/progress.bin"
 #define PROGRESS_TMP  PACK_DIR "/progress.tmp"
+#define SESSIONS_FILE PACK_DIR "/sessions.jsonl"
 
 typedef struct {
     File* file;
@@ -103,6 +105,50 @@ static void progress_forget(void* ctx) {
     storage_common_remove(storage, PROGRESS_TMP);
 }
 
+/* Saved sessions: appended, one JSON line each, never past SESSION_MAX_FILE. */
+static bool session_append(void* ctx, const char* line, size_t len) {
+    Storage* storage = ctx;
+    File* f = storage_file_alloc(storage);
+    bool ok = storage_file_open(f, SESSIONS_FILE, FSAM_WRITE, FSOM_OPEN_APPEND) &&
+              storage_file_size(f) + len <= SESSION_MAX_FILE &&
+              storage_file_write(f, line, len) == len;
+    ok = storage_file_close(f) && ok;
+    storage_file_free(f);
+    return ok;
+}
+
+static size_t session_read(void* ctx, uint32_t offset, char* buf, size_t cap) {
+    Storage* storage = ctx;
+    File* f = storage_file_alloc(storage);
+    size_t n = 0;
+    if(storage_file_open(f, SESSIONS_FILE, FSAM_READ, FSOM_OPEN_EXISTING) &&
+       storage_file_seek(f, offset, true))
+        n = storage_file_read(f, buf, cap);
+    storage_file_close(f);
+    storage_file_free(f);
+    return n;
+}
+
+static void session_forget(void* ctx) {
+    storage_common_remove(ctx, SESSIONS_FILE);
+}
+
+static void platform_now(void* ctx, char* buf, size_t cap) {
+    UNUSED(ctx);
+    DateTime t;
+    furi_hal_rtc_get_datetime(&t);
+    snprintf(
+        buf,
+        cap,
+        "%04u-%02u-%02uT%02u:%02u:%02u",
+        t.year,
+        t.month,
+        t.day,
+        t.hour,
+        t.minute,
+        t.second);
+}
+
 static uint32_t platform_random(void* ctx) {
     UNUSED(ctx);
     return furi_hal_random_get();
@@ -178,7 +224,11 @@ int32_t prismatic_app(void* p) {
         cache,
         progress_read,
         progress_write,
-        progress_forget};
+        progress_forget,
+        session_append,
+        session_read,
+        session_forget,
+        platform_now};
     app.mutex = furi_mutex_alloc(FuriMutexTypeNormal);
     app.input = furi_message_queue_alloc(8, sizeof(InputEvent));
     app.ui = ui_app_alloc(&platform);

@@ -58,6 +58,8 @@ Generated from the repository's history by [`tools/docs.py`](../tools/docs.py). 
 | `d40840a` | 12:00 | feat(detect): side-by-side detection of an object and a look-alike |
 | `81a28e1` | 12:17 | feat(apply): assessments as applications: Admiralty code, DD evidence levels, OSINT confidence |
 | `e0830aa` | 12:18 | test(tools): validate the repository's applications only where the file exists |
+| `f87e677` | 12:25 | docs(readme): FAEL-style landing: title, tagline, generated explainer and modules |
+| `619187f` | 12:30 | feat(site): assessments are interactive on the explorer too |
 <!-- docs:end timeline -->
 
 ## What made it fast
