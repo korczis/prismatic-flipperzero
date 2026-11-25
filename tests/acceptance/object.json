@@ -1,0 +1,48 @@
+{
+ "aliases": [],
+ "actions": [
+  "Delay irreversible commitments until the deadline is verified.",
+  "Seek independent advice before you decide."
+ ],
+ "alternatives": [
+  "A legitimate deadline set by a verifiable outside constraint.",
+  "An operational emergency that really does leave no time."
+ ],
+ "category": "03. Základní kategorie epistemických manipulací",
+ "chapters": [],
+ "code": "ACC-1",
+ "definition": "Acceptance fixture: pressure to decide before there is time to verify the claim, the deadline or the alternatives independently.",
+ "escalation": [],
+ "examples": [
+  {
+   "benign": false,
+   "context": "A caller who says they are from your bank.",
+   "marker": "An unverifiable deadline that forbids checking.",
+   "response": "Hang up and call the number on your card.",
+   "utterance": "You must confirm the transfer in the next five minutes or the account is frozen."
+  }
+ ],
+ "id": "acceptance/time-pressure",
+ "indicators": [
+  "Is immediate action demanded?",
+  "Is the deadline impossible to verify?",
+  "Is a reasonable delay refused?"
+ ],
+ "kind": "pattern",
+ "provenance": {
+  "commit": "acceptance-fixture",
+  "path": "tests/acceptance/object.json",
+  "repository": "https://github.com/korczis/prismatic-flipperzero"
+ },
+ "relations": [
+  {"target": "kompendium/03-zakladni-kategorie/delegitimizace", "type": "related_to"}
+ ],
+ "schema": "prismatic.knowledge/v1",
+ "tags": ["acceptance-fixture"],
+ "title": "Time pressure (acceptance fixture)",
+ "validation": [
+  "Verify where the deadline comes from.",
+  "Ask for reasonable extra time and watch the reaction."
+ ],
+ "validation_status": "test_fixture"
+}

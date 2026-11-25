@@ -56,6 +56,13 @@ class DocsTest(unittest.TestCase):
             "cache": {"blocks": 8, "block_bytes": 256},
             "cached": {"card_reads": 40, "bytes": 1100, "hits": 60, "misses": 40},
             "direct": {"card_reads": 100, "bytes": 1000, "hits": 0, "misses": 0}}))
+        (root / "docs" / "evidence" / "acceptance").mkdir(parents=True)
+        (root / "docs" / "evidence" / "acceptance" / "manifest.json").write_text(json.dumps({
+            "date": "2026-11-25", "object": "tests/acceptance/object.json",
+            "fap_sha256_before": "a" * 64, "fap_sha256_after": "a" * 64, "pack_sha256": "b" * 64,
+            "keys": "ok,down,ok", "simulator": "found", "command": "tools/acceptance.sh --device",
+            "device": {"firmware": "1.5.1", "frames_identical": 3, "frames_different": 0,
+                       "frames": ["result.png"]}}))
         (root / "app" / "ui").mkdir(parents=True)
         (root / "app" / "ui" / "ui_app.c").write_text(
             'static const Hub hubs[] = {\n    {UiIconBrowse,\n     "Library",\n     HomeAll,\n'
@@ -69,6 +76,8 @@ class DocsTest(unittest.TestCase):
                                           root / "docs/evidence/atlas/manifest.json"),
                         mock.patch.object(docs, "CACHE", root / "docs/evidence/cache/bench.json"),
                         mock.patch.object(docs, "UI_APP", root / "app/ui/ui_app.c"),
+                        mock.patch.object(docs, "ACCEPTANCE",
+                                          root / "docs/evidence/acceptance/manifest.json"),
                         mock.patch.object(docs, "STATS", root / "docs/data/pack-stats.json"),
                         mock.patch.object(docs, "SCREENS",
                                           root / "docs/evidence/pocket/manifest.json")]
@@ -102,6 +111,14 @@ class DocsTest(unittest.TestCase):
         bench = docs.cache_bench()
         self.assertIn("| Reading the card directly | 100 | 1 000 |", bench)
         self.assertIn("60 of 100 block requests from memory: 60% fewer card reads for +10%", bench)
+        acc = docs.acceptance()
+        self.assertIn("the same sha256, `aaaaaaaaaaaaaaaa`", acc)
+        self.assertIn("The same 3 key presses on the Flipper (firmware 1.5.1) | 3 frames", acc)
+        self.assertIn("[result.png](evidence/acceptance/result.png)", acc)
+        manifest = json.loads((self.root / "docs/evidence/acceptance/manifest.json").read_text())
+        manifest["fap_sha256_after"] = "c" * 64
+        (self.root / "docs/evidence/acceptance/manifest.json").write_text(json.dumps(manifest))
+        self.assertIn("a different sha256", docs.acceptance())
         tree = docs.ia_tree()
         self.assertIn('home --> h0["Library"]', tree)
         self.assertIn('h0 --> h0e1["Manip?<br/><small>Benign or not</small>"]', tree)

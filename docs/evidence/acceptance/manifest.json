@@ -1,0 +1,19 @@
+{
+ "date": "2026-11-25",
+ "object": "tests/acceptance/object.json",
+ "fap_sha256_before": "25c82ce4599ee3e95868f6103e16c042e390a8da5382854db8f20562d5606f60",
+ "fap_sha256_after": "25c82ce4599ee3e95868f6103e16c042e390a8da5382854db8f20562d5606f60",
+ "pack_sha256": "33a77299bfce50a6774144496d799cc71639d0de6a156fa2b39b602aed2d9834",
+ "keys": "ok,ok,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,ok,down,ok,right,right,left,back,right,ok,ok,down,down,down,ok",
+ "simulator": "found through Library > By chapter, detector 2/3 markers, quiz correct",
+ "device": {
+  "firmware": "1.5.1",
+  "frames_identical": 35,
+  "frames_different": 0,
+  "frames": [
+   "result.png",
+   "answer.png"
+  ]
+ },
+ "command": "tools/acceptance.sh --device"
+}

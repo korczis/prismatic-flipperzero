@@ -94,6 +94,31 @@ u8g2 renderer and fonts. The sources are fetched from firmware 1.5.1 and checked
   including corrupted packs and an SD card pulled mid-use. Each scenario asserts the visible
   text, and the run fails on any line of `app/ui` that no scenario ran.
 
+## The acceptance test
+
+The architecture stands or falls on one property: adding a knowledge object with capabilities
+the app already supports must not touch the app. `tools/acceptance.sh` proves it end to end. It
+adds one canonical object ([`tests/acceptance/object.json`](../tests/acceptance/object.json), a
+test fixture that never enters the published pack) to the extracted IR, recompiles only the
+pack, rebuilds the FAP from the unchanged `app/` and requires the same sha256, then walks to the
+object through the generic UI (Library, By chapter, its chapter, its row), runs its detector and
+answers its quiz, asserting what the screen shows. The key presses are derived from the pack, not
+written down. With `--device` it repeats the walk on the Flipper with the pack deployed as
+`acceptance.pkp`, compares every frame with the simulator's and removes the test pack again.
+`tools/verify.sh` runs the host part on every verification. The last device run:
+
+<!-- docs:begin acceptance -->
+| Step | Result |
+|---|---|
+| Add one canonical object | [`tests/acceptance/object.json`](../tests/acceptance/object.json) |
+| Recompile only the pack | `33a77299bfce50a6` |
+| Rebuild the FAP from the unchanged `app/` | the same sha256, `25c82ce4599ee3e9` |
+| Find it, run its detector, answer its quiz (simulator) | found through Library > By chapter, detector 2/3 markers, quiz correct |
+| The same 34 key presses on the Flipper (firmware 1.5.1) | 35 frames identical to the simulator, 0 different |
+
+Run 2026-11-25 by `tools/acceptance.sh --device`; frames from the device: [result.png](evidence/acceptance/result.png), [answer.png](evidence/acceptance/answer.png).
+<!-- docs:end acceptance -->
+
 ## Boundaries
 
 - The device never decides anything about a person. The detector returns the operator's own

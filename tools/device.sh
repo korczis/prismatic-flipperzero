@@ -5,6 +5,7 @@
 #   tools/device.sh launch [sdk]        build, install and start the app (ufbt launch)
 #   tools/device.sh deploy [sdk]        install build/<sdk>/prismatic.fap without starting it
 #   tools/device.sh deploy-pack [pack]  copy a knowledge pack to SD:/apps_data/prismatic/
+#   tools/device.sh remove-pack <name>  remove a test pack (acceptance*.pkp) put there by tooling
 #   tools/device.sh screenshot <png>    one real frame from the RPC screen stream
 #   tools/device.sh walk <dir> <keys>   frames before and after each key, e.g. right,back
 #   tools/device.sh cli "<command>"     one Flipper CLI command (loader info, uptime, ...)
@@ -63,6 +64,13 @@ case "$cmd" in
       || true  # mkdir reports an error when the directory exists; send below fails loudly if it is unusable
     timeout 900 "$py" "$HOME/.ufbt/current/scripts/storage.py" -p auto \
       send "$pack" "/ext/apps_data/prismatic/$(basename "$pack")"
+    ;;
+  remove-pack)
+    # only a pack this tooling put there for a test (acceptance*.pkp), never the user's packs
+    name="${1:-}"
+    case "$name" in acceptance*.pkp) ;; *) echo "device: remove-pack takes acceptance*.pkp only" >&2; exit 2 ;; esac
+    timeout 120 "$py" "$HOME/.ufbt/current/scripts/storage.py" -p auto \
+      remove "/ext/apps_data/prismatic/$name"
     ;;
   screenshot) timeout 60 "$py" "$root/tools/flipper_screen.py" capture "$@" ;;
   walk) timeout 120 "$py" "$root/tools/flipper_screen.py" walk "$@" ;;

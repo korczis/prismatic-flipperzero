@@ -104,6 +104,11 @@ sim keys pack="build/packs/kompendium.pkp":
 parity *args:
     tools/parity.sh {{args}}
 
+# The acceptance test: add one object, recompile only the pack, the FAP's sha256 unchanged;
+# --device repeats it on the Flipper
+acceptance *args:
+    tools/acceptance.sh {{args}}
+
 # Render every screen and view into docs/evidence/atlas (CI checks it is current)
 atlas:
     tools/atlas.py

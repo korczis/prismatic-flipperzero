@@ -28,6 +28,7 @@ SCREENS = ROOT / "docs" / "evidence" / "pocket" / "manifest.json"
 ATLAS = ROOT / "docs" / "evidence" / "atlas" / "manifest.json"
 CACHE = ROOT / "docs" / "evidence" / "cache" / "bench.json"
 UI_APP = ROOT / "app" / "ui" / "ui_app.c"
+ACCEPTANCE = ROOT / "docs" / "evidence" / "acceptance" / "manifest.json"
 REGION = re.compile(r"(<!-- docs:begin (?P<name>[a-z-]+) -->\n)(?P<body>.*?)(<!-- docs:end (?P=name) -->)",
                     re.S)
 
@@ -121,6 +122,27 @@ def cache_bench():
     ]) + "\n"
 
 
+def acceptance():
+    """The architectural acceptance test's last device run, from its evidence."""
+    a = json.loads(ACCEPTANCE.read_text())
+    d = a["device"]
+    same = "the same" if a["fap_sha256_before"] == a["fap_sha256_after"] else "a different"
+    return "\n".join([
+        "| Step | Result |", "|---|---|",
+        f"| Add one canonical object | [`{a['object']}`](../{a['object']}) |",
+        f"| Recompile only the pack | `{a['pack_sha256'][:16]}` |",
+        f"| Rebuild the FAP from the unchanged `app/` | {same} sha256, "
+        f"`{a['fap_sha256_after'][:16]}` |",
+        f"| Find it, run its detector, answer its quiz (simulator) | {a['simulator']} |",
+        f"| The same {len(a['keys'].split(','))} key presses on the Flipper (firmware "
+        f"{d['firmware']}) | {d['frames_identical']} frames identical to the simulator, "
+        f"{d['frames_different']} different |",
+        "",
+        f"Run {a['date']} by `{a['command']}`; frames from the device: "
+        + ", ".join(f"[{f}](evidence/acceptance/{f})" for f in d["frames"]) + ".",
+    ]) + "\n"
+
+
 def ia_tree():
     """The information architecture as a Mermaid tree, read from the hubs table in ui_app.c."""
     src = UI_APP.read_text()
@@ -173,7 +195,7 @@ def ui_geometry():
     return "\n".join(rows)
 
 
-GENERATORS = {"atlas": atlas, "cache-bench": cache_bench, "ia-tree": ia_tree, "ui-geometry": ui_geometry, "pack-stats": pack_stats, "pack-kinds": pack_kinds, "screens": screens,
+GENERATORS = {"acceptance": acceptance, "atlas": atlas, "cache-bench": cache_bench, "ia-tree": ia_tree, "ui-geometry": ui_geometry, "pack-stats": pack_stats, "pack-kinds": pack_kinds, "screens": screens,
               "timeline": timeline}
 
 

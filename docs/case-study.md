@@ -47,6 +47,8 @@ Generated from the repository's history by [`tools/docs.py`](../tools/docs.py). 
 | `ffdc599` | 09:23 | docs(readme): interface gallery from the simulator, device gallery recaptured |
 | `5010087` | 09:31 | feat(core): an LRU block cache in front of every pack read |
 | `3908db4` | 09:45 | feat(ui): information architecture of four hubs on a tile grid |
+| `641a0a5` | 10:08 | feat(ui): screen atlas of every screen, reviewed; cache measured; docs |
+| `a3e2211` | 10:14 | feat(site): the device page, every screen of the app from the atlas |
 <!-- docs:end timeline -->
 
 ## What made it fast

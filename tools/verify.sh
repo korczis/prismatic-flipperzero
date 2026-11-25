@@ -47,6 +47,9 @@ while IFS=$'\t' read -r id _version status; do
   fi
 done < <(python3 tools/sdk.py list)
 
+step "acceptance (a new object, the same FAP)"
+tools/acceptance.sh
+
 if [ "${VERIFY_SKIP_GOVERNANCE:-0}" != 1 ]; then
   step "governance"
   majordomus doctor | tail -n 1
