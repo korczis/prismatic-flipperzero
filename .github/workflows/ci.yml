@@ -1,0 +1,142 @@
+name: CI
+
+# Every push and pull request: tool tests with the coverage gate, the FAP built against every
+# pinned SDK in tools/sdks.json, native lint, and Majordomus governance. A v* tag additionally
+# assembles and publishes a prerelease from exactly those build outputs and re-downloads it to
+# verify the published checksums.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
+
+env:
+  UFBT_VERSION: "0.2.6"
+  MAJORDOMUS_VERSION: v1.2.0
+  LANG: C.UTF-8
+  LC_ALL: C.UTF-8
+
+jobs:
+  tools:
+    name: Tools, tests and coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Generated sources are in sync
+        run: |
+          python3 tools/version.py --check
+          python3 tools/icons.py --check
+      - name: shellcheck
+        run: shellcheck tools/*.sh tests/tools/*.sh .githooks/*
+      - name: Tool tests with line coverage (every executable line in tools/*.py)
+        run: python3 tests/tools/coverage_gate.py
+      - name: Coverage gate refuses an untested line
+        run: tests/tools/coverage_gate_selftest.sh
+
+  fap:
+    name: FAP (${{ matrix.sdk }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        sdk: [official, momentum]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Install uFBT ${{ env.UFBT_VERSION }}
+        run: pipx install "ufbt==${UFBT_VERSION}"
+      - name: Cache the uFBT toolchain
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.ufbt*/toolchain
+          key: ufbt-toolchain-${{ runner.os }}-${{ env.UFBT_VERSION }}-${{ matrix.sdk }}
+      - name: Install the pinned SDK (SHA-256 verified)
+        run: python3 tools/sdk.py install "${{ matrix.sdk }}"
+      - name: Build
+        run: tools/build.sh "${{ matrix.sdk }}"
+      - name: Native lint
+        if: matrix.sdk == 'official'
+        run: cd app && ufbt -s lint
+      - name: Build summary
+        run: |
+          {
+            echo "### FAP for ${{ matrix.sdk }}"
+            echo '```json'
+            cat "build/${{ matrix.sdk }}/build.json"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: fap-${{ matrix.sdk }}
+          path: build/${{ matrix.sdk }}/
+          if-no-files-found: error
+
+  governance:
+    name: Majordomus governance
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Install majordomus (pinned; the installer verifies the release SHA-256)
+        run: |
+          curl -fsSL https://majordomus.dev/install.sh | sh -s -- --version "$MAJORDOMUS_VERSION"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: majordomus doctor
+        run: |
+          git config core.hooksPath .githooks
+          majordomus version
+          majordomus doctor
+
+  release:
+    name: Prerelease
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [tools, fap, governance]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: fap-*
+          path: build/artifacts
+      - name: Tag matches VERSION
+        run: test "${GITHUB_REF_NAME}" = "v$(cat VERSION)"
+      - name: Assemble assets from the tested builds
+        run: |
+          for d in build/artifacts/fap-*; do mkdir -p "build/${d##*/fap-}"; cp "$d"/* "build/${d##*/fap-}/"; done
+          tools/release.sh
+      - name: Publish prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" build/release/* \
+            --prerelease --verify-tag \
+            --title "Prismatic $GITHUB_REF_NAME" \
+            --notes-file "docs/releases/${GITHUB_REF_NAME}.md"
+      - name: Verify the published downloads against SHA256SUMS
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir verify && cd verify
+          gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY"
+          sha256sum -c SHA256SUMS
