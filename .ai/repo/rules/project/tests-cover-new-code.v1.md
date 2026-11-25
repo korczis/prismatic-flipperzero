@@ -17,9 +17,14 @@ tags: [tests, coverage, enforcement]
   `tests/tools/coverage_gate_selftest.sh` proves the gate refuses an untested line.
 - `app/core/*.c`: `tests/native/run.sh` runs the core under ASan and UBSan, mutation-fuzzes it,
   compares it with the Python reference and fails on any line with code that never ran.
-- Device code (`app/prismatic.c`, `app/reader.c`) cannot run on the host. It is verified with
-  real frames from `just walk` or `tools/capture-screens.sh`, recorded under `docs/evidence/`.
+- `app/ui/*.c` (the whole interface): `tests/sim/run.sh` runs every scenario of
+  `tests/sim/scenarios.txt` on hermetic packs under ASan and UBSan. Each scenario asserts the
+  visible text, and the run fails on any line with code that never ran. A planted untested
+  function was refused (negative control, 2026-11-25).
+- `app/prismatic.c` (Furi glue only) cannot run on the host. `tools/parity.sh` proves that the
+  device and the simulator draw identical frames for the same keys, and records the result
+  under `docs/evidence/parity/`.
 
 # Enforcement
 
-CI jobs *Tools* and *Portable core*, and `tools/verify.sh`, which `majordomus finish` runs.
+CI jobs *Tools* and *Portable core and UI*, and `tools/verify.sh`, which `majordomus finish` runs.

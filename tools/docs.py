@@ -94,7 +94,29 @@ def timeline():
     return "\n".join(out) + "\n"
 
 
-GENERATORS = {"pack-stats": pack_stats, "pack-kinds": pack_kinds, "screens": screens,
+UI_SOURCE = ROOT / "app" / "ui" / "page.c"
+UI_MEANING = {
+    "SCREEN_W": "display width", "SCREEN_H": "display height",
+    "HEADER_H": "pinned header (title, position, rule)", "SOFT_H": "softkey bar",
+    "LEFT": "left text margin", "RIGHT": "last text column (scrollbar right of it)",
+    "LEADING": "body line pitch", "ROW_H": "list row", "HEADING_H": "section heading bar",
+    "BIG_H": "big-number result line", "BAR_H": "stacked bar with legend",
+    "GAP": "space after a paragraph", "TEXT_CAP": "text per page", "BLOCK_CAP": "blocks per page",
+    "LINE_CAP": "laid-out lines per page",
+}
+
+
+def ui_geometry():
+    """The design system's numbers, read from the engine's own #defines."""
+    rows = ["| Constant | Value | Meaning |", "|---|---:|---|"]
+    for name, value in re.findall(r"^#define (\w+)\s+(\d+)u?\b", UI_SOURCE.read_text(), re.M):
+        if name in UI_MEANING:
+            unit = "" if name.endswith("_CAP") else " px"
+            rows.append(f"| `{name}` | {value}{unit} | {UI_MEANING[name]} |")
+    return "\n".join(rows)
+
+
+GENERATORS = {"ui-geometry": ui_geometry, "pack-stats": pack_stats, "pack-kinds": pack_kinds, "screens": screens,
               "timeline": timeline}
 
 

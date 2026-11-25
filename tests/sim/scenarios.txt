@@ -1,0 +1,40 @@
+# UI scenarios: name | pack | keys | expectations
+# pack: ui, bad (built by tests/sim/packs.py), - (no pack), !ui (a pack whose open fails).
+# Every expectation must appear in the run's text dump (header "# title [position]", body lines
+# with ">" on the focused one, softkeys "[left|center|right]"); one starting with ! must not.
+# keys: up down left right ok back, with :long or :repeat; eject / insert fail or restore reads.
+# Paths: the full object's article is "ok,down,ok,down,ok".
+home-and-exit        | ui  | down,down,down,down,down,up,back | # Prismatic Pocket [1/8];>Quiz: manipulative?;EXIT
+home-wraps           | ui  | up,down,down:repeat | >About;# Prismatic Pocket [8/8];>Browse
+browse-paging        | ui  | ok,ok,right,right,right,right,right,right,right,right,right,right,right,ok,down,down,down,down,down,down,ok | # A long category [p1/2];a b c d e f;Long entry 38;>Next page >;# A long category [p2/2];>< Previous page;>Long entry 44;technique - L-44
+category-back        | ui  | ok,down,ok,down,back,back | # Browse;>B short;Bare article
+article-full         | ui  | ok,down,ok,down,ok,down,down,down,down,down:long,right,right,right,right,right,right,right,left,up:long,left:long | technique - F-1;>Run the detector (3);>Take the quiz;# How to recognise it [1/7];# What to do [2/7];# When to escalate [3/7];# Don't confuse with [4/7];# Validation tests [5/7];# Chapters [6/7];# See also [7/7];In: B short;Markers describe
+article-links        | ui  | ok,down,ok,down,ok,right,right,right,down,ok,back,right,right,right,down,down,down,ok,back,down,ok | # B short;Bare article;Short.;article;Huge chapter;# Browse
+chapter              | ui  | ok,down,ok,down,ok,right,right,right,right,right,down,ok,down,down,ok | # Full object with every section;Chapter one;First chapter text.;>Next: Chapter two;Second chapter text.
+huge-page            | ui  | ok,down,ok,down,down,ok,right,down,ok,down:long,down,up,up:long | # Huge chapter;Everything;word word;more in the pack than fits
+detector             | ui  | ok,down,ok,down,ok,down,ok,left,ok,right,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down | # Full object with every section [1/3];0/3;[No|?|Yes];[2/3];[3/3];1/3 markers observed;1,1,1,0;Your marks only;# Your observations;Rule out first;Validate;Next steps;When to escalate
+detector-na          | ui  | ok,down,ok,down,ok,down,ok,ok:long,ok:long,ok:long | 0/3 markers observed;0,0,0,3
+detector-from-list   | ui  | down,ok,ok,down,ok,ok,ok,ok,ok,ok,ok,ok,ok,ok | # Detectors;Long entry 00;markers observed
+filter-lists         | ui  | down,down,ok,back,down,ok,ok,back,back,back | # What to do;# Confusables;Full object with every section
+quiz-term            | ui  | down,down,down,down,ok,ok,down,down,down,ok,down,down,down,down,ok | # Which term?;[|Choose|];The term was;>Next question
+quiz-term-right      | ui  | ok,down,ok,down,ok,down,down,ok,ok,ok,back,ok,ok,down,ok,back,ok,ok,down,down,ok,back,ok,ok,down,down,down,ok | # Correct;# Not quite;The term was
+quiz-trainer         | ui  | down,down,down,down,down,ok,left,down,down,down,down,ok,right,back,back | # Manipulative?;[Manip.||Benign];This example is;Why;A good response
+info-and-about       | ui  | up,up,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,back,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down:long | # Pack & device;Title: UI test pack;Contents;Measured here;Free heap: 123456 B;App v;# About;Keys;github.com
+no-pack              | -   | ok,ok,back,down,ok | No knowledge pack;# Pack & device;No usable pack;None found.
+broken-pack          | !ui | ok | No usable pack
+bad-records          | bad | ok,ok,back,down,ok,ok,back,back,down,ok,ok,down,down,down,down,down,down,down,ok,ok,ok,ok,down,down,down,down,ok | A long category;!Long entry 01
+bad-quiz             | bad | down,down,down,down,ok,back,down,ok,left | # Which term?;# Manipulative?
+eject-article        | ui  | ok,down,ok,down,ok,eject,back,ok,down,back,back,insert,ok | could not be;Nothing could be read
+eject-everywhere     | ui  | ok,down,ok,down,ok,down,ok,eject,left,insert,back,back,ok,down,ok,right,right,right,right,right,down,eject,ok,insert,back,eject,back,back,down,ok,insert | could not be
+eject-quiz           | ui  | down,down,down,down,ok,ok,eject,ok,insert,back,back,down,ok,eject,left,insert,back,eject,down,ok,ok,insert | This question could not be
+eject-lists          | ui  | eject,ok,back,down,ok,back,down,ok,back,down,ok,back,up,up,up,up,up,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,insert | Nothing could be read;# Pack & device;Free heap
+eject-detector       | ui  | ok,down,ok,down,ok,down,eject,ok,insert,back,eject,back,insert | could not be
+eject-result         | ui  | ok,down,ok,down,ok,down,ok,left,left,eject,left,insert | This object could not be
+deep-stack           | ui  | ok,down,ok,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,back,back | # Huge chapter;# See also
+next-quiz            | ui  | down,down,down,down,ok,ok,ok,down,down,ok | >Next question;# Which term?
+scroll-up            | ui  | ok,down,ok,down,ok,down,down,down,down,down,down,down,down,up,up,up,up,up,up,up,up,up,up | Full object with every;technique - F-1
+quiz-binary          | ui  | ok,ok,right,right,right,right,right,right,right,ok,down,down,down,down,down,ok | ___ has a definition;# Which term?
+bad-quiz-article     | bad | down,down,down,ok,ok,down,down,down,down,ok | # Confusables;Full object with every;This question could not be
+eject-back-article   | ui  | ok,down,ok,down,ok,right,right,right,right,right,right,right,down,ok,eject,back,insert | This object could not be
+eject-quiz-random    | ui  | down,down,down,down,eject,ok,insert,back | # Quiz;This question could not be
+eject-chapter        | ui  | ok,down,ok,down,ok,right,right,right,right,right,down,eject,ok,insert | This chapter could not be

@@ -21,6 +21,7 @@ PAGES = [
     ("Case-Study", "docs/case-study.md"),
     ("Architecture", "docs/architecture.md"),
     ("Development", "docs/development.md"),
+    ("Interface", "docs/ui.md"),
 ]
 LINK = re.compile(r'(\]\(|src=")(?!https?:|#|mailto:)([^)"\s]+)')
 REGION = re.compile(r"^<!-- docs:(begin|end) [\w-]+ -->\n", re.M)

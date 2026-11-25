@@ -21,50 +21,53 @@ walk() { # name keys [settle]
   "$dev" walk "$tmp/$1" "$2" --settle "${3:-1.2}" >/dev/null
 }
 
-walk detect "down,ok,ok,right,ok,right,right,left,ok,right,down,down,down" 2.0
+walk detect "down,ok,ok,down,ok,left,ok,right,ok:long,right,down,down"
+walk sections "down,ok,ok,right,right"
 walk terms "down,down,down,down,ok,ok,ok"
 walk manip "down,down,down,down,down,ok,left"
 walk browse "ok,ok"
-walk info "down,down,down,down,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down" 0.6
+walk info "up,up,ok"
 
 mkdir -p "$out"
 rm -f "$out"/*.png
 keep() { cp "$tmp/$1" "$out/$2"; }
 keep detect/00-start.png 01-home.png
 keep detect/02-ok.png 02-detectors.png
-keep detect/04-right.png 04-article-link.png
-keep detect/05-ok.png 05-detector.png
-keep detect/10-right.png 06-result.png
-keep detect/13-down.png 07-result-steps.png
-keep terms/05-ok.png 08-quiz-term.png
-keep terms/06-ok.png 09-quiz-options.png
-keep terms/07-ok.png 10-quiz-result.png
-keep manip/06-ok.png 11-trainer.png
-keep manip/07-left.png 12-trainer-result.png
-keep browse/01-ok.png 13-categories.png
-keep browse/02-ok.png 14-objects.png
-keep info/07-ok.png 15-info.png
-keep info/33-down.png 16-info-measured.png
+keep detect/03-ok.png 03-article.png
+keep detect/04-down.png 04-article-action.png
+keep sections/04-right.png 05-section.png
+keep detect/05-ok.png 06-detector.png
+keep detect/10-right.png 07-result.png
+keep detect/11-down.png 08-result-legend.png
+keep terms/05-ok.png 09-quiz-term.png
+keep terms/06-ok.png 10-quiz-options.png
+keep terms/07-ok.png 11-quiz-result.png
+keep manip/06-ok.png 12-trainer.png
+keep manip/07-left.png 13-trainer-result.png
+keep browse/01-ok.png 14-categories.png
+keep browse/02-ok.png 15-objects.png
+keep info/03-ok.png 16-info.png
 
 firmware="$("$dev" cli "device_info" | awk -F': ' '/^firmware_version/ {gsub(/ /,"",$2); print $2}')"
 python3 - "$out/manifest.json" "$firmware" <<'PY'
 import json, sys, datetime
 captions = [
-    ("01-home.png", "Home: every count is derived from the pack on the SD card"),
-    ("02-detectors.png", "Detectors: objects whose page lists observable markers"),
-    ("04-article-link.png", "Right jumps to the next link; OK opens it"),
-    ("05-detector.png", "Detector: one marker at a time, No / ? / Yes, hold OK for n/a"),
-    ("06-result.png", "Result: your own marks back, never a score"),
-    ("07-result-steps.png", "Then what to rule out first and the next steps"),
-    ("08-quiz-term.png", "Quiz: which term is this? The name is masked in the definition"),
-    ("09-quiz-options.png", "Distractors come from the objects the page calls confusable"),
-    ("10-quiz-result.png", "The answer, with the full definition and a link to the article"),
-    ("11-trainer.png", "Trainer: manipulative or benign? A catalogue example in context"),
-    ("12-trainer-result.png", "Why, and a good response, from the catalogue"),
-    ("13-categories.png", "Browse: the Kompendium's own chapters and collections"),
-    ("14-objects.png", "A category, paged; Back returns to the same row"),
-    ("15-info.png", "Pack and device info: source commit, contents"),
-    ("16-info-measured.png", "Provenance: the source repository and the pinned commit"),
+    ("01-home.png", "Home: icons, and counts derived from the pack on the SD card"),
+    ("02-detectors.png", "A list: position in the header, rows that page by four"),
+    ("03-article.png", "An article: the category above, the title in bold, kind and code"),
+    ("04-article-action.png", "One Down reaches the actions: the detector, the quiz"),
+    ("05-section.png", "Right jumps a section; its heading moves into the header"),
+    ("06-detector.png", "Detector: progress cells, one marker at a time, No / ? / Yes"),
+    ("07-result.png", "Result: your marks as a number and a bar, never a score"),
+    ("08-result-legend.png", "The bar's legend, then what to rule out and the next steps"),
+    ("09-quiz-term.png", "Quiz: which term is this? The name is masked"),
+    ("10-quiz-options.png", "Distractors come from the objects the page calls confusable"),
+    ("11-quiz-result.png", "The answer, with the definition and a link to the article"),
+    ("12-trainer.png", "Trainer: manipulative or benign? A catalogue example"),
+    ("13-trainer-result.png", "Why, and a good response, from the catalogue"),
+    ("14-categories.png", "Browse: the Kompendium's chapters and collections"),
+    ("15-objects.png", "A category; Back returns to the same row"),
+    ("16-info.png", "Pack and device: source, contents, measured open and scan times"),
 ]
 json.dump({"captured": datetime.date.today().isoformat(), "firmware": sys.argv[2],
            "command": "tools/capture-screens.sh",

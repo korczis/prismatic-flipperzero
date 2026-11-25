@@ -32,6 +32,8 @@ cmp docs/data/pack-stats.json build/packs/kompendium.report.json \
 
 step "portable core: sanitizers, fuzz, differential, line coverage"
 tests/native/run.sh
+step "ui on the host (firmware fonts, scenarios, sanitizers, coverage)"
+tests/sim/run.sh
 
 step "native lint"
 (cd app && ufbt -s lint)

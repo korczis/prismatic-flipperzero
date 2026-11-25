@@ -1,0 +1,33 @@
+/* Prismatic Pocket's screens and navigation, portable (no Furi): the app is a function of the
+ * pack and the key presses. app/prismatic.c feeds it the device's pack file, keys and clock;
+ * tests/sim feeds it a pack file and a key script and gets the same frames.
+ *
+ * No screen knows any concept: categories, objects, articles, the actions an article links to
+ * (detector, quiz, chapters, related and confusable objects) and every text come from the
+ * pack. A new object with existing capabilities needs no change here. The detector only counts
+ * the operator's marks; it never scores or diagnoses.
+ */
+#pragma once
+
+#include "../core/pkp.h"
+#include "page.h"
+
+typedef struct {
+    uint32_t (*random)(void* ctx);
+    uint32_t (*tick_ms)(void* ctx);
+    void (*heap)(void* ctx, uint32_t* free_bytes, uint32_t* largest_block);
+    void* ctx;
+} UiPlatform;
+
+typedef struct UiApp UiApp;
+
+UiApp* ui_app_alloc(const UiPlatform* platform);
+void ui_app_free(UiApp* app);
+/* Shown while the pack opens. */
+void ui_app_loading(UiApp* app);
+/* The opened pack (or why there is none) and how long opening took; scans the index once. */
+void ui_app_set_pack(UiApp* app, PkpReader* pack, PkpStatus status, uint32_t open_ms);
+void ui_app_draw(UiApp* app, Canvas* canvas);
+/* Returns false when the app should exit (Back on Home). */
+bool ui_app_input(UiApp* app, PageKey key, PagePress press);
+Page* ui_app_page(UiApp* app);

@@ -24,7 +24,7 @@ from pathlib import Path
 
 WIDTH, HEIGHT = 128, 64
 KEYS = {"up": 0, "down": 1, "right": 2, "left": 3, "ok": 4, "back": 5}
-PRESS, RELEASE, SHORT = 0, 1, 2
+PRESS, RELEASE, SHORT, LONG = 0, 1, 2, 3
 # Flipper's LCD: dark pixels on the backlit orange panel.
 FG, BG = (0x00, 0x00, 0x00), (0xFF, 0x82, 0x00)
 
@@ -174,8 +174,8 @@ class Rpc:
             raise TimeoutError("no screen frame received")
         return last
 
-    def press(self, key):
-        for kind in (PRESS, SHORT, RELEASE):
+    def press(self, key, long=False):
+        for kind in (PRESS, LONG if long else SHORT, RELEASE):
             self.send(23, field(1, 0, KEYS[key]) + field(2, 0, kind))
 
     def close(self):
@@ -251,14 +251,14 @@ def main(argv):
         out.mkdir(parents=True, exist_ok=True)
         steps = [k.strip() for k in args.keys.split(",") if k.strip()]
         for k in steps:
-            if k not in KEYS:
-                sys.exit(f"unknown key {k!r}; keys: {', '.join(KEYS)}")
+            if k.removesuffix(":long") not in KEYS:
+                sys.exit(f"unknown key {k!r}; keys: {', '.join(KEYS)} (add :long to hold)")
         shot = out / "00-start.png"
         shot.write_bytes(png(frame_to_rows(rpc.frame(settle=args.settle)), args.scale))
         print(shot)
         for n, k in enumerate(steps, 1):
-            rpc.press(k)
-            shot = out / f"{n:02d}-{k}.png"
+            rpc.press(k.removesuffix(":long"), long=k.endswith(":long"))
+            shot = out / f"{n:02d}-{k.replace(':', '-')}.png"
             shot.write_bytes(png(frame_to_rows(rpc.frame(settle=args.settle)), args.scale))
             print(shot)
         return 0

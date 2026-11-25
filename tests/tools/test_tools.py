@@ -289,10 +289,11 @@ class FlipperScreenTest(unittest.TestCase):
 
     def test_walk_presses_keys_and_captures_each_frame(self):
         with tempfile.TemporaryDirectory() as d:
-            rc, stdout, _ = self.run_main(["walk", d, "right,back", "--port", "/dev/fake"])
+            rc, stdout, _ = self.run_main(["walk", d, "right,ok:long,back", "--port",
+                                           "/dev/fake"])
             self.assertEqual(rc, 0)
             self.assertEqual(sorted(p.name for p in Path(d).iterdir()),
-                             ["00-start.png", "01-right.png", "02-back.png"])
+                             ["00-start.png", "01-right.png", "02-ok-long.png", "03-back.png"])
 
     def test_walk_rejects_unknown_key(self):
         with tempfile.TemporaryDirectory() as d:

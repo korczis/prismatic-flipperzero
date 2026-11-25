@@ -20,6 +20,9 @@ Majordomus. A missing Flipper is `BLOCKED`, not a build failure.
 just pack            # ~1.5 min: extract + compile; build/packs/kompendium.{pkp,report.json}
 just test            # tool tests + line-coverage gate
 just test-native     # portable core: sanitizers, fuzz, differential, llvm-cov gate
+just test-ui         # the UI on the host: firmware fonts, scenarios, sanitizers, llvm-cov gate
+just sim down,ok,ok  # run the app on the host with a key script (frames into build/sim)
+just parity          # device and simulator draw identical frames (app running on the Flipper)
 just launch          # build the FAP, install over the storage CLI, start with the loader
 just walk build/w ok,down,ok 1.2   # drive the device and capture a frame after each key
 just site            # Pages explorer: data, build, Playwright e2e, JS line coverage
@@ -38,6 +41,8 @@ just verify          # all of the above, the way CI runs it
   the only place that creates a chart; every chart is in its registry, maximizable, with its
   state in the URL. `site/coverage.mjs` fails on any line of `app.js` or `viz.js` that no
   Playwright test ran.
+- **UI changes are designed in the simulator.** `tests/sim/scenarios.txt` gets a scenario for
+  every new path, and `just parity` proves the device draws the same frames.
 - **Hardware claims need frames.** A feature that runs on the device is shown with frames from
   `just walk` or `just screenshot`.
 - **Governance.** Work runs as Majordomus tasks (`majordomus start … --scope …`), with

@@ -33,6 +33,13 @@ Generated from the repository's history by [`tools/docs.py`](../tools/docs.py). 
 | `67c2cec` | 04:05 | docs(repo): README with real device frames, CI matrix and preview release flow |
 | `f85d96e` | 05:08 | feat(pocket): full Kompendium as a knowledge pack and a generic runtime |
 | `914e20f` | 05:40 | feat(pocket): structured reader, article navigation and CI for the core and pack |
+| `92e5bf0` | 06:04 | docs(pocket): prose README, case study, architecture, real device gallery |
+| `fbc955c` | 06:10 | style(app): apply the SDK clang-format to app sources |
+| `55fc96d` | 06:31 | feat(site): Pages explorer over the full pack, tested end to end |
+| `d25ff11` | 06:34 | feat(docs): render the GitHub wiki from README and docs |
+| `a1cc740` | 06:36 | docs(readme): link the online explorer and the wiki |
+| `4fb013a` | 06:39 | fix(site): ignore the gallery when the overview is already gone |
+| `d9d7a20` | 07:10 | fix(tests): docs and wiki tests no longer read the real README |
 <!-- docs:end timeline -->
 
 ## What made it fast

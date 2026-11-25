@@ -91,3 +91,15 @@ wiki:
     rm -rf build/wiki && git clone -q git@github.com:korczis/prismatic-flipperzero.wiki.git build/wiki
     python3 tools/wiki.py build/wiki
     cd build/wiki && git add -A && (git diff --cached --quiet || git commit -q -m "docs(wiki): regenerate from $(git -C ../.. rev-parse --short HEAD)") && git push -q origin HEAD
+
+# The UI on the host: firmware fonts, every scenario, sanitizers, 100 % line coverage of app/ui
+test-ui:
+    tests/sim/run.sh
+
+# Run the app on the host with a key script; frames land in build/sim/run-* as .bin
+sim keys pack="build/packs/kompendium.pkp":
+    tests/sim/build.sh && d="$(mktemp -d build/sim/run.XXXX)" && build/sim/pocketsim {{pack}} "$d" "{{keys}}" && echo "$d"
+
+# Device and simulator draw the same pixels for the same keys (app running on the Flipper)
+parity *args:
+    tools/parity.sh {{args}}

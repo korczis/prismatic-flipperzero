@@ -76,6 +76,9 @@ class DocsTest(unittest.TestCase):
         self.assertIn("firmware 1.5.1", gallery)
         self.assertIn("first | with bar", docs.timeline())
         self.assertEqual(docs.fmt(1234567), "1 234 567")
+        geometry = docs.ui_geometry()  # the real engine source
+        self.assertIn("| `LEADING` | 10 px | body line pitch |", geometry)
+        self.assertIn("| `TEXT_CAP` | 12288 | text per page |", geometry)
 
     def test_write_then_check(self):
         readme = self.write("README.md", ["pack-stats", "screens"])

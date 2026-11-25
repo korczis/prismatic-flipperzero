@@ -48,8 +48,8 @@ rm -f "$out"/*.profraw
 LLVM_PROFILE_FILE="$out/t-%p.profraw" "$out/test_pkp_cov" test "$out/mini.pkp" >/dev/null
 LLVM_PROFILE_FILE="$out/d-%p.profraw" "$out/test_pkp_cov" dump "$out/full.pkp" >/dev/null
 "${prof[@]}" merge -sparse "$out"/*.profraw -o "$out/core.profdata"
-"${cov[@]}" export -format=text -instr-profile "$out/core.profdata" "$out/test_pkp_cov" \
-  > "$out/coverage.json"
-python3 tests/native/coverage_check.py "$out/coverage.json"
+"${cov[@]}" export -format=lcov -instr-profile "$out/core.profdata" "$out/test_pkp_cov" \
+  > "$out/coverage.lcov"
+python3 tests/native/coverage_check.py "$out/coverage.lcov"
 echo
 echo "native: PASS"

@@ -92,7 +92,7 @@ jobs:
           if-no-files-found: error
 
   native:
-    name: Portable core (sanitizers, fuzz, differential, coverage)
+    name: Portable core and UI (sanitizers, fuzz, differential, scenarios, coverage)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -114,6 +114,12 @@ jobs:
           LLVM_COV: llvm-cov
           LLVM_PROFDATA: llvm-profdata
         run: tests/native/run.sh
+      - name: UI on the host (firmware u8g2 and fonts, scenarios, sanitizers, coverage)
+        env:
+          CLANG: clang
+          LLVM_COV: llvm-cov
+          LLVM_PROFDATA: llvm-profdata
+        run: tests/sim/run.sh
 
   pack:
     name: Knowledge pack (extract, compile twice, compare)
