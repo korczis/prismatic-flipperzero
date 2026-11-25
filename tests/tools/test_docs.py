@@ -72,6 +72,7 @@ class DocsTest(unittest.TestCase):
             '#define HUB_COUNT 1\n'
             'page_add_tile(app->page, UiIconInfo, "Info", "device", T_HOME | HomeInfo);\n')
         self.patches = [mock.patch.object(docs, "ROOT", root),
+                        mock.patch.object(docs, "EXPLAINER", root / "docs/assets/explainer.svg"),
                         mock.patch.object(docs, "ATLAS",
                                           root / "docs/evidence/atlas/manifest.json"),
                         mock.patch.object(docs, "CACHE", root / "docs/evidence/cache/bench.json"),
@@ -119,6 +120,14 @@ class DocsTest(unittest.TestCase):
         manifest["fap_sha256_after"] = "c" * 64
         (self.root / "docs/evidence/acceptance/manifest.json").write_text(json.dumps(manifest))
         self.assertIn("a different sha256", docs.acceptance())
+        table = docs.modules()
+        self.assertIn("| **Library** | 3 objects | **By chapter** 2 &middot; Chapters", table)
+        self.assertIn("**Manip?** 1 &middot; Benign or not", table)
+        self.assertEqual(docs.entry_count("HomeReview", REPORT), "")
+        svg = docs.explainer_svg()
+        self.assertIn("3 objects", svg)
+        self.assertIn("Library", svg)
+        self.assertNotIn("&middot;", svg)  # SVG is XML: HTML entities do not parse
         tree = docs.ia_tree()
         self.assertIn('home --> h0["Library"]', tree)
         self.assertIn('h0 --> h0e1["Manip?<br/><small>Benign or not</small>"]', tree)
@@ -172,6 +181,7 @@ class DocsTest(unittest.TestCase):
 
     def test_entry_point(self):
         self.write("README.md", [])
+        quiet(docs.main, [])  # the generated explainer, so the check below has nothing to report
         with mock.patch.object(sys, "argv", ["docs.py", "--check"]), \
                 mock.patch.dict("os.environ", {"POCKET_ROOT": str(self.root)}):
             with self.assertRaises(SystemExit) as cm:

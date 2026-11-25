@@ -56,6 +56,8 @@ Generated from the repository's history by [`tools/docs.py`](../tools/docs.py). 
 | `b40edb4` | 10:49 | docs(evidence): parity 24 of 24 on the marquee and quiz-score FAP |
 | `7480076` | 11:49 | feat(train): spaced repetition with Leitner boxes, kept safely on the SD card |
 | `d40840a` | 12:00 | feat(detect): side-by-side detection of an object and a look-alike |
+| `81a28e1` | 12:17 | feat(apply): assessments as applications: Admiralty code, DD evidence levels, OSINT confidence |
+| `e0830aa` | 12:18 | test(tools): validate the repository's applications only where the file exists |
 <!-- docs:end timeline -->
 
 ## What made it fast

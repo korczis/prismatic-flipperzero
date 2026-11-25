@@ -12,25 +12,68 @@
 </p>
 
 <p align="center">
-  <b>Prismatic Pocket</b> puts a whole book on epistemic self-defence into a Flipper Zero.<br>
-  Read it, recognise what is happening to you, decide what to do, and train until it is reflex,<br>
-  with no network, no phone and no account.
-</p>
-
-<p align="center">
-  <a href="#what-it-is">What it is</a> ·
+  <a href="#what-it-does-for-you">What it does</a> ·
   <a href="#the-interface">Interface</a> ·
+  <a href="#every-screen">Every screen</a> ·
   <a href="#on-a-real-device">On a real device</a> ·
   <a href="#small-memory-by-design">Small memory</a> ·
-  <a href="#what-is-inside">What is inside</a> ·
   <a href="#how-it-works">How it works</a> ·
   <a href="#install">Install</a> ·
-  <a href="#build-it-yourself">Build</a> ·
   <a href="#how-it-is-kept-honest">Guarantees</a> ·
   <a href="docs/case-study.md">Case study</a> ·
   <a href="https://korczis.github.io/prismatic-flipperzero/">Explorer</a> ·
   <a href="https://github.com/korczis/prismatic-flipperzero/wiki">Wiki</a>
 </p>
+
+# Prismatic Pocket
+
+> **A whole book on epistemic self-defence, compiled into a Flipper Zero: read it, recognise what
+> is happening, act on it, grade your sources, and train until it is reflex. Offline.**
+
+Manipulation rarely announces itself: a deadline you cannot verify, a choice narrowed to two bad
+options, an expert whose credentials quietly stop counting. The moment you need help is the
+moment you have no time to read. Prismatic Pocket puts the
+[Kompendium epistemické anihilace](https://github.com/korczis/kompendium-epistemicke-anihilace)
+and the Prismatic Platform's grading scales in a device you already carry, with no network, no
+phone and no account.
+
+<p align="center">
+  <img src="docs/assets/explainer.svg" width="100%" alt="The Kompendium is compiled into a knowledge pack on the SD card; the Flipper reads it one record at a time">
+</p>
+
+## What it does for you
+
+Every number here is read from the current pack and the app's own menu table, so it cannot go
+stale.
+
+<!-- docs:begin modules -->
+| Module | What it does for you | Ways in |
+|---|---|---|
+| **Library** | 2 227 objects to read | **By chapter** 65 &middot; Chapters in book order<br>**By kind** 10 &middot; One list per kind<br>**Everything** 2 227 &middot; All, in pack order<br>**Surprise me** 2 227 &middot; A random article |
+| **Detect** | 1 212: mark what you saw | **Detectors** 1 212 &middot; Objects with markers<br>**Random detector** 1 212 &middot; Markers of a random one |
+| **Act** | 1 544 with steps to take | **What to do** 1 544 &middot; Objects with steps<br>**Confusables** 1 128 &middot; Pairs to tell apart<br>**Assess** 3 &middot; Grade a source, a claim, a finding |
+| **Train** | 1 671 questions to try | **Which term?** 1 671 &middot; Pick the term of four<br>**Manipulative?** 1 185 &middot; Manipulative or benign<br>**Review** &middot; Due again: boxes 1 to 5<br>**Quiz an object** 1 671 &middot; Quiz a chosen object |
+<!-- docs:end modules -->
+
+It never scores, ranks or diagnoses anyone. A detector records **your** marks and shows them
+back; an assessment records **your** grade and explains it; a marker describes, it never proves.
+
+<details>
+<summary><b>Contents</b></summary>
+
+- [What it is](#what-it-is): the problem and the four ways the book becomes a tool
+- [The interface](#the-interface): information architecture, keys, [every screen](#every-screen)
+- [On a real device](#on-a-real-device): frames read from the Flipper's own screen
+- [Small memory, by design](#small-memory-by-design): the patterns and [the cache, measured](#the-cache-measured)
+- [What is inside](#what-is-inside): the pack's numbers
+- [How it works](#how-it-works): compiler, pack format, runtime, simulator
+- [Install](#install) and [build it yourself](#build-it-yourself)
+- [How it is kept honest](#how-it-is-kept-honest): gates, evidence, parity
+- [Firmware compatibility](#firmware-compatibility), [roadmap](#roadmap), [licence](#licence)
+- Deeper: [design notes](docs/ui.md), [architecture](docs/architecture.md),
+  [development](docs/development.md), [case study: zero to app](docs/case-study.md)
+
+</details>
 
 > **Try it without a Flipper.** The [online explorer](https://korczis.github.io/prismatic-flipperzero/)
 > is the same pack in a browser: a drillable map of every category, search, every article with
@@ -64,9 +107,15 @@ for other reasons.
   not score, rank or diagnose anyone**. A marker describes; it never proves.
 - **Applicator.** Every article with response guidance offers it directly: first safe reaction,
   escalation and handover.
+- **Side by side.** When a pattern has look-alikes with markers of their own, walk both sets of
+  markers and see your marks for each next to the other, never a ranking.
+- **Applications.** Grade instead of guess: the NATO Admiralty code for a source and a claim,
+  Prismatic's due-diligence evidence levels and its OSINT confidence levels, one scale per
+  screen, each grade with what it means and what to do with it.
 - **Trainer.** Two quiz modes derived from the data. *Which term is this?* masks the name in a
   definition and offers confusable alternatives. *Manipulative or benign?* uses the catalogue's
-  example utterances and explains the marker and a good response.
+  example utterances and explains the marker and a good response. Every answer goes into a
+  Leitner box on the SD card, and **Review** brings questions back when they are due.
 
 Everything on the device is **derived** from the book by a compiler. There is no hand-written
 content in the app and no per-topic code: adding a page to the Kompendium adds an article,
@@ -141,6 +190,9 @@ The screen atlas walks to every screen and overlay of the app and keeps its last
 `tests/sim/run.sh` re-renders it and fails when a screen has no frame, when a walk lands
 somewhere else than it says, or when a committed frame differs from the fresh render.
 
+<details>
+<summary><b>Open all frames of the atlas</b> (the contact sheet above shows them at a glance)</summary>
+
 <!-- docs:begin atlas -->
 <table>
   <tr><td align="center" width="50%"><img src="docs/evidence/atlas/01-home.png" width="384" alt="Home: six tiles with counts; the status line explains the focused one"><br><sub>Home: six tiles with counts; the status line explains the focused one</sub></td><td align="center" width="50%"><img src="docs/evidence/atlas/02-home-detect.png" width="384" alt="Right moves along a row of the grid; the hint follows the focus"><br><sub>Right moves along a row of the grid; the hint follows the focus</sub></td></tr>
@@ -167,11 +219,16 @@ somewhere else than it says, or when a committed frame differs from the fresh re
 Rendered by `tools/atlas.py` from `tests/sim/atlas.txt`: the real pack, the firmware's own u8g2 and fonts, the same app code as the FAP. Every screen of the app has a frame, and CI fails when one is missing or stale ([rule](.ai/repo/rules/project/ui-atlas.v1.md)); `tools/parity.sh` recorded the device drawing identical frames ([evidence](docs/evidence/parity/manifest.json)).
 <!-- docs:end atlas -->
 
+</details>
+
 ## On a real device
 
 Every frame below was **read from the Flipper's screen over USB** by
 [`tools/flipper_screen.py`](tools/flipper_screen.py) through the official RPC screen stream.
 None of them is a mock-up.
+
+<details open>
+<summary><b>Frames from the device</b></summary>
 
 <!-- docs:begin screens -->
 <table>
@@ -192,6 +249,8 @@ None of them is a mock-up.
 
 Captured 2026-11-25 on firmware 1.5.1 with `tools/capture-screens.sh`.
 <!-- docs:end screens -->
+
+</details>
 
 The text renderer ([`app/reader.c`](app/reader.c)) is written for this 128 × 64 display. It
 wraps lines by real glyph widths and draws a ruled title, inverted section labels,
