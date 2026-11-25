@@ -3,7 +3,8 @@
  *
  * Each source's confidence c updates the belief p to c*p / (c*p + (1-c)(1-p)); a zero
  * denominator leaves p unchanged. Below 0.5 a source lowers the belief. The status follows the
- * hypothesis lifecycle: confirmed at `confirm` or above, rejected at `reject` or below.
+ * hypothesis lifecycle: confirmed at `confirm` or above, rejected at `reject` or below. Single
+ * precision: the Flipper's FPU has no doubles.
  */
 #pragma once
 
@@ -20,10 +21,10 @@ typedef struct {
     uint8_t n_choices;
 } CalcSpec;
 
-double bayes_update(double p, double c);
+float bayes_update(float p, float c);
 /* The belief after every source in order, from `prior`, all in 0..1. */
-double bayes_fuse(double prior, const uint8_t* percents, uint8_t n);
+float bayes_fuse(float prior, const uint8_t* percents, uint8_t n);
 /* "confirmed", "rejected" or "tentative" for a belief in percent. */
-const char* bayes_status(double percent, uint8_t confirm, uint8_t reject);
+const char* bayes_status(float percent, uint8_t confirm, uint8_t reject);
 /* Parse "algorithm|prior|confirm|reject|c1,c2,..."; false when malformed. */
 bool calc_parse(const char* text, CalcSpec* out);

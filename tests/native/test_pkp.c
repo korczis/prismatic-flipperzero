@@ -771,12 +771,12 @@ static void test_scorecard(void) {
  * source's docstring says 0.976, which its own code does not produce). */
 static void test_bayes(void) {
     static const uint8_t three[] = {80, 70, 90};
-    double p = bayes_fuse(0.5, three, 3);
-    CHECK(p > 0.98823 && p < 0.98824);
-    CHECK(bayes_fuse(0.5, three, 0) == 0.5);
-    CHECK(bayes_update(0.0, 0.0) == 0.0); /* a zero denominator leaves the belief */
+    float p = bayes_fuse(0.5f, three, 3);
+    CHECK(p > 0.9882f && p < 0.9883f);
+    CHECK(bayes_fuse(0.5f, three, 0) == 0.5f);
+    CHECK(bayes_update(0.0f, 0.0f) == 0.0f); /* a zero denominator leaves the belief */
     static const uint8_t against[] = {10};
-    CHECK(bayes_fuse(0.5, against, 1) < 0.11);
+    CHECK(bayes_fuse(0.5f, against, 1) < 0.11f);
     CHECK(strcmp(bayes_status(95, 90, 10), "confirmed") == 0);
     CHECK(strcmp(bayes_status(5, 90, 10), "rejected") == 0);
     CHECK(strcmp(bayes_status(50, 90, 10), "tentative") == 0);

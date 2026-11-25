@@ -974,18 +974,18 @@ static void render_calc(UiApp* app) {
         restore(app);
         return;
     }
-    double p = 100.0 * bayes_fuse(app->calc_prior / 100.0, app->calc_src, app->calc_n);
+    float p = 100.0f * bayes_fuse((float)app->calc_prior / 100.0f, app->calc_src, app->calc_n);
     const char* status = bayes_status(p, app->calc.confirm, app->calc.reject);
     /* the result stays in view: the belief in the header, the state in the status line */
     char pos[12], hint[96];
-    snprintf(pos, sizeof(pos), "%.1f%%", p);
+    snprintf(pos, sizeof(pos), "%.1f%%", (double)p);
     page_set_position(app->page, pos);
     int at = snprintf(hint, sizeof(hint), "%s; from %u%%:", status, app->calc_prior);
     for(uint8_t k = 0; k < app->calc_n && at < (int)sizeof(hint) - 5; k++)
         at += snprintf(hint + at, sizeof(hint) - (size_t)at, " %u", app->calc_src[k]);
-    snprintf(line, sizeof(line), "%.1f %% %s", p, status);
+    snprintf(line, sizeof(line), "%.1f %% %s", (double)p, status);
     page_add(app->page, PageBig, line, 0);
-    int belief = (int)(p + 0.5);
+    int belief = (int)(p + 0.5f);
     snprintf(line, sizeof(line), "%d belief,%d doubt", belief, 100 - belief);
     page_add(app->page, PageBar, line, 0);
     for(uint8_t k = 0; k < app->calc.n_choices; k++) {

@@ -4,21 +4,21 @@
 #include <stdlib.h>
 #include <string.h>
 
-double bayes_update(double p, double c) {
-    double den = c * p + (1.0 - c) * (1.0 - p);
-    return den > 0.0 ? c * p / den : p;
+float bayes_update(float p, float c) {
+    float den = c * p + (1.0f - c) * (1.0f - p);
+    return den > 0.0f ? c * p / den : p;
 }
 
-double bayes_fuse(double prior, const uint8_t* percents, uint8_t n) {
-    double p = prior;
+float bayes_fuse(float prior, const uint8_t* percents, uint8_t n) {
+    float p = prior;
     for(uint8_t k = 0; k < n; k++)
-        p = bayes_update(p, percents[k] / 100.0);
+        p = bayes_update(p, (float)percents[k] / 100.0f);
     return p;
 }
 
-const char* bayes_status(double percent, uint8_t confirm, uint8_t reject) {
-    if(percent >= confirm) return "confirmed";
-    if(percent <= reject) return "rejected";
+const char* bayes_status(float percent, uint8_t confirm, uint8_t reject) {
+    if(percent >= (float)confirm) return "confirmed";
+    if(percent <= (float)reject) return "rejected";
     return "tentative";
 }
 
