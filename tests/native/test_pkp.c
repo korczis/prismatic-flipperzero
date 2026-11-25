@@ -5,6 +5,7 @@
  *   test_pkp walk <dir>           verdict "ok" or the status for every file in a list
  *                                 (<dir>/list.txt), for the differential fuzz test
  */
+#include "../../app/core/cache.h"
 #include "../../app/core/pkp.h"
 #include "../../app/core/pocket.h"
 
@@ -508,6 +509,79 @@ static int walk_list(const char* dir) {
     return 0;
 }
 
+/* The block cache returns exactly the bytes of the file for any offset and length, counts its
+ * hits and misses, evicts the least recently used block, and caches nothing a failed read
+ * returned. A whole pack opened through it reads the same objects as without it. */
+static void test_cache(const uint8_t* pack, uint32_t size) {
+    Mem m = {pack, size, -1};
+    PkpCache c;
+    pkp_cache_init(&c, mem_read, &m, size);
+    uint8_t got[700];
+
+    /* bytes 200..799 span four blocks: four misses, then the same read hits all four */
+    CHECK(pkp_cache_read(&c, 200, got, 600));
+    CHECK(memcmp(got, pack + 200, 600) == 0);
+    CHECK(c.misses == 4 && c.hits == 0);
+    CHECK(pkp_cache_read(&c, 200, got, 600));
+    CHECK(c.misses == 4 && c.hits == 4);
+
+    /* out of range and zero-length requests */
+    CHECK(!pkp_cache_read(&c, size, got, 1));
+    CHECK(!pkp_cache_read(&c, size + 1, got, 0));
+    CHECK(pkp_cache_read(&c, size, got, 0));
+    CHECK(!pkp_cache_read(&c, size - 4, got, 8));
+    /* the last, short block */
+    CHECK(pkp_cache_read(&c, size - 4, got, 4));
+    CHECK(memcmp(got, pack + size - 4, 4) == 0);
+
+    /* LRU: fill every slot, touch block 0, then a new block evicts block 1, not block 0 */
+    pkp_cache_clear(&c);
+    for(uint32_t b = 0; b < PKP_CACHE_BLOCKS; b++)
+        CHECK(pkp_cache_read(&c, b * PKP_CACHE_BLOCK, got, 1));
+    CHECK(pkp_cache_read(&c, 0, got, 1));
+    uint32_t misses = c.misses;
+    CHECK(pkp_cache_read(&c, PKP_CACHE_BLOCKS * PKP_CACHE_BLOCK, got, 1));
+    CHECK(c.misses == misses + 1);
+    CHECK(pkp_cache_read(&c, 0, got, 1));
+    CHECK(c.misses == misses + 1);
+    CHECK(pkp_cache_read(&c, PKP_CACHE_BLOCK, got, 1));
+    CHECK(c.misses == misses + 2);
+
+    /* a failed underlying read is reported and leaves nothing cached */
+    pkp_cache_clear(&c);
+    m.fail_after = 0;
+    CHECK(!pkp_cache_read(&c, 0, got, 1));
+    m.fail_after = -1;
+    CHECK(pkp_cache_read(&c, 0, got, 16));
+    CHECK(memcmp(got, pack, 16) == 0);
+
+    /* differential: random reads equal the file */
+    uint32_t seed = 12345;
+    for(int i = 0; i < 4000; i++) {
+        seed = seed * 1103515245u + 12345u;
+        uint32_t off = seed % size;
+        seed = seed * 1103515245u + 12345u;
+        uint32_t len = seed % sizeof(got);
+        if(len > size - off) len = size - off;
+        if(!pkp_cache_read(&c, off, got, len) || memcmp(got, pack + off, len) != 0) {
+            CHECK(0);
+            break;
+        }
+    }
+
+    /* the reader through the cache */
+    PkpReader r;
+    pkp_cache_init(&c, mem_read, &m, size);
+    CHECK(pkp_open(&r, pkp_cache_read, &c, size) == PKP_OK);
+    const char* id = "kompendium/techniques/ea-1-2-1-falesne-dilema";
+    int32_t idx = pkp_find(&r, id);
+    CHECK(idx >= 0);
+    /* the same lookup again is served from memory */
+    uint32_t cold = c.misses;
+    CHECK(pkp_find(&r, id) == idx);
+    CHECK(c.misses == cold);
+}
+
 int main(int argc, char** argv) {
     if(argc != 3) {
         fprintf(stderr, "usage: test_pkp test|dump|walk <path>\n");
@@ -525,6 +599,7 @@ int main(int argc, char** argv) {
         test_corruption(pack, size);
         test_fuzz(pack, size);
         test_detect();
+        test_cache(pack, size);
         printf("native: %s (%d failure(s))\n", failures ? "FAIL" : "PASS", failures);
         rc = failures ? 1 : 0;
     }

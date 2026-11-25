@@ -33,7 +33,7 @@ typedef enum {
     PageLink, /* selectable, opens its target */
     PageRow, /* selectable list row: icon, label, right text */
     PageBig, /* big number + caption (results) */
-    PageBar, /* stacked bar: values in the text as "a,b,c,d" */
+    PageBar, /* stacked bar with legend: up to 4 "value label" segments, "3 seen,1 no" */
     PageQuote, /* an utterance, framed */
     PageSteps, /* progress cells: text "done/total" */
     PageBadge, /* kind as an inverted pill, then a caption: text "KIND\tcaption" */

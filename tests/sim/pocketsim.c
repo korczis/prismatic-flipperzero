@@ -23,10 +23,14 @@ typedef struct {
 } PackFile;
 
 static bool ejected;
+static unsigned long file_reads, file_bytes;
 
+/* The card: every read the app's cache could not serve lands here and is counted. */
 static bool read_cb(void* ctx, uint32_t offset, void* buf, uint32_t len) {
     PackFile* pf = ctx;
     if(ejected) return false;
+    file_reads++;
+    file_bytes += len;
     return fseek(pf->f, (long)offset, SEEK_SET) == 0 && fread(buf, 1, len, pf->f) == len;
 }
 
@@ -90,7 +94,10 @@ int main(int argc, char** argv) {
         fprintf(stderr, "usage: pocketsim <pack.pkp|-|!pack> <out-dir> <keys>\n");
         return 2;
     }
-    UiPlatform platform = {rnd, tick, heap, NULL};
+    /* POCKET_NOCACHE=1 reads the card directly, to measure what the cache saves */
+    static PkpCache cache;
+    bool nocache = getenv("POCKET_NOCACHE") != NULL;
+    UiPlatform platform = {rnd, tick, heap, NULL, &cache};
     UiApp* app = ui_app_alloc(&platform);
     Canvas* canvas = sim_canvas_alloc();
     ui_app_loading(app);
@@ -108,7 +115,10 @@ int main(int argc, char** argv) {
         if(pf.f) {
             fseek(pf.f, 0, SEEK_END);
             uint32_t size = (uint32_t)ftell(pf.f);
-            status = pkp_open(&reader, read_cb, &pf, broken ? size - 1 : size);
+            if(broken) size--;
+            pkp_cache_init(&cache, read_cb, &pf, size);
+            status = nocache ? pkp_open(&reader, read_cb, &pf, size) :
+                               pkp_open(&reader, pkp_cache_read, &cache, size);
         }
     }
     ui_app_set_pack(app, status == PKP_OK ? &reader : NULL, status, 42);
@@ -120,7 +130,9 @@ int main(int argc, char** argv) {
         PageKey key;
         PagePress press;
         if(strcmp(tok, "eject") == 0 || strcmp(tok, "insert") == 0) {
+            /* the cache is cleared too, so every later read reaches the missing card */
             ejected = tok[0] == 'e';
+            pkp_cache_clear(&cache);
             printf("== %s\n", tok);
             continue;
         }
@@ -141,6 +153,13 @@ int main(int argc, char** argv) {
         frame(app, canvas, argv[2], n++, name);
     }
     free(keys);
+    fprintf(
+        stderr,
+        "reads: %lu card reads, %lu bytes; cache %lu hits, %lu misses\n",
+        file_reads,
+        file_bytes,
+        (unsigned long)cache.hits,
+        (unsigned long)cache.misses);
     if(pf.f) fclose(pf.f);
     sim_canvas_free(canvas);
     ui_app_free(app);

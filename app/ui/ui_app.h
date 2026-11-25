@@ -9,6 +9,7 @@
  */
 #pragma once
 
+#include "../core/cache.h"
 #include "../core/pkp.h"
 #include "page.h"
 
@@ -17,6 +18,7 @@ typedef struct {
     uint32_t (*tick_ms)(void* ctx);
     void (*heap)(void* ctx, uint32_t* free_bytes, uint32_t* largest_block);
     void* ctx;
+    const PkpCache* cache; /* the pack's block cache, shown on the Info screen */
 } UiPlatform;
 
 typedef struct UiApp UiApp;

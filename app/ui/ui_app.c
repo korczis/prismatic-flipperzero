@@ -507,7 +507,7 @@ static void render_detect_result(UiApp* app) {
     snprintf(
         line,
         sizeof(line),
-        "%u,%u,%u,%u",
+        "%u seen,%u no,%u ?,%u n/a",
         s.counts[POCKET_OBSERVED],
         s.counts[POCKET_NOT_OBSERVED],
         s.counts[POCKET_UNKNOWN],
@@ -641,6 +641,25 @@ static void render_info(UiApp* app) {
         page_add(app->page, PageBullet, line, 0);
         snprintf(line, sizeof(line), "Pack size: %lu B", (unsigned long)app->pack->size);
         page_add(app->page, PageBullet, line, 0);
+        const PkpCache* c = app->platform.cache;
+        uint32_t asked = c->hits + c->misses;
+        page_add(app->page, PageHeading, "Read cache", 0);
+        snprintf(
+            line,
+            sizeof(line),
+            "%u blocks of %u B; %lu of %lu reads served from memory",
+            PKP_CACHE_BLOCKS,
+            PKP_CACHE_BLOCK,
+            (unsigned long)c->hits,
+            (unsigned long)asked);
+        page_add(app->page, PageParagraph, line, 0);
+        snprintf(
+            line,
+            sizeof(line),
+            "%lu hits,%lu misses",
+            (unsigned long)c->hits,
+            (unsigned long)c->misses);
+        page_add(app->page, PageBar, line, 0);
     }
     uint32_t free_b = 0, largest = 0;
     app->platform.heap(app->platform.ctx, &free_b, &largest);

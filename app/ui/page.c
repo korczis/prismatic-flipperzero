@@ -4,6 +4,7 @@
 #include "icons.h"
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 #define TEXT_CAP  12288u
@@ -583,23 +584,38 @@ static void draw_fill(Canvas* canvas, int kind, int x, int y, int w, int h) {
     }
 }
 
-static void draw_bar(Canvas* canvas, const char* spec, size_t n, int y) {
-    int v[4] = {0, 0, 0, 0}, k = 0, total = 0;
-    for(size_t i = 0; i < n && k < 4; i++) {
-        if(spec[i] == ',')
-            k++;
-        else if(spec[i] >= '0' && spec[i] <= '9')
-            v[k] = v[k] * 10 + (spec[i] - '0');
+/* A bar's spec: up to four "value label" segments separated by commas, e.g. "3 seen,1 no". */
+typedef struct {
+    int v[4], total, k;
+    const char* name[4];
+    size_t name_len[4];
+} BarSpec;
+
+static void bar_parse(const char* spec, size_t n, BarSpec* b) {
+    memset(b, 0, sizeof(*b));
+    size_t i = 0;
+    while(i < n && b->k < 4) {
+        while(i < n && spec[i] >= '0' && spec[i] <= '9')
+            b->v[b->k] = b->v[b->k] * 10 + (spec[i++] - '0');
+        while(i < n && spec[i] == ' ')
+            i++;
+        b->name[b->k] = spec + i;
+        while(i < n && spec[i] != ',')
+            i++;
+        b->name_len[b->k] = (size_t)(spec + i - b->name[b->k]);
+        b->total += b->v[b->k++];
+        i++; /* the comma */
     }
-    for(int i = 0; i < 4; i++)
-        total += v[i];
+}
+
+static void draw_bar(Canvas* canvas, const BarSpec* b, int y) {
     int x = LEFT, w = RIGHT - LEFT + 1, h = 8;
     canvas_draw_rframe(canvas, x, y + 1, (size_t)w, (size_t)h, 1);
-    if(total == 0) return;
+    if(b->total == 0) return;
     int at = x + 1, inner = w - 2;
-    for(int i = 0; i < 4; i++) {
-        int seg = (v[i] * inner + total / 2) / total;
-        if(i == 3) seg = x + 1 + inner - at;
+    for(int i = 0; i < b->k; i++) {
+        int seg = (b->v[i] * inner + b->total / 2) / b->total;
+        if(i == b->k - 1) seg = x + 1 + inner - at;
         if(seg <= 0) continue;
         draw_fill(canvas, i, at, y + 2, seg, h - 2);
         at += seg;
@@ -607,37 +623,28 @@ static void draw_bar(Canvas* canvas, const char* spec, size_t n, int y) {
     }
 }
 
-/* The legend under a bar: a swatch, the count and its name for every share. */
-static void draw_legend(Canvas* canvas, const char* spec, size_t n, int y) {
-    static const char* const names[4] = {"seen", "no", "?", "n/a"};
-    int v[4] = {0, 0, 0, 0}, k = 0, x = LEFT;
-    for(size_t i = 0; i < n && k < 4; i++) {
-        if(spec[i] == ',')
-            k++;
-        else if(spec[i] >= '0' && spec[i] <= '9')
-            v[k] = v[k] * 10 + (spec[i] - '0');
-    }
+/* One swatch per segment with its value and label, in the segment's fill. */
+static void draw_legend(Canvas* canvas, const BarSpec* b, int y) {
+    int x = LEFT;
     canvas_set_font(canvas, FontSecondary);
-    for(int i = 0; i < 4; i++) {
-        char label[16];
-        int len = 0, val = v[i];
-        char digits[6];
-        int d = 0;
-        do {
-            digits[d++] = (char)('0' + val % 10);
-            val /= 10;
-        } while(val && d < 5);
-        while(d)
-            label[len++] = digits[--d];
-        label[len++] = ' ';
-        for(const char* c = names[i]; *c; c++)
-            label[len++] = *c;
-        label[len] = '\0';
+    for(int i = 0; i < b->k; i++) {
+        char label[24];
+        size_t len = b->name_len[i] < 14 ? b->name_len[i] : 14;
+        int at = snprintf(label, sizeof(label), "%d ", b->v[i]);
+        memcpy(label + at, b->name[i], len);
+        label[(size_t)at + len] = '\0';
         canvas_draw_frame(canvas, x, y + 2, 6, 6);
         draw_fill(canvas, i, x + 1, y + 3, 4, 4);
         canvas_draw_str(canvas, x + 8, y + 8, label);
         x += 8 + canvas_string_width(canvas, label) + 6;
     }
+}
+
+static void draw_bar_block(Canvas* canvas, const char* text, size_t n, int y) {
+    BarSpec spec;
+    bar_parse(text, n, &spec);
+    draw_bar(canvas, &spec, y);
+    draw_legend(canvas, &spec, y + 10);
 }
 
 static void draw_row(Canvas* canvas, const Page* p, const Block* blk, int y, bool focused) {
@@ -795,8 +802,7 @@ static void draw_line(Canvas* canvas, const Page* p, const Line* l, int y) {
         draw_big(canvas, p, blk, y);
         return;
     case PageBar:
-        draw_bar(canvas, p->text + blk->off, blk->len, y);
-        draw_legend(canvas, p->text + blk->off, blk->len, y + 10);
+        draw_bar_block(canvas, p->text + blk->off, blk->len, y);
         return;
     case PageSteps:
         draw_steps(canvas, p->text + blk->off, blk->len, y);

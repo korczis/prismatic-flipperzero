@@ -9,6 +9,7 @@
 #include <gui/gui.h>
 #include <storage/storage.h>
 
+#include "core/cache.h"
 #include "core/pkp.h"
 #include "ui/ui_app.h"
 
@@ -17,9 +18,6 @@
 
 typedef struct {
     File* file;
-    uint32_t block_at;
-    uint32_t block_len;
-    uint8_t block[512];
 } PackFile;
 
 typedef struct {
@@ -29,32 +27,17 @@ typedef struct {
     UiApp* ui;
 } App;
 
-/* Bounded reads through a 512-byte block cache: object and item records are small and read in
- * index order, so most reads hit the block already in memory. */
+/* A read from the card. The app reads through a PkpCache (app/core/cache.c) in front of this,
+ * so only blocks it has not kept reach the card. */
 static bool pack_read(void* ctx, uint32_t offset, void* buf, uint32_t len) {
     PackFile* pf = ctx;
-    if(len <= sizeof(pf->block)) {
-        if(offset >= pf->block_at && offset + len <= pf->block_at + pf->block_len) {
-            memcpy(buf, pf->block + (offset - pf->block_at), len);
-            return true;
-        }
-        uint32_t at = offset & ~(uint32_t)(sizeof(pf->block) - 1);
-        if(offset + len <= at + sizeof(pf->block)) {
-            if(!storage_file_seek(pf->file, at, true)) return false;
-            size_t got = storage_file_read(pf->file, pf->block, sizeof(pf->block));
-            pf->block_at = at;
-            pf->block_len = (uint32_t)got;
-            if(offset + len > at + got) return false;
-            memcpy(buf, pf->block + (offset - at), len);
-            return true;
-        }
-    }
     if(!storage_file_seek(pf->file, offset, true)) return false;
     return storage_file_read(pf->file, buf, len) == len;
 }
 
 /* The first *.pkp in PACK_DIR by name, opened and checked; the status says why when not. */
-static PkpStatus pack_open(Storage* storage, PackFile* pf, PkpReader* reader, uint32_t* ms) {
+static PkpStatus
+    pack_open(Storage* storage, PackFile* pf, PkpCache* cache, PkpReader* reader, uint32_t* ms) {
     PkpStatus status = PKP_E_MISSING;
     File* dir = storage_file_alloc(storage);
     char name[128], best[128] = "";
@@ -76,7 +59,9 @@ static PkpStatus pack_open(Storage* storage, PackFile* pf, PkpReader* reader, ui
     status = PKP_E_IO;
     if(storage_file_open(pf->file, furi_string_get_cstr(path), FSAM_READ, FSOM_OPEN_EXISTING)) {
         uint32_t t0 = furi_get_tick();
-        status = pkp_open(reader, pack_read, pf, (uint32_t)storage_file_size(pf->file));
+        uint32_t size = (uint32_t)storage_file_size(pf->file);
+        pkp_cache_init(cache, pack_read, pf, size);
+        status = pkp_open(reader, pkp_cache_read, cache, size);
         *ms = furi_get_tick() - t0;
     }
     furi_string_free(path);
@@ -147,7 +132,9 @@ static bool to_page(const InputEvent* e, PageKey* key, PagePress* press) {
 int32_t prismatic_app(void* p) {
     UNUSED(p);
     App app;
-    UiPlatform platform = {platform_random, platform_tick, platform_heap, NULL};
+    PkpCache* cache = malloc(sizeof(PkpCache));
+    pkp_cache_init(cache, NULL, NULL, 0);
+    UiPlatform platform = {platform_random, platform_tick, platform_heap, NULL, cache};
     app.mutex = furi_mutex_alloc(FuriMutexTypeNormal);
     app.input = furi_message_queue_alloc(8, sizeof(InputEvent));
     app.ui = ui_app_alloc(&platform);
@@ -164,7 +151,7 @@ int32_t prismatic_app(void* p) {
     PackFile pf = {0};
     PkpReader reader;
     uint32_t open_ms = 0;
-    PkpStatus status = pack_open(storage, &pf, &reader, &open_ms);
+    PkpStatus status = pack_open(storage, &pf, cache, &reader, &open_ms);
     furi_mutex_acquire(app.mutex, FuriWaitForever);
     ui_app_set_pack(app.ui, status == PKP_OK ? &reader : NULL, status, open_ms);
     furi_mutex_release(app.mutex);
@@ -194,6 +181,7 @@ int32_t prismatic_app(void* p) {
     }
     furi_record_close(RECORD_STORAGE);
     ui_app_free(app.ui);
+    free(cache);
     furi_message_queue_free(app.input);
     furi_mutex_free(app.mutex);
     return 0;
