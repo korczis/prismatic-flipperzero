@@ -178,10 +178,21 @@ class Rpc:
         for kind in (PRESS, LONG if long else SHORT, RELEASE):
             self.send(23, field(1, 0, KEYS[key]) + field(2, 0, kind))
 
-    def close(self):
+    def close(self, timeout=3.0):
+        """Stop the stream and the session, and release the port only once the device is back
+        at its CLI prompt. Measured on 1.5.1: StopSession is answered with an empty message and
+        the next byte the CLI receives is swallowed; a port reopened before that settles has
+        left the device deaf until a restart (docs/bridge.md)."""
         try:
             self.send(21)
             self.send(19)  # StopSession: back to the CLI
+            stop, end = self.cid, time.time() + timeout
+            while time.time() < end:
+                if self.next_message(timeout=end - time.time()).get(1) == stop:
+                    break
+            self._cli_until(b">: ", send=b"\r\r", timeout=timeout)  # one may be swallowed
+        except (TimeoutError, ValueError, IndexError):
+            pass  # best effort: the frames are already saved
         finally:
             self.s.close()
 

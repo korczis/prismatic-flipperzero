@@ -228,7 +228,7 @@ class FakeFlipper:
 
     def write(self, data):
         if not self.rpc:
-            if data in (b"\r", b"\x03\r"):
+            if data in (b"\r", b"\x03\r", b"\r\r"):
                 self.out += b"\r\n>: "
             elif data == b"loader info\r":
                 self.out += b"loader info\r\nNo application is running\r\n\r\n>: "
@@ -245,6 +245,10 @@ class FakeFlipper:
             fields = {n: v for n, _w, v in fs.parse_fields(msg)}
             if 20 in fields:
                 self._frame()
+            if 19 in fields:  # StopSession: an Empty answer, then the CLI again
+                body = fs.field(1, 0, fields[1]) + fs.field(4, 2, b"")
+                self.out += fs.varint(len(body)) + body
+                self.rpc = False
             if 23 in fields:
                 ev = {n: v for n, _w, v in fs.parse_fields(fields[23])}
                 self.inputs.append((ev.get(1, 0), ev.get(2, 0)))
@@ -324,6 +328,17 @@ class FlipperScreenTest(unittest.TestCase):
         self.assertEqual(len(rpc.frame(timeout=1.0, settle=0.1)), 1024)
         rpc.close()
         self.assertTrue(rpc.s.closed)
+
+    def test_close_waits_for_the_session_end_but_never_hangs(self):
+        with mock.patch.dict(sys.modules, {"serial": types.SimpleNamespace(Serial=FakeFlipper)}):
+            rpc = fs.Rpc("/dev/fake")
+            rpc.close()
+            self.assertFalse(rpc.s.rpc)  # StopSession answered, back at the CLI
+            self.assertTrue(rpc.s.closed)
+            rpc = fs.Rpc("/dev/fake")
+            rpc.s.write = lambda data: None  # the device stopped answering
+            rpc.close(timeout=0.2)
+            self.assertTrue(rpc.s.closed)
 
     def test_cli_runs_one_command(self):
         rc, out, _ = self.run_main(["cli", "loader info", "--port", "/dev/fake"])
