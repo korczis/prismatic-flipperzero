@@ -5,7 +5,9 @@
 - Host bridge, `tools/bridge.py` (`just bridge`): the Flipper's own RPC over USB. Device and
   card status, a pack installed through a temporary name with an MD5 check, saved sessions and
   quiz progress pulled and decoded against the pack; the FAP gains no interface (ADR 0005,
-  `docs/bridge.md`).
+  `docs/bridge.md`). Proven on the device: status, a 20 MB install, pull, and decoding of a
+  session saved through the detector. It never ends a session or releases the port while the
+  device is still working, which is what stopped the Flipper four times during development.
 
 ## 0.1.0 — Pocket (preview)
 

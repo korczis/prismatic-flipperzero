@@ -155,17 +155,23 @@ an unknown version and the two-copy rule. The tools coverage gate requires every
 On the device (official 1.5.1, 2026-11-26; every run in
 [`docs/evidence/bridge/manifest.json`](evidence/bridge/manifest.json), counts and hashes only):
 
-- `status` and `status --md5` work: the device hashed the 20 MB pack in 50.4 s over RPC and the
-  hash matched the local pack.
-- `push-pack` works end to end for a small pack (9 500 bytes): installed, MD5 checked on the
-  device, a second run reports it already current, `status --md5` agrees, and the device stays
-  responsive throughout.
-- `push-pack` of the 20 MB pack is **not** proven. Over the CLI every chunk was acknowledged, but
-  a command after the upload (the device's MD5, then `loader info`, or removing a mismatched
-  part) got no prompt within 60 s,
-  and the device stopped answering until a restart. The installed pack was not touched: the
-  swap comes later. Until this is understood, install the full pack with `just deploy-pack`.
-- Three earlier attempts stopped the device too: an RPC session ended inside a long storage
-  request (twice), and the port reopened for the CLI milliseconds after an RPC session ended.
-  The bridge no longer does either.
-- `pull` has not been run on the device yet.
+- `status` and `status --md5` work, also several sessions back to back: the device hashed the
+  20 MB pack in 50.4 s and the hash matched the local pack.
+- `push-pack` of the 20 MB pack works: 479 s in all, the MD5 matched after the write and after
+  the rename, the device stayed responsive, and the app opened the pack (2 241 objects on Home).
+  A 9 500-byte pack installs, reports itself current on a second run, and is removed cleanly.
+- `pull` copies `progress.bin` and `sessions.jsonl`. A session saved on the device through the
+  detector decodes with its marks as keyed and every marker named from the pack, and the quiz
+  progress decodes with each question's prompt found by its key.
+
+### What stopped the device, and what the bridge does about it
+
+Four times during development the Flipper stopped answering until it was restarted. Each time
+the host had stopped waiting for something the device was still doing:
+
+| What the host did | Why the device was still busy | What the bridge does now |
+|---|---|---|
+| ended an RPC session 120 s into an MD5 request | the request had not been answered yet | waits up to 10 min for every long request, and never ends a session or releases the port while one is unanswered |
+| ended an RPC session 60 s after a 20 MB RPC write | the write's status had not come | installs over the CLI, every 8 KiB chunk acknowledged |
+| reopened the port for the CLI milliseconds after StopSession | the session was still being torn down; the next byte is swallowed | waits for the StopSession answer and a CLI prompt before releasing the port, and never mixes RPC and CLI in one install |
+| closed the port 60 s into `storage rename` of the 20 MB pack | `rename` copies the file (470 KB took 3.5 to 5 s) | gives storage commands 10 min, and waits for any running command, or completes a cut-off chunk, before closing |

@@ -431,16 +431,14 @@ You need a Flipper Zero on official firmware 1.5.x (or Momentum mntm-012) and an
 
 Saved detector sessions and quiz progress stay on the SD card until you take them. The
 [host bridge](docs/bridge.md) copies them off over USB and turns them into readable JSON, with
-every object and marker named from the pack:
+every object and marker named from the pack; it also installs a pack with checksum checks on
+the device:
 
 ```bash
-just bridge status --md5        # the device, the card, and whether the pack is current
 just bridge pull build/pulled
 just bridge sessions build/pulled/sessions.jsonl
+just bridge push-pack            # the full pack: about 8 minutes, checked twice on the device
 ```
-
-Its checked install (`push-pack`) is proven on the device for small packs only; install the full
-pack with `just deploy-pack` ([why](docs/bridge.md#tests-and-evidence)).
 
 Controls: **Up/Down** scroll, **Left/Right** jump between links, **OK** opens a link, **Back**
 goes one step back. In the detector, **Left** is *no*, **Right** is *yes*, **OK** is *unknown*,
