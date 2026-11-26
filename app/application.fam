@@ -7,7 +7,7 @@ App(
     entry_point="prismatic_app",
     stack_size=4 * 1024,
     fap_category="Tools",
-    fap_version="0.0",
+    fap_version="0.1",
     fap_icon="prismatic.png",
     fap_icon_assets="images",
     fap_description="Prismatic Pocket: offline epistemic toolkit over knowledge packs",

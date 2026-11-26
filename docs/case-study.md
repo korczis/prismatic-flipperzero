@@ -68,6 +68,8 @@ Generated from the repository's history by [`tools/docs.py`](../tools/docs.py). 
 | `e694aa4` | 13:46 | fix(calculate): single precision for the Flipper's FPU |
 | `b528ea4` | 14:30 | feat(site): simulations, scorecards and calculators are interactive in the browser |
 | `7fc8536` | 14:42 | feat(ui): live tools on the device: steppers change values in real time |
+| `169ba75` | 14:47 | feat(calculate): one stepper adds a source; the calculator fits one screen |
+| `0ff2236` | 14:57 | docs(evidence): device parity recorded with the live tools build |
 <!-- docs:end timeline -->
 
 ## What made it fast

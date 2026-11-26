@@ -488,8 +488,8 @@ Momentum's published SDK and never changes the firmware itself.
 timeline
   title Prismatic Pocket
   v0.0.1 First Light : native FAP on hardware : pinned SDK matrix : preview release
-  v0.1 Pocket : full Kompendium pack : reader, detector, applicator, trainer : CI for core and pack
-  next : search index : multi-pattern detector with shared markers : sessions and spaced repetition
+  v0.1.0 Pocket : full Kompendium pack : reader, detector, applicator, trainer : sessions and spaced repetition : Prismatic assessments, scorecards, simulations
+  next : search index : multi-pattern detector with shared markers : Momentum on hardware
   later : host bridge : Prismatic adapter : more packs from the same compiler
 ```
 
