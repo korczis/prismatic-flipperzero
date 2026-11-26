@@ -3,7 +3,7 @@ schema: adr/v1
 id: adr-0002
 kind: adr
 title: Trainer utterances ship in the public pack by owner bypass of Kompendium ADR 0008
-status: proposed
+status: accepted
 date: 2026-11-25
 tags:
   - knowledge
@@ -54,3 +54,7 @@ utterances is bypassed.
 - The README and the pack licence note say the examples come from the Kompendium catalogues,
   published here by the author's decision recorded in this ADR.
 - A free-text recognise feature would need its own decision.
+
+## Acceptance
+
+Accepted by the owner on 2026-11-26, answering "Prijmout vsech 5 (Recommended)" to the question whether to accept ADR 0001 to 0005 (session f853febc-92e5-442d-804a-6721ed54bca7; decision "Accept ADR 0001 to 0005").

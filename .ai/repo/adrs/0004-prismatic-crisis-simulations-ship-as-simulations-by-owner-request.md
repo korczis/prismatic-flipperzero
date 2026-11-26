@@ -3,7 +3,7 @@ schema: adr/v1
 id: adr-0004
 kind: adr
 title: Prismatic crisis simulations ship in the public pack, imported as data at the owner's request
-status: proposed
+status: accepted
 date: 2026-11-25
 tags:
   - knowledge
@@ -50,3 +50,7 @@ the code, whose result for the docstring's example differs from the docstring (0
   differs from a fresh import of the pinned commit (and says it skipped when the source is absent).
 - Moving the pin re-imports the scenarios in one command; a scenario added to the platform reaches
   the device as data, with no new code.
+
+## Acceptance
+
+Accepted by the owner on 2026-11-26, answering "Prijmout vsech 5 (Recommended)" to the question whether to accept ADR 0001 to 0005 (session f853febc-92e5-442d-804a-6721ed54bca7; decision "Accept ADR 0001 to 0005").

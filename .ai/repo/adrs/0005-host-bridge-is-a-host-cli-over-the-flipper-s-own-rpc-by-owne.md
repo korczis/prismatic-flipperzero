@@ -3,7 +3,7 @@ schema: adr/v1
 id: adr-0005
 kind: adr
 title: Host bridge is a host CLI over the Flipper's own RPC, by owner choice
-status: proposed
+status: accepted
 date: 2026-11-26
 tags:
   - bridge
@@ -56,3 +56,7 @@ program can read. The FAP gains no interface: its contract with the host stays t
   and the repository records counts and hashes from a device run, never their content.
 - Without a device, the bridge is tested against a fake RPC peer; with one, its run is recorded
   under `docs/evidence/bridge/`.
+
+## Acceptance
+
+Accepted by the owner on 2026-11-26, answering "Prijmout vsech 5 (Recommended)" to the question whether to accept ADR 0001 to 0005 (session f853febc-92e5-442d-804a-6721ed54bca7; decision "Accept ADR 0001 to 0005").

@@ -3,7 +3,7 @@ schema: adr/v1
 id: adr-0003
 kind: adr
 title: Prismatic assessment scales ship in the public pack as applications, at the owner's request
-status: proposed
+status: accepted
 date: 2026-11-25
 tags:
   - knowledge
@@ -59,3 +59,7 @@ scorecard copies the source's base, weights, clamp, bands and red-flag texts.
   number of scales (up to four per assessment, sixteen grades each) without new code.
 - A scale whose source changes is updated by hand from the cited path and commit; there is no
   extractor for these files yet, because their formats (an Elixir map, a JSON prompt) differ.
+
+## Acceptance
+
+Accepted by the owner on 2026-11-26, answering "Prijmout vsech 5 (Recommended)" to the question whether to accept ADR 0001 to 0005 (session f853febc-92e5-442d-804a-6721ed54bca7; decision "Accept ADR 0001 to 0005").

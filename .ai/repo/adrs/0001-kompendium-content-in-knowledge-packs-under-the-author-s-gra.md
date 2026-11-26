@@ -3,7 +3,7 @@ schema: adr/v1
 id: adr-0001
 kind: adr
 title: Kompendium content in knowledge packs under the author's grant
-status: proposed
+status: accepted
 date: 2026-11-25
 tags:
   - licensing
@@ -54,3 +54,7 @@ code (runtime, compiler, tools) stays MIT.
   separates code (MIT) from knowledge content.
 - The compiler refuses an object without provenance.
 - If the owner later relicenses the content, a superseding decision records it.
+
+## Acceptance
+
+Accepted by the owner on 2026-11-26, answering "Prijmout vsech 5 (Recommended)" to the question whether to accept ADR 0001 to 0005 (session f853febc-92e5-442d-804a-6721ed54bca7; decision "Accept ADR 0001 to 0005").
