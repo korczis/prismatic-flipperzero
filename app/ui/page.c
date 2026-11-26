@@ -35,8 +35,8 @@
 #define BAR_H         21
 #define TILE_H        19
 #define TILE_W        64
-#define WHEEL_H       14
-#define WHEEL_CELL    9 /* one letter of the wheel; five of them end at RIGHT */
+#define WHEEL_H       15
+#define WHEEL_CELL    10 /* one letter of the wheel; five of them end at RIGHT */
 #define MARQUEE_START 10 /* ticks still before a cut label starts to move (2.5 s at 250 ms) */
 #define MARQUEE_END   6 /* ticks it rests at its end */
 #define GAP           3
@@ -973,24 +973,35 @@ static void
 }
 
 /* "query\tWINDOW": the query in bold with a cursor, its tail when it is too long; at the right
- * the wheel, five letters, the current one (third) inverted in a box, its neighbours small. */
+ * the wheel, five letters, the current one (third) inverted in a box with carets above and
+ * below (Up and Down turn it), its neighbours small, a dot where it wraps ('|'). */
 static void draw_wheel(Canvas* canvas, const Page* p, const Block* blk, int y) {
     const char* s = p->text + blk->off;
     size_t n = blk->len, k = 0;
     while(k < n && s[k] != '\t')
         k++;
-    int x0 = RIGHT + 1 - 5 * WHEEL_CELL;
-    for(size_t i = 0; k + 1 + i < n && i < 5; i++) {
-        char cell[2] = {s[k + 1 + i], '\0'};
-        if(cell[0] == ' ') continue;
-        int x = x0 + (int)i * WHEEL_CELL;
-        set_role(canvas, i == 2 ? RoleTitle : RoleCaption);
-        if(i == 2) {
-            canvas_draw_rbox(canvas, x - 1, y + 1, WHEEL_CELL + 1, 12, 2);
+    int x0 = RIGHT + 1 - 5 * WHEEL_CELL, cell = 0;
+    for(size_t i = k + 1; i < n && cell < 5; i++) {
+        int x = x0 + cell * WHEEL_CELL;
+        if(s[i] == '|') { /* the wrap: a short bar in the gap before this cell */
+            canvas_draw_line(canvas, x - 1, y + 4, x - 1, y + 10);
+            continue;
+        }
+        char one[2] = {s[i], '\0'};
+        cell++;
+        if(one[0] == ' ') continue;
+        set_role(canvas, cell == 3 ? RoleTitle : RoleCaption);
+        int w = canvas_string_width(canvas, one);
+        if(cell == 3) { /* a box one pixel in from its cell, so a wrap bar beside it shows */
+            int cx = x + WHEEL_CELL / 2 - 1;
+            canvas_draw_dot(canvas, cx, y);
+            canvas_draw_line(canvas, cx - 1, y + 1, cx + 1, y + 1);
+            canvas_draw_line(canvas, cx - 1, y + 13, cx + 1, y + 13);
+            canvas_draw_dot(canvas, cx, y + 14);
+            canvas_draw_rbox(canvas, x + 1, y + 3, WHEEL_CELL - 2, 9, 2);
             canvas_set_color(canvas, ColorWhite);
         }
-        canvas_draw_str(
-            canvas, x + (WHEEL_CELL - canvas_string_width(canvas, cell)) / 2, y + 10, cell);
+        canvas_draw_str(canvas, x + 1 + (WHEEL_CELL - 2 - w) / 2, y + 10, one);
         canvas_set_color(canvas, ColorBlack);
     }
     char buf[PAGE_QUERY_CAP + 2];
@@ -1793,11 +1804,12 @@ uint16_t page_visible_lines(const Page* p, char out[][64], uint16_t cap) {
                 out[n][m++] = w[k++];
             out[n][m++] = '_';
             out[n][m++] = ' ';
-            for(size_t i = 0; k + 1 + i < blk->len && i < 5; i++) {
-                char c = w[k + 1 + i];
-                if(i == 2) out[n][m++] = '[';
+            for(size_t i = k + 1, cell = 0; i < blk->len && cell < 5; i++) {
+                char c = w[i];
+                if(c != '|') cell++;
+                if(cell == 3 && c != '|') out[n][m++] = '[';
                 if(c != ' ') out[n][m++] = c;
-                if(i == 2) out[n][m++] = ']';
+                if(cell == 3 && c != '|') out[n][m++] = ']';
             }
             out[n++][m] = '\0';
             continue;

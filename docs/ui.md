@@ -143,9 +143,11 @@ new line so it is not lost with it.
 **Library > Find by name** types a name a letter at a time on a wheel of its own, not the
 firmware's on-screen keyboard (that needs a view dispatcher and would not run in the simulator,
 the atlas or the parity test). The query sits left in bold with a cursor; the wheel sits right,
-five letters with the current one inverted. **Up/Down** turn the wheel, **Right** adds its letter,
-**Left** deletes one and **holding Left** deletes all, **OK** lists every match, **Back** leaves.
-The header counts the matches and the body shows the best three.
+five letters with the current one inverted between two carets, and a short bar where it wraps
+from its last letter to its first. **Up/Down** turn the wheel, **Right** adds its letter,
+**Left** deletes one and **holding Left** clears the query, **OK** lists every match, **Back**
+leaves. The header counts the matches and says OK lists them (`72 OK>`); the body shows the best
+three, each after its code when the title does not carry it, so a match by code shows why.
 
 The wheel offers only letters that some indexed word continues with, so a query can never reach
 zero matches and no letter is typed in vain. A word matches when it *starts with* the query:
@@ -160,8 +162,8 @@ What a step costs the SD card is measured in the simulator over the real pack
 ([the cache, measured](../README.md#the-cache-measured)): opening Find checks the whole index
 once per pack, a first letter reads a few dozen 256-byte blocks, a third letter a handful, and
 turning the wheel reads nothing. No time on the device is claimed. A pack without the index (an
-older compiler's) or with more than 4 096 objects says so on the Find screen, and Info shows the
-index's size and its check.
+older compiler's), a damaged index, a pack of more than 4 096 objects and a pulled card each say
+so on the Find screen with what to do, and Info shows the index's size and its check.
 
 ## Typography
 
@@ -307,23 +309,25 @@ reviewer, and each finding is recorded here with what was done.
 The same pass found two defects by eye: the detector legend fell back to bare numbers (fixed
 by a tighter swatch spacing), and the Info tile's caption was cut (now `device`).
 
-### 2026-11-26: Find by name, self-review (no independent reviewer)
+### 2026-11-26: Find by name, independent review
 
 The new frames (`find-empty`, `find-typed`, `find-results`) and the two that changed
-(`hub-library`, which gained the first row, and `info-cache`, which gained the index check) were
-reviewed by the implementing agent against the rendered frames and their captions. No second
-model or peer reviewed them; that review is still owed. Every other frame of the atlas rendered
-byte for byte as before, which also proves that the key paths shifted for the new Library row
-reach the same screens.
+(`hub-library`, which gained the first row, and `info-cache`) went to an independent reviewer,
+who found no blocking defect. The implementing agent's own first pass had already given Find an
+icon of its own instead of the Detect magnifier and put a word after the bare count. Every other
+frame of the atlas rendered byte for byte as before, which also shows that the key paths shifted
+for the new Library row reach the same screens.
 
 | # | Finding | Decision |
 |---|---|---|
-| 1 | The magnifier icon on Find repeated the Detect hub's, two meanings for one mark | Done: Find has its own icon, a letter and a cursor (`tools/icons.py`). |
-| 2 | A bare number in the header ("72") did not say what it counts | Done: the header says `72 found`. |
-| 3 | The key help is gone once the first letter is typed | Kept: once a letter is typed the lines belong to the matches; the help is back on the empty query, one held Left away. |
-| 4 | The wheel's neighbours are in the caption face, the current letter in the title face, so the strip reads unevenly | Kept: the difference is the point (what Right adds stands out), and the box marks it twice. |
-| 5 | An empty query shows a lone cursor at the left | Kept: the wheel and the help below it say what to do; a placeholder word would read as a query. |
-| 6 | Titles under the wheel are cut with an ellipsis | Kept: OK opens the full list, where a focused row scrolls its whole name. |
+| 1 | The unavailable states have no frames and give no remedy | Done: the atlas walks a pack without an index, a damaged index, a pack too large and the card pulled mid-query (`find-no-index`, `find-damaged`, `find-too-large`, `find-card-out`), and each message says what to do: rebuild the pack, check the card and try again, or browse By chapter. |
+| 2 | The Find icon read as "AI" | Done: a letter and an underscore cursor, "A_". |
+| 3 | Up/Down drive a horizontal strip; the direction and the wrap are invisible ("u z [e] i l" looks unsorted) | Done: carets above and below the selected letter say Up and Down turn it, and a short bar marks where the wheel wraps from its last letter to its first ("u z \| e i l"). The strip stays horizontal: a vertical wheel would take the lines the matches need. |
+| 4 | No key hint once a letter is typed | Done: the header says `72 OK>`, the count and that OK lists them. Left is in the help of the empty query. |
+| 5 | Result rows omit the code that explains a match by code | Done: a row and a top-three line show the code before the title when the title does not start with it already (`NATO Admiralty code: ...`). |
+| 6 | "hold: all" is cryptic | Done: "hold Left: clear". |
+| 7 | Info's open time wrapped "ms" onto its own line | Done: `Open+CRC: 42 ms`, and the index check is `Find index: 7 ms`. |
+| 8 | "i" and "l" are hard to tell apart in the caption face of the wheel's neighbours (low) | Kept: the face is the firmware's; the current letter, the one Right adds, is in the title face. |
 
 ## How it is tested
 

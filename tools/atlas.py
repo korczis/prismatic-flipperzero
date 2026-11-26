@@ -53,14 +53,16 @@ def parse(text):
 
 
 def packs(tmp):
-    """Pack paths by spec name: the real pack (compiled if missing) and the test packs."""
+    """Pack paths by spec name: the real pack (compiled if missing), the test packs of
+    tests/sim/packs.py (ui, bad, noindex, big) and none ("-")."""
     real = ROOT / "build" / "packs" / "kompendium.pkp"
     if not real.exists():
         subprocess.run([sys.executable, "tools/pocket.py", "compile"], cwd=ROOT, check=True,
                        stdout=subprocess.DEVNULL)
     subprocess.run([sys.executable, "tests/sim/packs.py", str(tmp)], cwd=ROOT, check=True,
                    stdout=subprocess.DEVNULL)
-    return {"kompendium": str(real), "ui": str(Path(tmp) / "ui.pkp"), "-": "-"}
+    test = {name: str(Path(tmp) / f"{name}.pkp") for name in ("ui", "bad", "noindex", "big")}
+    return {"kompendium": str(real), **test, "-": "-"}
 
 
 def last_view(dump):

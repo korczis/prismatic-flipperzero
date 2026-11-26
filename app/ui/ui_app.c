@@ -1573,7 +1573,7 @@ static void render_info(UiApp* app) {
             page_add(app->page, PageBullet, line, 0);
         }
         page_add(app->page, PageHeading, "Measured here", 0);
-        snprintf(line, sizeof(line), "Open + index CRC: %lu ms", (unsigned long)app->open_ms);
+        snprintf(line, sizeof(line), "Open+CRC: %lu ms", (unsigned long)app->open_ms);
         page_add(app->page, PageBullet, line, 0);
         snprintf(line, sizeof(line), "Index scan: %lu ms", (unsigned long)app->scan_ms);
         page_add(app->page, PageBullet, line, 0);
@@ -1581,13 +1581,12 @@ static void render_info(UiApp* app) {
         page_add(app->page, PageBullet, line, 0);
         PkpStatus st = pkp_has_search(app->pack) ? search_ready(app) : PKP_E_MISSING;
         if(st == PKP_OK)
-            snprintf(
-                line, sizeof(line), "Search index check: %lu ms", (unsigned long)app->search_ms);
+            snprintf(line, sizeof(line), "Find index: %lu ms", (unsigned long)app->search_ms);
         else
             snprintf(
                 line,
                 sizeof(line),
-                "Search index: %s",
+                "Find index: %s",
                 st == PKP_E_MISSING ? "none in this pack" : pkp_status_text(st));
         page_add(app->page, PageBullet, line, 0);
         const PkpCache* c = app->platform.cache;
@@ -1721,27 +1720,48 @@ static uint8_t wheel_step(uint64_t mask, uint8_t at, int dir) {
     return at;
 }
 
-/* Five letters around the current one, none twice: "cd" e "fg", spaces where there are none. */
-static void wheel_window(uint64_t mask, uint8_t at, char out[6]) {
-    memset(out, ' ', 5);
-    out[5] = '\0';
+/* Five letters around the current one, none twice: "cd" e "fg", spaces where there are none,
+ * and '|' where the wheel wraps from its last letter to its first. */
+static void wheel_window(uint64_t mask, uint8_t at, char out[8]) {
+    char slot[5];
+    memset(slot, ' ', 5);
     uint32_t n = 0;
     for(uint32_t i = 0; i < PKP_SEARCH_LETTER_COUNT; i++)
         n += (mask >> i) & 1u;
-    if(n == 0) return;
-    uint32_t before = (n - 1) / 2 < 2 ? (n - 1) / 2 : 2, after = n - 1 - before;
-    if(after > 2) after = 2;
-    out[2] = pkp_search_letter(at);
-    for(uint32_t k = 1, i = at; k <= before; k++)
-        out[2 - k] = pkp_search_letter(i = wheel_step(mask, (uint8_t)i, -1));
-    for(uint32_t k = 1, i = at; k <= after; k++)
-        out[2 + k] = pkp_search_letter(i = wheel_step(mask, (uint8_t)i, 1));
+    if(n) {
+        uint32_t before = (n - 1) / 2 < 2 ? (n - 1) / 2 : 2, after = n - 1 - before;
+        if(after > 2) after = 2;
+        slot[2] = pkp_search_letter(at);
+        for(uint32_t k = 1, i = at; k <= before; k++)
+            slot[2 - k] = pkp_search_letter(i = wheel_step(mask, (uint8_t)i, -1));
+        for(uint32_t k = 1, i = at; k <= after; k++)
+            slot[2 + k] = pkp_search_letter(i = wheel_step(mask, (uint8_t)i, 1));
+    }
+    size_t m = 0;
+    for(int i = 0; i < 5; i++) {
+        if(i && slot[i] != ' ' && slot[i - 1] != ' ' &&
+           pkp_search_position(slot[i]) < pkp_search_position(slot[i - 1]))
+            out[m++] = '|';
+        out[m++] = slot[i];
+    }
+    out[m] = '\0';
+}
+
+/* An object's title after its code, when the title does not start with the code already: a
+ * match found by its code shows why. */
+static const char* coded_title(UiApp* app, const PkpObject* o, char* buf, size_t cap) {
+    char code[24];
+    snprintf(code, sizeof(code), "%s", o->code.len ? str(app, o->code) : "");
+    const char* title = str(app, o->title);
+    if(!code[0] || strncmp(title, code, strlen(code)) == 0) return title;
+    snprintf(buf, cap, "%s %.130s", code, title);
+    return buf;
 }
 
 /* Find: the query and its wheel, the match count in the header, the best three titles. */
 static void render_find(UiApp* app) {
     PkpSearch* s = &app->search;
-    char line[32], win[6];
+    char line[32], win[8], label[160];
     page_reset(app->page, "Find by name");
     page_set_title_icon(app->page, UiIconFind);
     PkpStatus st = search_ready(app);
@@ -1749,11 +1769,14 @@ static void render_find(UiApp* app) {
         page_add(
             app->page,
             PageNote,
-            st == PKP_E_MISSING ? "This pack has no search index." :
+            st == PKP_E_MISSING ?
+                "This pack has no search index. Rebuild it with a current compiler, or browse "
+                "By chapter." :
             pkp_count(app->pack, PKP_SEC_OBJECTS) > PKP_SEARCH_MAX_OBJECTS ?
-                                  "This pack is too large to search on the Flipper." :
-            st == PKP_E_IO ? "The search index could not be read." :
-                             "This pack's search index is damaged.",
+                "This pack is too large to search on the Flipper. Browse By chapter instead." :
+            st == PKP_E_IO ?
+                "The search index could not be read. Check the SD card, then open Find again." :
+                "This pack's search index is damaged. Rebuild the pack, or browse By chapter.",
             0);
         restore(app);
         return;
@@ -1761,19 +1784,23 @@ static void render_find(UiApp* app) {
     uint64_t mask = pkp_search_next(s);
     app->wheel = wheel_step(mask, app->wheel, 0);
     if(s->len) {
-        snprintf(line, sizeof(line), "%u found", s->count);
+        snprintf(line, sizeof(line), "%u OK>", s->count); /* how many, and that OK lists them */
         page_set_position(app->page, line);
     }
     wheel_window(mask, app->wheel, win);
     snprintf(line, sizeof(line), "%s\t%s", s->query, win);
     page_add(app->page, PageWheel, line, 0);
     if(app->search_error != PKP_OK) {
-        page_add(app->page, PageNote, "The search index could not be read.", 0);
+        page_add(
+            app->page,
+            PageNote,
+            "The search index could not be read. Check the SD card, then try again.",
+            0);
     } else if(s->len == 0) {
         page_add(
             app->page,
             PageNote,
-            "Up/Down: a letter. Right: add it. Left: delete, hold: all. OK: every match.",
+            "Up/Down: a letter. Right: add. Left: delete, hold Left: clear. OK: list all.",
             0);
     }
     uint16_t best[FIND_TOP];
@@ -1781,7 +1808,7 @@ static void render_find(UiApp* app) {
     for(uint32_t k = 0; k < n; k++) {
         PkpObject o;
         if(pkp_object(app->pack, best[k], &o) == PKP_OK)
-            page_add(app->page, PageItem, str(app, o.title), 0);
+            page_add(app->page, PageItem, coded_title(app, &o, label, sizeof(label)), 0);
     }
     restore(app);
 }
@@ -1791,7 +1818,7 @@ static void render_find_results(UiApp* app) {
     Frame* f = top(app);
     PkpSearch* s = &app->search;
     uint16_t found[PAGE_ROWS];
-    char title[24];
+    char title[24], label[160];
     snprintf(title, sizeof(title), "Found: %s", s->query);
     page_reset(app->page, title);
     page_set_title_icon(app->page, UiIconFind);
@@ -1801,7 +1828,8 @@ static void render_find_results(UiApp* app) {
     for(uint32_t k = 0; k < n; k++) {
         PkpObject o;
         if(pkp_object(app->pack, found[k], &o) != PKP_OK) continue;
-        page_add_row(app->page, 0, str(app, o.title), NULL, T_OBJECT | found[k]);
+        page_add_row(
+            app->page, 0, coded_title(app, &o, label, sizeof(label)), NULL, T_OBJECT | found[k]);
     }
     paging(app, f->page, pages, false);
     restore(app);

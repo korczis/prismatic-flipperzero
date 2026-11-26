@@ -1,6 +1,6 @@
 # The screen atlas: one frame of every screen and view, rendered by the host simulator.
 #   name | pack | keys | screen[+overlay] | caption
-# pack: kompendium (the real pack), ui (tests/sim/packs.py), - (no pack). The last frame of the
+# pack: kompendium (the real pack), ui, bad, noindex, big (tests/sim/packs.py), - (no pack). The last frame of the
 # walk is kept; tools/atlas.py checks that it shows the declared screen (and overlay), that
 # every Screen of app/ui/ui_app.c appears at least once, and that docs/evidence/atlas matches a
 # fresh render byte for byte.
@@ -19,6 +19,10 @@ kind-list        | kompendium | ok,down,down,ok,down,ok | Filter | All objects o
 find-empty       | kompendium | ok,ok | Find | Find by name: Up/Down turn a wheel of only the letters that have matches
 find-typed       | kompendium | ok,ok,down,down,down,down,down,right,right,down,down,down,down,right | Find | Three letters in: how many match and the best three, strong matches first
 find-results     | kompendium | ok,ok,down,down,down,down,down,right,right,down,down,down,down,right,ok | FindResults | OK lists every match, paged by forty; OK opens one
+find-no-index    | noindex | ok,ok | Find | A pack an older compiler wrote has no index: Find says so and what to do
+find-damaged     | bad | ok,ok | Find | An index that fails its check is never searched
+find-too-large   | big | ok,ok | Find | Over 4 096 objects the device keeps no search state
+find-card-out    | ui | ok,ok,down,down,down,down,down,down,down,right,down,right,eject,right | Find | The card pulled mid-query: the query empties and says what to do
 detectors        | kompendium | right,ok,ok | Filter | Every object with markers to check
 article          | kompendium | right,ok,ok,ok | Article | An article: bold title, the kind in a pill, its code
 article-chips    | kompendium | right,ok,ok,ok,down | Article | Chips: detector markers and links on the map, one press away
