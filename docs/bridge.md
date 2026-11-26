@@ -1,0 +1,132 @@
+# Host bridge
+
+The app has no host interface of its own. Its contract with a computer is a folder on the SD
+card, and the bridge, [`tools/bridge.py`](../tools/bridge.py), reads and writes that folder over
+the Flipper's own RPC protocol. Nothing new runs on the device, and the app gains no input
+surface. Why it is shaped this way is recorded in ADR 0005
+(`.ai/repo/adrs/0005-host-bridge-is-a-host-cli-over-the-flipper-s-own-rpc-by-owne.md`).
+
+```bash
+just bridge status              # device, card space, the app's files, is the pack current?
+just bridge status --md5        # the same, with the installed pack hashed on the device
+just bridge push-pack           # install build/packs/kompendium.pkp (or a path), checked
+just bridge pull build/pulled   # copy sessions.jsonl and progress off the card
+just bridge sessions build/pulled/sessions.jsonl   # saved detector sessions, markers named
+just bridge progress build/pulled/progress.bin build/pulled/progress.tmp   # Leitner boxes
+```
+
+`status`, `push-pack` and `pull` talk to the device through `tools/device.sh`, which holds the
+device lock, so a bridge run never overlaps a deploy or a screenshot. `sessions` and `progress`
+read pulled files and work without a device. Every command prints JSON except `push-pack`, which
+prints one line of result.
+
+## The folder
+
+Everything the app reads or writes lives in `SD/apps_data/prismatic/`:
+
+| File | Written by | What it is |
+|---|---|---|
+| `*.pkp` | the host (`push-pack`, `just deploy-pack`) | Knowledge packs, read-only for the app. Format: [architecture](architecture.md). |
+| `progress.bin`, `progress.tmp` | the app, on every quiz answer | Quiz progress for spaced repetition, two copies. |
+| `sessions.jsonl` | the app, only when the reader presses *Save these marks* | Saved detector sessions. |
+
+The bridge writes only `*.pkp` files and never deletes or changes `progress.*` or
+`sessions.jsonl`: those are the reader's own data, and Info on the device is where they are
+forgotten.
+
+### `sessions.jsonl`
+
+JSON Lines, at most 32 KiB, one session per line, appended:
+
+```json
+{"v":1,"t":"2026-11-25T12:00:00","pack":"kompendium 1","c":[{"id":"...","i":173,"m":"OONUA"}]}
+```
+
+- `t` is the device clock's local time when Save was pressed; `pack` names the pack.
+- `c` holds one or two candidates (two from a side-by-side detection): the object's stable `id`,
+  its index `i` in the pack the marks were made with, and `m`, one letter per marker in the
+  object's order: `O` observed, `N` not observed, `U` unknown, `A` not applicable, `-`
+  unanswered.
+- A line that does not parse (a torn last line after a lost write) is skipped by the app and by
+  the bridge, which reports how many it skipped.
+
+`bridge sessions` finds each object by its id (at its recorded index first, so a rebuilt pack
+still resolves), names each marker, and counts the states. It never adds a score: absent
+evidence is not contrary evidence.
+
+### `progress.bin`
+
+Little-endian, versioned, bounded and checksummed ([`progress.h`](../app/core/progress.h)):
+
+| Offset | Size | Field |
+|---|---|---|
+| 0 | 4 | `PKPS` |
+| 4 | 2 | version, 1 |
+| 6 | 2 | reserved, 0 |
+| 8 | 4 | generation, bumped by every save |
+| 12 | 2 | session, bumped by every start of the app |
+| 14 | 2 | count of entries, at most 256 |
+| 16 | 4 | reserved, 0 |
+| 20 | 12 × count | entries |
+| 20 + 12 × count | 4 | CRC-32 of everything before it |
+
+An entry is the question's key (FNV-1a, 32 bits, of its prompt text, so it survives a rebuilt
+pack), its index in the pack (2), its box 1 to 5 (1), whether the last answer was right (1), the
+number of answers (2) and the session from which it is due again (2). The app saves through
+`progress.tmp` and then replaces `progress.bin`; whichever valid copy has the higher generation
+wins. `bridge progress` applies the same rule, names each question by its prompt from the pack,
+and counts entries per box and those due now.
+
+## The protocol
+
+The bridge speaks [flipperzero-protobuf](https://github.com/flipperdevices/flipperzero-protobuf)
+over the USB serial port: it opens the CLI, sends `start_rpc_session`, and from then on every
+message is a varint length followed by a `PB.Main`. The encoder and decoder are the few lines
+already used for screenshots ([`flipper_screen.py`](../tools/flipper_screen.py)); there is no
+generated code and no dependency beyond pyserial.
+
+| Request (`PB.Main` field) | Response | Used for |
+|---|---|---|
+| `system_device_info_request` (32) | `system_device_info_response` (33), one key per message | hardware name, firmware version |
+| `storage_info_request` (28) | `storage_info_response` (29) | card space |
+| `storage_list_request` (7) | `storage_list_response` (8) | the app's files and sizes; is the FAP installed |
+| `storage_md5sum_request` (14) | `storage_md5sum_response` (15) | checking a pack, before and after a push |
+| `storage_read_request` (9) | `storage_read_response` (10), in parts | `pull` |
+| `storage_write_request` (11) | status | `push-pack`, 512-byte parts under one command id |
+| `storage_mkdir_request` (13), `storage_delete_request` (12), `storage_rename_request` (30) | status | `push-pack` |
+| `app_lock_status_request` (17) | `app_lock_status_response` (18) | refusing to push while an app runs |
+| `stop_session` (19) | none | back to the CLI |
+
+Each request has its own `command_id`; a response with `has_next` set is followed by more under
+the same id, and a message with another id is skipped. A status other than OK is an error,
+except "does not exist" where a missing file is an answer (nothing to pull, nothing installed)
+and "already exists" for `mkdir`.
+
+### Installing a pack
+
+1. The pack is decoded on the host with the reference reader first; a pack the app would refuse
+   is never sent.
+2. If an application holds the device, the push is refused: the app may have the pack open.
+3. Unless `--force`, a pack whose MD5 on the device already matches is left alone.
+4. The pack is written as `<name>.part`, its MD5 is computed on the device and compared; on a
+   mismatch the part is deleted and nothing is replaced.
+5. The old pack is deleted, the part renamed, and the MD5 checked once more.
+
+A pull, a status and a decode never write to the card.
+
+## Tests and evidence
+
+[`tests/tools/test_bridge.py`](../tests/tools/test_bridge.py) runs every command against a fake
+device that speaks this subset of RPC (multi-part answers, stray messages with other ids,
+refusals, an MD5 that does not match after the write, a rename that changes the file), and the decoders
+against packs, sessions and progress images built in the test, including torn lines, a bad CRC,
+an unknown version and the two-copy rule. The tools coverage gate requires every line of
+`bridge.py` to run.
+
+On the device (official 1.5.1), device info, card space and the folder listing answered as
+specified. Hashing the 20 MB pack on the device took longer than two minutes, which is why
+`status` hashes only with `--md5` and a push waits up to ten minutes for the hash; during that
+first long hash the Flipper dropped off USB and did not come back while it was observed, so the
+full device run (`status --md5`, `push-pack`, `pull`) is still to be recorded. It goes under
+`docs/evidence/bridge/` with the firmware, the commands and their results, as counts and hashes
+only: what the reader saved stays on the reader's side.

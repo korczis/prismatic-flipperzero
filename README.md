@@ -71,7 +71,8 @@ back; an assessment records **your** grade and explains it; a marker describes, 
 - [How it is kept honest](#how-it-is-kept-honest): gates, evidence, parity
 - [Firmware compatibility](#firmware-compatibility), [roadmap](#roadmap), [licence](#licence)
 - Deeper: [design notes](docs/ui.md), [architecture](docs/architecture.md),
-  [development](docs/development.md), [case study: zero to app](docs/case-study.md)
+  [development](docs/development.md), [host bridge](docs/bridge.md),
+  [case study: zero to app](docs/case-study.md)
 
 </details>
 
@@ -426,6 +427,18 @@ You need a Flipper Zero on official firmware 1.5.x (or Momentum mntm-012) and an
    mobile app).
 3. Open **Apps → Tools → Prismatic**.
 
+### Your data, on a computer
+
+Saved detector sessions and quiz progress stay on the SD card until you take them. The
+[host bridge](docs/bridge.md) copies them off over USB and turns them into readable JSON, with
+every object and marker named from the pack; it also installs a pack with a checksum check:
+
+```bash
+just bridge pull build/pulled
+just bridge sessions build/pulled/sessions.jsonl
+just bridge push-pack
+```
+
 Controls: **Up/Down** scroll, **Left/Right** jump between links, **OK** opens a link, **Back**
 goes one step back. In the detector, **Left** is *no*, **Right** is *yes*, **OK** is *unknown*,
 and holding **OK** means *not applicable*.
@@ -448,6 +461,7 @@ just verify        # everything CI checks, locally
 | `just test-native` | Portable core under ASan/UBSan, mutation fuzzing, C-vs-Python differential, llvm-cov line gate |
 | `just build [sdk]` / `just build-all` | FAP for official firmware or Momentum, with provenance JSON |
 | `just launch` / `just deploy` / `just deploy-pack` | Device operations behind a lock, so two shells never drive one Flipper |
+| `just bridge <cmd>` | Host bridge over RPC: device status, checked pack install, pull and decode saved sessions and progress |
 | `just screenshot` / `just walk DIR KEYS` | Real device frames, optionally after scripted key presses |
 | `just release-assets` | Versioned FAPs, the pack, provenance and `SHA256SUMS` |
 
@@ -489,8 +503,8 @@ timeline
   title Prismatic Pocket
   v0.0.1 First Light : native FAP on hardware : pinned SDK matrix : preview release
   v0.1.0 Pocket : full Kompendium pack : reader, detector, applicator, trainer : sessions and spaced repetition : Prismatic assessments, scorecards, simulations
-  next : search index : multi-pattern detector with shared markers : Momentum on hardware
-  later : host bridge : Prismatic adapter : more packs from the same compiler
+  next : host bridge over RPC : search index : multi-pattern detector with shared markers : Momentum on hardware
+  later : Prismatic adapter over the bridge's JSON : more packs from the same compiler
 ```
 
 ## Licence

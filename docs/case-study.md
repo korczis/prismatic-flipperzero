@@ -71,6 +71,7 @@ Generated from the repository's history by [`tools/docs.py`](../tools/docs.py). 
 | `169ba75` | 14:47 | feat(calculate): one stepper adds a source; the calculator fits one screen |
 | `0ff2236` | 14:57 | docs(evidence): device parity recorded with the live tools build |
 | `dfcbdc8` | 12:16 | chore(release): 0.1.0 Pocket: version, changelog, release notes, security scope |
+| `7f2bc73` | 12:19 | docs(evidence): parity 24 of 24 and device gallery recaptured on 0.1.0 |
 <!-- docs:end timeline -->
 
 ## What made it fast

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Host bridge, `tools/bridge.py` (`just bridge`): the Flipper's own RPC over USB. Device and
+  card status, a pack installed through a temporary name with an MD5 check, saved sessions and
+  quiz progress pulled and decoded against the pack; the FAP gains no interface (ADR 0005,
+  `docs/bridge.md`).
+
 ## 0.1.0 — Pocket (preview)
 
 - The full Kompendium (2 241 objects, 66 chapters, 11 kinds, 37 567 relations) compiled by

@@ -9,6 +9,7 @@
 #   tools/device.sh screenshot <png>    one real frame from the RPC screen stream
 #   tools/device.sh walk <dir> <keys>   frames before and after each key, e.g. right,back
 #   tools/device.sh cli "<command>"     one Flipper CLI command (loader info, uptime, ...)
+#   tools/device.sh bridge <cmd> ...    tools/bridge.py over RPC: status, push-pack, pull
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 lock="$root/build/.device.lock"
@@ -74,5 +75,6 @@ case "$cmd" in
     ;;
   screenshot) timeout 60 "$py" "$root/tools/flipper_screen.py" capture "$@" ;;
   walk) timeout 120 "$py" "$root/tools/flipper_screen.py" walk "$@" ;;
-  *) sed -n '2,9p' "$0" >&2; exit 2 ;;
+  bridge) timeout 1800 "$py" "$root/tools/bridge.py" "$@" ;;  # a 20 MB push takes minutes
+  *) sed -n '2,12p' "$0" >&2; exit 2 ;;
 esac
