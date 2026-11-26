@@ -4,6 +4,8 @@
  *   test_pkp dump <pack>          canonical JSON dump (compared with tools/pocket.py decode)
  *   test_pkp walk <dir>           verdict "ok" or the status for every file in a list
  *                                 (<dir>/list.txt), for the differential fuzz test
+ *   test_pkp search <pack>        Find by name typed through every prefix of one to three
+ *                                 letters the wheel offers (compared with pocket.search)
  */
 #include "../../app/core/cache.h"
 #include "../../app/core/pkp.h"
@@ -13,6 +15,7 @@
 #include "../../app/core/bayes.h"
 #include "../../app/core/scorecard.h"
 #include "../../app/core/simulate.h"
+#include "../../app/core/search.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -433,6 +436,187 @@ static void test_corruption(const uint8_t* pack, uint32_t size) {
     CHECK(pkp_string(&closed, two, sb, sizeof(sb)) == PKP_E_RANGE);
     CHECK(pkp_verify_strings(&closed) == PKP_E_RANGE);
     free(d);
+}
+
+static char wheel[PKP_SEARCH_LETTER_COUNT + 1];
+static const char* letters_of(uint64_t mask) {
+    uint32_t n = 0;
+    for(uint32_t i = 0; i < PKP_SEARCH_LETTER_COUNT; i++)
+        if(mask & (1ull << i)) wheel[n++] = pkp_search_letter(i);
+    wheel[n] = '\0';
+    return wheel;
+}
+
+/* The first key of exactly ten characters, typed letter by letter; true when it was found. */
+static bool type_a_long_key(PkpSearch* s, const PkpReader* r) {
+    PkpSearchKey k;
+    for(uint32_t i = 0; i < pkp_count(r, PKP_SEC_SEARCH_KEYS); i++) {
+        if(pkp_search_key(r, i, &k) != PKP_OK || k.len != PKP_SEARCH_KEY_LEN) continue;
+        pkp_search_clear(s);
+        for(uint32_t c = 0; c < k.len; c++)
+            if(pkp_search_push(s, k.key[c]) != PKP_OK) return false;
+        return true;
+    }
+    return false;
+}
+
+/* Find by name on the mini pack: typing, deleting, ordering, refusals, and every read that can
+ * fail on the way. The full prefix walk is the differential (test_pkp search). */
+static void test_search_engine(const uint8_t* pack, uint32_t size) {
+    static PkpSearch s;
+    Mem m = {pack, size, -1};
+    PkpReader r;
+    CHECK(pkp_open(&r, mem_read, &m, size) == PKP_OK);
+    CHECK(pkp_search_init(&s, &r) == PKP_OK);
+    uint64_t root = pkp_search_next(&s);
+    CHECK(root != 0 && s.count == 0);
+    uint16_t out[64];
+    CHECK(pkp_search_results(&s, 0, out, 64) == 0); /* the empty query lists nothing */
+    CHECK(pkp_search_position('a') == 0 && pkp_search_position('9') == 35);
+    CHECK(pkp_search_position('A') == -1 && pkp_search_letter(36) == '\0');
+    CHECK(pkp_search_push(&s, 'A') == PKP_E_RANGE);
+    /* a letter the wheel does not offer is refused */
+    int absent = -1;
+    for(uint32_t i = 0; i < PKP_SEARCH_LETTER_COUNT && absent < 0; i++)
+        if(!(root & (1ull << i))) absent = (int)i;
+    CHECK(absent >= 0 && pkp_search_push(&s, pkp_search_letter((uint32_t)absent)) == PKP_E_RANGE);
+    /* "e": the EA techniques, strong first, each group in pack order */
+    CHECK(pkp_search_push(&s, 'e') == PKP_OK && s.len == 1 && strcmp(s.query, "e") == 0);
+    uint16_t count = s.count, strong = s.strong;
+    CHECK(count > 1 && strong > 0 && strong <= count);
+    uint32_t got = pkp_search_results(&s, 0, out, 64);
+    CHECK(got == (count < 64 ? count : 64u));
+    for(uint32_t i = 1; i < got; i++)
+        if(i != strong) CHECK(out[i - 1] < out[i]);
+    CHECK(pkp_search_results(&s, count, out, 64) == 0);
+    CHECK(pkp_search_results(&s, count - 1, out, 64) == 1);
+    uint64_t after_e = pkp_search_next(&s);
+    CHECK(after_e != 0);
+    char second = pkp_search_letter((uint32_t)__builtin_ctzll(after_e));
+    CHECK(pkp_search_push(&s, second) == PKP_OK && s.len == 2 && s.count <= count);
+    CHECK(pkp_search_pop(&s) == PKP_OK && s.len == 1 && s.count == count && s.strong == strong);
+    CHECK(pkp_search_next(&s) == after_e);
+    CHECK(pkp_search_pop(&s) == PKP_OK && s.len == 0 && s.count == 0);
+    CHECK(pkp_search_pop(&s) == PKP_OK && s.len == 0);
+    /* ten letters: the wheel is empty and nothing more can be typed */
+    CHECK(type_a_long_key(&s, &r) && s.len == PKP_SEARCH_KEY_LEN && pkp_search_next(&s) == 0);
+    CHECK(s.count >= 1 && pkp_search_push(&s, 'a') == PKP_E_RANGE);
+    pkp_search_clear(&s);
+    CHECK(s.len == 0 && s.count == 0 && pkp_search_next(&s) == root);
+    /* the mask says yes, the table says no (a changed card): refused, nothing half-made */
+    s.next[0] |= 1ull << absent;
+    CHECK(pkp_search_push(&s, pkp_search_letter((uint32_t)absent)) == PKP_E_RANGE && s.len == 0);
+
+    /* every read that can fail: init, the lower bounds, the run's keys, its postings, the
+     * letters after it, and the pop's new pass */
+    int io = 0;
+    for(int n = 0; n < 400; n++) {
+        m.fail_after = n;
+        if(pkp_search_init(&s, &r) != PKP_OK) {
+            io++;
+            continue;
+        }
+        m.fail_after = -1;
+        break;
+    }
+    CHECK(io > 1);
+    io = 0;
+    for(int n = 0; n < 400; n++) {
+        CHECK(pkp_search_init(&s, &r) == PKP_OK);
+        m.fail_after = n;
+        PkpStatus st = pkp_search_push(&s, 'e');
+        if(st == PKP_OK) st = pkp_search_push(&s, second);
+        if(st == PKP_OK) st = pkp_search_pop(&s);
+        m.fail_after = -1;
+        if(st == PKP_OK) break;
+        CHECK(st == PKP_E_IO && s.len == 0 && s.count == 0);
+        io++;
+    }
+    CHECK(io > 4);
+
+    /* an index too large for the bitsets, an empty one, none at all */
+    PkpReader big = r;
+    big.sec[PKP_SEC_OBJECTS].count = PKP_SEARCH_MAX_OBJECTS + 1;
+    CHECK(pkp_search_init(&s, &big) == PKP_E_RANGE && pkp_search_results(&s, 0, out, 1) == 0);
+    big = r;
+    big.sec[PKP_SEC_SEARCH_KEYS].count = 0x10000;
+    CHECK(pkp_search_init(&s, &big) == PKP_E_RANGE);
+    big.sec[PKP_SEC_SEARCH_KEYS].count = 0;
+    CHECK(pkp_search_init(&s, &big) == PKP_E_MISSING);
+    CHECK(pkp_search_push(&s, 'e') == PKP_E_RANGE);
+    uint8_t* d = malloc(size);
+    memcpy(d, pack, size);
+    m_search_none(d, size);
+    reseal(d, size);
+    Mem none = {d, size, -1};
+    CHECK(pkp_open(&big, mem_read, &none, size) == PKP_OK);
+    CHECK(pkp_search_init(&s, &big) == PKP_E_MISSING && pkp_search_next(&s) == 0);
+
+    /* a bad posting and runs out of order are reported, not followed */
+    memcpy(d, pack, size);
+    m_post_object(d, size);
+    reseal(d, size);
+    CHECK(pkp_open(&big, mem_read, &none, size) == PKP_OK && pkp_search_init(&s, &big) == PKP_OK);
+    PkpSearchKey k0;
+    CHECK(pkp_search_key(&big, 0, &k0) == PKP_OK);
+    CHECK(pkp_search_push(&s, k0.key[0]) == PKP_E_RANGE && s.len == 0);
+    /* a letter's keys [g0, g1) whose last run is moved before its first: the run would end
+     * before it starts */
+    uint32_t g0 = 0, g1 = 0;
+    PkpSearchKey ka, kb, kc;
+    CHECK(pkp_open(&r, mem_read, &m, size) == PKP_OK);
+    for(uint32_t i = 1; i < pkp_count(&r, PKP_SEC_SEARCH_KEYS) && !g1; i++) {
+        CHECK(pkp_search_key(&r, i - 1, &ka) == PKP_OK && pkp_search_key(&r, i, &kb) == PKP_OK);
+        if(ka.key[0] == kb.key[0]) continue;
+        if(g0 && i - g0 >= 2 && pkp_search_key(&r, g0, &kc) == PKP_OK && ka.count < kc.first)
+            g1 = i;
+        else
+            g0 = i;
+    }
+    CHECK(g1 > g0 + 1);
+    memcpy(d, pack, size);
+    put32(d + key_at(d, g1 - 1) + 10, 0);
+    reseal(d, size);
+    CHECK(pkp_open(&big, mem_read, &none, size) == PKP_OK && pkp_search_init(&s, &big) == PKP_OK);
+    CHECK(pkp_search_push(&s, kc.key[0]) == PKP_E_SECTION && s.len == 0);
+    free(d);
+    printf("search: PkpSearch is %zu bytes on this host\n", sizeof(PkpSearch));
+}
+
+/* Every prefix of one to three letters the wheel offers, depth first in wheel order, with its
+ * matches; after each longer one, the prefix again as Left restored it. */
+static void search_walk(PkpSearch* s, int depth) {
+    uint64_t next = pkp_search_next(s);
+    uint16_t out[PKP_SEARCH_MAX_OBJECTS];
+    for(uint32_t i = 0; depth < 3 && i < PKP_SEARCH_LETTER_COUNT; i++) {
+        if(!(next & (1ull << i))) continue;
+        if(pkp_search_push(s, pkp_search_letter(i)) != PKP_OK) {
+            printf("! push %s%c\n", s->query, pkp_search_letter(i));
+            continue;
+        }
+        printf("> %s %u %u %s :", s->query, s->count, s->strong, letters_of(pkp_search_next(s)));
+        uint32_t n = pkp_search_results(s, 0, out, PKP_SEARCH_MAX_OBJECTS);
+        for(uint32_t k = 0; k < n; k++) printf(" %u", out[k]);
+        putchar('\n');
+        search_walk(s, depth + 1);
+        pkp_search_pop(s);
+        printf("< %s %u %u\n", s->query, s->count, s->strong);
+    }
+}
+
+static int search_all(const uint8_t* d, uint32_t size) {
+    static PkpSearch s;
+    Mem m = {d, size, -1};
+    PkpReader r;
+    PkpStatus st = pkp_open(&r, mem_read, &m, size);
+    if(st == PKP_OK) st = pkp_search_init(&s, &r);
+    if(st != PKP_OK) {
+        fprintf(stderr, "search: %s\n", pkp_status_text(st));
+        return 1;
+    }
+    printf("* %s\n", letters_of(pkp_search_next(&s)));
+    search_walk(&s, 0);
+    return 0;
 }
 
 static void test_fuzz(const uint8_t* pack, uint32_t size) {
@@ -901,7 +1085,7 @@ static void test_bayes(void) {
 
 int main(int argc, char** argv) {
     if(argc != 3) {
-        fprintf(stderr, "usage: test_pkp test|dump|walk <path>\n");
+        fprintf(stderr, "usage: test_pkp test|dump|walk|search <path>\n");
         return 2;
     }
     if(strcmp(argv[1], "walk") == 0) return walk_list(argv[2]);
@@ -910,11 +1094,14 @@ int main(int argc, char** argv) {
     int rc;
     if(strcmp(argv[1], "dump") == 0) {
         rc = dump(pack, size);
+    } else if(strcmp(argv[1], "search") == 0) {
+        rc = search_all(pack, size);
     } else {
         test_reader(pack, size);
         test_io_failures(pack, size);
         test_corruption(pack, size);
         test_search(pack, size);
+        test_search_engine(pack, size);
         test_fuzz(pack, size);
         test_detect();
         test_cache(pack, size);

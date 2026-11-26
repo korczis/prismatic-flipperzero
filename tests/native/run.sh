@@ -3,6 +3,8 @@
 #   1. unit, corruption and mutation-fuzz tests under ASan + UBSan, warnings as errors
 #   2. golden differential: the C dump of the full pack equals tools/pocket.py decode
 #   3. differential fuzz: C and Python accept and reject the same mutated packs
+#   3b. search differential: every 1-3 letter prefix on the full pack equals pocket.search()
+#   3c. compatibility: the v0.2.0 reader, built from its tag, opens the new pack
 #   4. line coverage: every executable line of app/core/*.c ran (llvm-cov), else fail
 set -euo pipefail
 root="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -11,7 +13,7 @@ out=build/native
 mkdir -p "$out"
 cc="${CC:-cc}"
 flags=(-std=c99 -Wall -Wextra -Werror -Wshadow -Wconversion -Wno-sign-conversion -g)
-src=(app/core/pkp.c app/core/pocket.c app/core/cache.c app/core/progress.c app/core/session.c app/core/simulate.c app/core/scorecard.c app/core/bayes.c tests/native/test_pkp.c)
+src=(app/core/pkp.c app/core/pocket.c app/core/cache.c app/core/progress.c app/core/session.c app/core/simulate.c app/core/scorecard.c app/core/bayes.c app/core/search.c tests/native/test_pkp.c)
 
 [ -f build/packs/kompendium.ir.json ] || python3 tools/pocket.py extract >/dev/null
 python3 tools/pocket.py compile --out "$out/full.pkp" --report "$out/full.report.json" >/dev/null
@@ -52,6 +54,9 @@ echo "== differential fuzz"
 rm -rf "$out/diff"
 python3 tests/native/differential.py "$out/test_pkp" "$out/mini.pkp" "$out/diff" 1500
 
+echo "== search differential (full pack)"
+python3 tests/native/search_differential.py "$out/test_pkp" "$out/full.pkp"
+
 echo "== line coverage of app/core"
 if command -v xcrun >/dev/null 2>&1; then
   cov=(xcrun llvm-cov); prof=(xcrun llvm-profdata)
@@ -64,6 +69,7 @@ fi
 rm -f "$out"/*.profraw
 LLVM_PROFILE_FILE="$out/t-%p.profraw" "$out/test_pkp_cov" test "$out/mini.pkp" >/dev/null
 LLVM_PROFILE_FILE="$out/d-%p.profraw" "$out/test_pkp_cov" dump "$out/full.pkp" >/dev/null
+LLVM_PROFILE_FILE="$out/s-%p.profraw" "$out/test_pkp_cov" search "$out/full.pkp" >/dev/null
 "${prof[@]}" merge -sparse "$out"/*.profraw -o "$out/core.profdata"
 "${cov[@]}" export -format=lcov -instr-profile "$out/core.profdata" "$out/test_pkp_cov" \
   > "$out/coverage.lcov"
