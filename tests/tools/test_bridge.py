@@ -47,12 +47,16 @@ class FakeDevice:
     def __init__(self, port, baud, timeout):
         self.out, self.rx, self.rpc, self.writes, self.closed = bytearray(), b"", False, {}, False
         self.dropped, self.expect, self.target, self.stopped = False, 0, "", 0
+        self.swallow = False  # after StopSession the device eats the next byte
 
     @property
     def in_waiting(self):
         return len(self.out)
 
     def read(self, n):
+        if not self.out and getattr(self, "later", b""):
+            self.out += self.later
+            self.later = b""
         chunk, self.out[:] = bytes(self.out[:n]), self.out[n:]
         return chunk
 
@@ -74,12 +78,16 @@ class FakeDevice:
             take, rest = data[: self.expect], data[self.expect:]
             self.files[self.target] = self.files.get(self.target, b"") + take
             self.expect -= len(take)
+            if not self.expect and self.mode == "slow-write":
+                return  # the card is still busy: no prompt yet
             if not self.expect:
                 full = self.mode == "full"
                 self.out += b"\r\nStorage error: out of space\r\n\r\n>: " if full else b"\r\n>: "
             data = rest
             if not data:
                 return
+        if not self.rpc and self.swallow:
+            self.swallow, data = False, data[1:]
         if not self.rpc:
             m = re.fullmatch(rb'storage write_chunk "([^"]+)" (\d+)\r', data)
             if m:
@@ -92,10 +100,14 @@ class FakeDevice:
                 return
             if data.startswith((b"storage ", b"loader ")):
                 self.out += data + b"\n"  # the CLI echoes the command line
+                if self.mode == "slow-cli":
+                    return  # still working: no output, no prompt yet
                 self.out += self.cli(shlex.split(data.decode().strip())) + b"\r\n>: "
                 return
-            if data == b"\x03\r":
+            if data in (b"\x03\r", b"\r\r", b"\r"):
                 self.out += b"\r\n>: "
+                if self.mode == "double-prompt":
+                    self.later = b"\r\n>: "  # a second prompt that arrives a moment later
             elif data == b"start_rpc_session\r":
                 self.out += b"start_rpc_session\r\n"
                 self.rpc = True
@@ -186,7 +198,8 @@ class FakeDevice:
                 self.reply(cid, bridge.READ_RESP, F(1, 2, file_msg("x", len(part), part)),
                            has_next=k < len(parts) - 1)
         elif 19 in m:
-            self.rpc = False
+            self.reply(cid, 4, b"")  # the Empty answer to StopSession
+            self.rpc, self.swallow = False, True
             type(self).stops = getattr(type(self), "stops", 0) + 1
 
 
@@ -373,6 +386,71 @@ class DeviceTest(unittest.TestCase):
             dev.close(grace=1.0)
             self.assertEqual((dev.pending, FakeDevice.stops), (0, 1))
         FakeDevice.mode = ""
+
+    def test_an_unconfirmed_session_end_is_reported(self):
+        with mock.patch.dict(sys.modules, {"serial": types.SimpleNamespace(Serial=FakeDevice)}):
+            FakeDevice.mode = ""
+            dev = bridge.Device("/dev/fake")
+            FakeDevice.mode = "mute"
+            err = io.StringIO()
+            with redirect_stderr(err):
+                dev.stop_session(timeout=0.2)
+        FakeDevice.mode = ""
+        self.assertIn("did not confirm", err.getvalue())
+
+    def test_the_cli_port_is_not_released_under_a_running_command(self):
+        with mock.patch.dict(sys.modules, {"serial": types.SimpleNamespace(Serial=FakeDevice)}):
+            FakeDevice.mode = "slow-cli"
+            cli = bridge.Cli("/dev/fake")
+            with self.assertRaises(TimeoutError):
+                cli.storage("rename", "/ext/a", "/ext/b", timeout=0.2)
+            self.assertTrue(cli.pending)
+            cli.s.out += b"\r\n>: "  # the copy finishes
+            cli.close(grace=1.0)
+            self.assertFalse(cli.pending)
+            cli = bridge.Cli("/dev/fake")
+            with self.assertRaises(TimeoutError):
+                cli.command("loader info", timeout=0.2)
+            err = io.StringIO()
+            with redirect_stderr(err):
+                cli.close(grace=0.2)
+        FakeDevice.mode = ""
+        self.assertIn("never finished", err.getvalue())
+        self.assertTrue(cli.s.closed)
+
+    def test_a_chunk_is_never_abandoned(self):
+        with mock.patch.dict(sys.modules, {"serial": types.SimpleNamespace(Serial=FakeDevice)}), \
+                mock.patch.object(bridge, "CHUNK_TIMEOUT", 0.2):
+            FakeDevice.files, FakeDevice.mode = {}, "slow-write"
+            cli = bridge.Cli("/dev/fake")
+            with self.assertRaises(TimeoutError):
+                cli.write_chunk("/ext/p.part", b"abc")
+            self.assertTrue(cli.pending)
+            cli.s.out += b"\r\n>: "  # the card catches up
+            cli.close(grace=1.0)
+            self.assertFalse(cli.pending)
+            FakeDevice.files, FakeDevice.mode = {}, ""
+            cli = bridge.Cli("/dev/fake")
+            real = cli.s.write
+
+            def interrupted(data):
+                if data == b"payload":
+                    raise KeyboardInterrupt  # Ctrl-C after Ready, before the bytes
+                real(data)
+
+            cli.s.write = interrupted
+            with self.assertRaises(KeyboardInterrupt):
+                cli.write_chunk("/ext/p.part", b"payload")
+            cli.s.write = real
+            cli.close(grace=1.0)
+        self.assertEqual(FakeDevice.files["/ext/p.part"], bytes(7))  # filled, never left hanging
+        with mock.patch.dict(sys.modules, {"serial": types.SimpleNamespace(Serial=FakeDevice)}):
+            FakeDevice.mode = "double-prompt"  # a late second prompt is drained at the start
+            cli = bridge.Cli("/dev/fake")
+            self.assertFalse(cli.app_running())
+            cli.close()
+            FakeDevice.mode = ""
+        self.assertEqual((cli.owed, cli.pending), (0, False))
 
     def test_cli_chunks_are_acknowledged_and_a_silent_cli_times_out(self):
         FakeDevice.files, FakeDevice.mode = {}, ""

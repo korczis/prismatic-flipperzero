@@ -40,7 +40,8 @@ PULLED = ("sessions.jsonl", "progress.bin", "progress.tmp")
 # never runs ahead of the card and never ends a session inside a long write.
 CHUNK = 8192
 CHUNK_TIMEOUT = 60.0
-# The device hashes a 20 MB pack in about 50 s; one request waits this long for the answer.
+# The device hashes a 20 MB pack in about 50 s, and its `storage rename` copies the file (470 KB
+# took 3.5 to 5 s, so 20 MB takes minutes); a long storage command waits this long.
 MD5_TIMEOUT = 600.0
 
 # PB.Main content fields (flipper.proto) and their payload fields (storage.proto, system.proto).
@@ -109,8 +110,24 @@ class Device:
                 print("bridge: the device never answered its last request; it may need a "
                       "restart (hold Left and Back)", file=sys.stderr)
         if not self.pending:
-            self.rpc.s.write(fs.main_msg(self.rpc.cid + 1, 19, b""))
+            self.stop_session()
         self.rpc.s.close()
+
+    def stop_session(self, timeout=3.0):
+        """End the session and leave the device at its CLI prompt before the port is released.
+
+        Measured on 1.5.1: StopSession is answered with an empty message, and the first byte the
+        CLI then receives is swallowed. Waiting for the answer, then for a prompt after a bare
+        return, leaves the device idle; reopening the port too soon after StopSession left a new
+        session unanswered, and once left the device deaf until a restart."""
+        self.rpc.cid += 1
+        self._send(self.rpc.cid, 19, b"")
+        try:
+            for _raw in self._responses(self.rpc.cid, timeout):
+                pass
+            self.rpc._cli_until(b">: ", send=b"\r\r", timeout=timeout)  # one may be swallowed
+        except (TimeoutError, ValueError, IndexError):
+            print("bridge: the device did not confirm the end of the session", file=sys.stderr)
 
     def _send(self, cid, content_field, content, has_next=False):
         body = fs.field(1, 0, cid) + (fs.field(3, 0, 1) if has_next else b"")
@@ -130,9 +147,9 @@ class Device:
         """Send one request; return (status, [content of each response])."""
         self.rpc.cid += 1
         cid = self.rpc.cid
+        self.pending = cid
         self._send(cid, content_field, content)
         parts, status = [], OK
-        self.pending = cid
         for raw in self._responses(cid, timeout):
             status = raw.get(2, OK)
             parts.append(raw)
@@ -202,13 +219,15 @@ class Cli:
         import serial  # deferred: only the device path needs pyserial
 
         self.s = serial.Serial(port, 230400, timeout=0.2)
-        self.buf = b""
+        self.buf, self.pending, self.owed = b"", False, 0
         self.until(b">: ", send=b"\x03\r")  # Ctrl-C ends any command left running
-        self.s.reset_input_buffer()
+        while self.s.read(self.s.in_waiting or 1):
+            pass  # drain any later prompt, so no command reads its predecessor's output
         self.buf = b""
 
-    def until(self, tokens, send=None, timeout=CHUNK_TIMEOUT):
+    def until(self, tokens, send=None, timeout=None):
         """Bytes up to and including the earliest token; what follows stays buffered."""
+        timeout = CHUNK_TIMEOUT if timeout is None else timeout
         if isinstance(tokens, bytes):
             tokens = (tokens,)
         if send:
@@ -225,23 +244,31 @@ class Cli:
 
     def write_chunk(self, path, data):
         command = f'storage write_chunk "{path}" {len(data)}\r'.encode("ascii")
+        self.pending = True  # from the moment the line leaves: close() must wait for a prompt
         self.until(b"\n", send=command)  # the echoed command line, which may hold any text
         if self.until((b"Ready", b"Storage error")).endswith(b"Storage error"):
             detail = self.until(b"\r").decode("ascii", "replace").strip()
             self.until(b">: ")
+            self.pending = False
             raise BridgeError(f"{path}: Storage error{detail}")
+        self.owed = len(data)  # the device now waits for exactly this many bytes
         self.s.write(data)
+        self.owed = 0
         after = self.until(b">: ")
+        self.pending = False
         if b"Storage error" in after:  # the write itself failed, e.g. a full card
             detail = after[after.index(b"Storage error"):].split(b"\r")[0]
             raise BridgeError(f"{path}: {detail.decode('ascii', 'replace')}")
 
     def command(self, line, timeout=CHUNK_TIMEOUT):
         """One command; its output without the echo and the prompt."""
+        self.pending = True
         self.until(b"\n", send=line.encode("ascii") + b"\r")  # the echoed command line
-        return self.until(b">: ", timeout=timeout)[:-3].decode("ascii", "replace").strip()
+        out = self.until(b">: ", timeout=timeout)[:-3].decode("ascii", "replace").strip()
+        self.pending = False
+        return out
 
-    def storage(self, verb, *paths, accept=(), timeout=CHUNK_TIMEOUT):
+    def storage(self, verb, *paths, accept=(), timeout=MD5_TIMEOUT):
         """`storage <verb> "<path>"...`; None when the error is one of `accept`."""
         out = self.command(f"storage {verb} " + " ".join(f'"{p}"' for p in paths), timeout)
         if "Storage error" not in out:
@@ -252,13 +279,27 @@ class Cli:
         raise BridgeError(f"storage {verb} {paths[0]}: {detail}")
 
     def md5(self, path):
-        out = self.storage("md5", path, accept=("not exist",), timeout=MD5_TIMEOUT)
+        out = self.storage("md5", path, accept=("not exist",))
         return out.split()[-1] if out else None
 
     def app_running(self):
         return "No application" not in self.command("loader info")
 
-    def close(self):
+    def close(self, grace=MD5_TIMEOUT):
+        """Release the port, but not under a running command: a `storage rename` abandoned
+        after 60 s and the port closed under it left the device deaf until a restart. A chunk
+        cut off after "Ready" is completed with zero bytes first, since the device waits for
+        them; the part is then wrong, and the MD5 check of the next push removes it."""
+        if self.owed:
+            self.s.write(bytes(self.owed))
+            self.owed = 0
+        if self.pending:
+            try:
+                self.until(b">: ", timeout=grace)
+                self.pending = False
+            except TimeoutError:
+                print("bridge: the device never finished its last command; it may need a "
+                      "restart (hold Left and Back)", file=sys.stderr)
         self.s.close()
 
 
