@@ -16,7 +16,7 @@
   <path d="M618 120 h34 m-10 -9 l10 9 l-10 9" fill="none" stroke="#d9d4f2" stroke-width="3" stroke-linecap="round"/>
   <rect x="660" y="40" width="260" height="160" rx="14" fill="#141026" stroke="#5fe38a" stroke-width="2"/>
   <text x="680" y="80" fill="#5fe38a" font-family="Helvetica, Arial, sans-serif" font-size="24" font-weight="700">The pack on SD</text>
-  <text x="680" y="118" fill="#d9d4f2" font-family="Helvetica, Arial, sans-serif" font-size="19">19.7 MiB .pkp</text>
+  <text x="680" y="118" fill="#d9d4f2" font-family="Helvetica, Arial, sans-serif" font-size="19">19.9 MiB .pkp</text>
   <text x="680" y="146" fill="#d9d4f2" font-family="Helvetica, Arial, sans-serif" font-size="19">read a record at a time</text>
   <text x="680" y="174" fill="#d9d4f2" font-family="Helvetica, Arial, sans-serif" font-size="19">2 KiB block cache</text>
   <path d="M928 120 h34 m-10 -9 l10 9 l-10 9" fill="none" stroke="#d9d4f2" stroke-width="3" stroke-linecap="round"/>

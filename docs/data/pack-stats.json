@@ -1,5 +1,5 @@
 {
- "bytes": 20705248,
+ "bytes": 20842760,
  "capabilities": {
   "apply": 1548,
   "assess": 5,
@@ -50,5 +50,14 @@
   "trainer": 1185
  },
  "relations": 37567,
- "sha256": "b2b7788af2f9b574d7ddf3ac01917b68e1d4865a9ff8a3fe7fc172ea88a85e2d"
+ "search": {
+  "bytes": 137480,
+  "keys": 6440,
+  "largest_first_letter": 1769,
+  "longest_run": 624,
+  "objects": 2241,
+  "postings": 17220,
+  "strong": 5705
+ },
+ "sha256": "82809d190c8b9425119a22c46108726ca3be0e9babc6fed0c5244703145aac44"
 }

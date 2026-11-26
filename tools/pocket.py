@@ -8,6 +8,7 @@ Pipeline: discover -> extract -> normalize -> merge -> resolve -> validate -> de
   tools/pocket.py build   [--source DIR]             extract + compile into build/packs/
   tools/pocket.py subset  --prefix P --out F [--ir F]   IR of the objects whose id starts with P
   tools/pocket.py decode  <pack> [--strings]         reference reader: canonical dump (JSON)
+  tools/pocket.py search  <pack> <query>             reference Find by name: matches, letters
   tools/pocket.py summary <answers>                  reference detection summary, e.g. OONU?
 
 Everything is driven by knowledge/sources.json: which pages, which collection is which kind,
@@ -17,6 +18,13 @@ into their pages). Sources are read with `git show <commit>:<path>` at the pinne
 the working tree of the source checkout never leaks in. The IR keeps UTF-8; the pack carries an
 ASCII fold, because the Flipper's built-in fonts render no glyph outside ASCII (measured:
 docs/evidence/fonts). The IR and the pack are build outputs, never committed.
+
+Compatibility: the header's required-feature flags are only for data an old reader would
+misread; a section an old reader can skip is added as a new optional section type, and a
+changed layout of an existing section takes new section types too, never a version bump. Both
+readers skip unknown types, so an older app opens a newer pack and simply lacks what it adds.
+Types 10 and 11 are the search index (Find by name); 12-14 are reserved for a multi-pattern
+detector; the next free type is 15.
 """
 
 import hashlib
@@ -46,11 +54,19 @@ ITEM = struct.Struct("<BBIH")  # 8 bytes
 RELATION = struct.Struct("<BBH")  # 4 bytes
 CATEGORY = struct.Struct("<IHHH")  # 10 bytes
 QUIZ = struct.Struct("<BBHHHHIHIHIHIH")  # 34 bytes
+SEARCH_KEY = struct.Struct("<10sIH")  # 16 bytes: key, first posting, posting count
+POSTING = struct.Struct("<H")  # bit 15 strong, bits 0-14 object index
 (SEC_META, SEC_STRINGS, SEC_CATEGORIES, SEC_OBJECTS, SEC_ITEMS, SEC_RELATIONS, SEC_QUIZ,
- SEC_KINDS, SEC_RELNAMES) = range(1, 10)
+ SEC_KINDS, SEC_RELNAMES, SEC_SEARCH_KEYS, SEC_SEARCH_POSTINGS) = range(1, 12)
 ENTRY_SIZE = {SEC_META: STR.size, SEC_STRINGS: 1, SEC_CATEGORIES: CATEGORY.size,
               SEC_OBJECTS: OBJECT.size, SEC_ITEMS: ITEM.size, SEC_RELATIONS: RELATION.size,
-              SEC_QUIZ: QUIZ.size, SEC_KINDS: STR.size, SEC_RELNAMES: STR.size}
+              SEC_QUIZ: QUIZ.size, SEC_KINDS: STR.size, SEC_RELNAMES: STR.size,
+              SEC_SEARCH_KEYS: SEARCH_KEY.size, SEC_SEARCH_POSTINGS: POSTING.size}
+REQUIRED = [k for k in ENTRY_SIZE if k <= SEC_RELNAMES]
+SEARCH_KEY_LEN = 10
+SEARCH_CHARS = "0123456789abcdefghijklmnopqrstuvwxyz"  # bytewise order, the keys' order
+SEARCH_STRONG = 0x8000
+SEARCH_MAX_OBJECTS = 0x7FFF  # a posting holds 15 bits of object index
 KINDS = ["pattern", "technique", "signature", "fallacy", "bias", "trait", "modality",
          "heuristic", "protocol", "countermeasure", "exercise", "algorithm", "scenario",
          "concept", "article"]
@@ -707,7 +723,57 @@ def object_items(o):
             yield ITEM_TYPES["text"], piece
 
 
-def encode(ir):
+# ---------------------------------------------------------------- search index
+
+
+def search_tokens(text):
+    """The words of a text as Find by name sees them: folded, lower case, runs of [a-z0-9]."""
+    return re.findall(r"[a-z0-9]+", fold(text).lower())
+
+
+def search_terms(o):
+    """(term, strong) pairs of one object: the title's words, the aliases' words, the code's
+    words and the code with its punctuation removed ("EA-3.2.F" -> "ea32f", any length). A word
+    needs two characters. Strong are the code's terms and the title's first word, after a leading
+    code (whose words are the code's own): typing it ranks the object first. Definitions are not
+    indexed."""
+    code = search_tokens(o.get("code", ""))
+    title = [t for t in search_tokens(o["title"]) if len(t) >= 2]
+    first = next((t for t in title if t not in code), None)
+    terms = [(t, t == first) for t in title]
+    for alias in o.get("aliases", []):
+        terms += [(t, False) for t in search_tokens(alias) if len(t) >= 2]
+    terms += [(t, True) for t in code if len(t) >= 2]
+    if code:
+        terms.append(("".join(code), True))
+    return terms
+
+
+def search_index(objects):
+    """{key: [(object index, strong), ...]} in key order: each term cut to SEARCH_KEY_LEN
+    characters, so terms that share their first ten merge into one key; an object is strong for
+    a key when any of its terms there is."""
+    index = {}
+    for i, o in enumerate(objects):
+        for term, strong in search_terms(o):
+            postings = index.setdefault(term[:SEARCH_KEY_LEN], {})
+            postings[i] = postings.get(i, False) or strong
+    return {k: sorted(index[k].items()) for k in sorted(index)}
+
+
+def search_sections(objects):
+    """The two search sections' bytes: 16-byte keys, then 2-byte postings."""
+    keys, postings = bytearray(), bytearray()
+    for key, entries in search_index(objects).items():
+        keys += SEARCH_KEY.pack(key.encode("ascii"), len(postings) // POSTING.size, len(entries))
+        for i, strong in entries:
+            postings += POSTING.pack(i | (SEARCH_STRONG if strong else 0))
+    return bytes(keys), bytes(postings)
+
+
+def encode(ir, search=True):
+    """IR -> pack bytes. `search` adds the Find by name index (sections 10 and 11), which a pack
+    of more than SEARCH_MAX_OBJECTS objects cannot carry."""
     validate(ir)
     objects = sorted(ir["objects"], key=lambda o: (o["category"], fold(o["title"]).lower(),
                                                    o["id"]))
@@ -748,6 +814,10 @@ def encode(ir):
             (SEC_RELATIONS, bytes(rels), len(rels) // RELATION.size),
             (SEC_QUIZ, quiz_bytes, len(quiz)), (SEC_KINDS, kinds, len(KINDS)),
             (SEC_RELNAMES, relnames, len(RELATIONS))]
+    if search and len(objects) <= SEARCH_MAX_OBJECTS:
+        keys, postings = search_sections(objects)
+        body += [(SEC_SEARCH_KEYS, keys, len(keys) // SEARCH_KEY.size),
+                 (SEC_SEARCH_POSTINGS, postings, len(postings) // POSTING.size)]
     offset = HEADER.size + SECTION.size * len(body)
     directory, payload, strings_at = bytearray(), bytearray(), 0
     for kind, data, count in body:
@@ -790,9 +860,11 @@ def decode(data, verify_strings=False):
             if esize != ENTRY_SIZE[kind] or length != esize * count:
                 raise PocketError(f"section {kind} malformed")
             sec[kind] = (off, length, count)
-    missing = [k for k in ENTRY_SIZE if k not in sec]
+    missing = [k for k in REQUIRED if k not in sec]
     if missing:
         raise PocketError(f"missing sections {missing}")
+    if (SEC_SEARCH_KEYS in sec) != (SEC_SEARCH_POSTINGS in sec):
+        raise PocketError("search sections must come together")
     spans = sorted((off, off + length) for off, length, _c in sec.values() if length)
     if any(spans[i][1] > spans[i + 1][0] for i in range(len(spans) - 1)):
         raise PocketError("sections overlap")
@@ -853,7 +925,65 @@ def decode(data, verify_strings=False):
                      "explanation": string(at + 22), "response": string(at + 28)})
     meta_off = sec[SEC_META][0]
     meta = {k: string(meta_off + i * STR.size) for i, k in enumerate(META_FIELDS)}
-    return {"meta": meta, "categories": cats, "objects": objects, "quiz": quiz}
+    search = decode_search(data, sec, nobjects) if SEC_SEARCH_KEYS in sec else None
+    return {"meta": meta, "categories": cats, "objects": objects, "quiz": quiz, "search": search}
+
+
+def decode_search(data, sec, nobjects):
+    """The search index, checked as the C reader checks it (pkp_search_key, pkp_posting,
+    pkp_verify_search): keys of [a-z0-9] padded with NUL, strictly ascending, each with at least
+    one posting; the postings run contiguous from the first key to the last; every object index
+    in range and ascending within its key."""
+    koff, _l, nkeys = sec[SEC_SEARCH_KEYS]
+    poff, _l, npost = sec[SEC_SEARCH_POSTINGS]
+    out, prev, at = [], b"", 0
+    for k in range(nkeys):
+        raw, first, count = SEARCH_KEY.unpack_from(data, koff + k * SEARCH_KEY.size)
+        text = raw.rstrip(b"\0")
+        if (not text or b"\0" in text or any(chr(c) not in SEARCH_CHARS for c in text)
+                or count < 1 or first + count > npost):
+            raise PocketError("search key malformed")
+        if raw <= prev or first != at:
+            raise PocketError("search keys out of order")
+        prev, at = raw, first + count
+        postings, last = [], -1
+        for j in range(first, first + count):
+            (v,) = POSTING.unpack_from(data, poff + j * POSTING.size)
+            obj = v & ~SEARCH_STRONG
+            if obj >= nobjects or obj <= last:
+                raise PocketError("search posting out of range")
+            last = obj
+            postings.append([obj, 1 if v & SEARCH_STRONG else 0])
+        out.append({"key": text.decode("ascii"), "postings": postings})
+    if at != npost:
+        raise PocketError("search keys out of order")
+    return out
+
+
+def search_query(text):
+    """A typed query as the device holds it: folded, lower case, [a-z0-9] only, ten at most."""
+    return "".join(search_tokens(text))[:SEARCH_KEY_LEN]
+
+
+def search(dump, query):
+    """Reference Find by name over a decoded pack: every object one of whose keys starts with
+    the query, strong matches first, each group in pack (Library) order; and the letters that
+    can follow the query, in bytewise order. The device computes the same (app/core/search.c)."""
+    q = search_query(query)
+    strong, weak, letters = set(), set(), set()
+    for entry in dump["search"] or []:
+        key = entry["key"]
+        if not q or not key.startswith(q):
+            if not q:
+                letters.add(key[0])
+            continue
+        if len(key) > len(q):
+            letters.add(key[len(q)])
+        for obj, s in entry["postings"]:
+            (strong if s else weak).add(obj)
+    weak -= strong
+    return {"query": q, "strong": sorted(strong), "results": sorted(strong) + sorted(weak),
+            "next": "".join(sorted(letters))}
 
 
 # ---------------------------------------------------------------- detection reference
@@ -899,7 +1029,24 @@ def pack_report(name, data):
                      "trainer": sum(q["kind"] == 2 for q in dump["quiz"])},
             "kinds": dict(sorted(by_kind.items())),
             "items": {names[k]: v for k, v in sorted(by_type.items())},
-            "capabilities": {c: sum(c in o["caps"] for o in objs) for c in CAPS}}
+            "capabilities": {c: sum(c in o["caps"] for o in objs) for c in CAPS},
+            "search": search_report(dump["search"])}
+
+
+def search_report(index):
+    """What the Find by name index holds and costs, or None for a pack without one."""
+    if index is None:
+        return None
+    runs = [len(e["postings"]) for e in index]
+    first = {}
+    for e, n in zip(index, runs):
+        first[e["key"][0]] = first.get(e["key"][0], 0) + n
+    return {"keys": len(index), "postings": sum(runs),
+            "strong": sum(s for e in index for _o, s in e["postings"]),
+            "objects": len({o for e in index for o, _s in e["postings"]}),
+            "bytes": len(index) * SEARCH_KEY.size + sum(runs) * POSTING.size,
+            "longest_run": max(runs, default=0),
+            "largest_first_letter": max(first.values(), default=0)}
 
 
 def main(argv):
@@ -909,7 +1056,7 @@ def main(argv):
     cmd, args = argv[0], argv[1:]
     flags = {a for a in args if a == "--strings"}
     rest = [a for a in args if a not in flags]
-    opts = dict(zip(rest[::2], rest[1::2])) if cmd not in ("decode", "summary") else {}
+    opts = dict(zip(rest[::2], rest[1::2])) if cmd not in ("decode", "summary", "search") else {}
     spec = json.loads(SOURCES.read_text())
     pid = spec["pack"]["id"]
     ir_default = ROOT / "build" / "packs" / f"{pid}.ir.json"
@@ -952,6 +1099,14 @@ def main(argv):
         if cmd == "decode":
             data = Path(rest[0]).read_bytes()
             sys.stdout.write(dumps(decode(data, verify_strings=bool(flags))))
+            return 0
+        if cmd == "search":
+            dump = decode(Path(rest[0]).read_bytes())
+            if dump["search"] is None:
+                raise PocketError("this pack has no search index")
+            found = search(dump, rest[1])
+            titles = [dump["objects"][i]["title"] for i in found["results"]]
+            print(json.dumps({**found, "count": len(titles), "titles": titles}, indent=1))
             return 0
         if cmd == "summary":
             print(json.dumps(summary(rest[0]), sort_keys=True))

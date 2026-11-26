@@ -86,6 +86,7 @@ Generated from the repository's history by [`tools/docs.py`](../tools/docs.py). 
 | `0fc3fd4` | 14:50 | docs(release): v0.2.0 notes say which build the device gallery shows |
 | `64de98d` | 14:55 | fix(screen): end an RPC session only after the device confirms it |
 | `7ee9310` | 15:31 | docs(evidence): device gallery recaptured on the 0.2.0 build |
+| `2307960` | 16:21 | fix(pocket): a lead-in sentence ending in ':' is not a marker or an item |
 <!-- docs:end timeline -->
 
 ## What made it fast
@@ -176,8 +177,11 @@ The pack this session produced:
 | Markers (indicators) | **4 196** |
 | Actions and escalation steps | **4 567** |
 | Chapters | **16 807** |
+| Find by name: search keys (titles, aliases, codes) | **6 440** |
+|   their postings (key to object) | **17 220** |
+|   bytes of the index on the card | **137 480** |
 
-Pack `kompendium.pkp`: 20 705 248 bytes, sha256 `b2b7788af2f9b574…`, rebuilt byte-for-byte identical by CI from the pinned source.
+Pack `kompendium.pkp`: 20 842 760 bytes, sha256 `82809d190c8b9425…`, rebuilt byte-for-byte identical by CI from the pinned source.
 <!-- docs:end pack-stats -->
 
 ## What it would have taken otherwise

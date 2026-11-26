@@ -344,8 +344,11 @@ numbers disagree with the build.
 | Markers (indicators) | **4 196** |
 | Actions and escalation steps | **4 567** |
 | Chapters | **16 807** |
+| Find by name: search keys (titles, aliases, codes) | **6 440** |
+|   their postings (key to object) | **17 220** |
+|   bytes of the index on the card | **137 480** |
 
-Pack `kompendium.pkp`: 20 705 248 bytes, sha256 `b2b7788af2f9b574…`, rebuilt byte-for-byte identical by CI from the pinned source.
+Pack `kompendium.pkp`: 20 842 760 bytes, sha256 `82809d190c8b9425…`, rebuilt byte-for-byte identical by CI from the pinned source.
 <!-- docs:end pack-stats -->
 
 <details>

@@ -617,6 +617,110 @@ class PackTest(unittest.TestCase):
             pocket.encode(ir)
 
 
+class SearchTest(unittest.TestCase):
+    """Find by name: what is indexed, how keys merge, the reference search, every refusal."""
+
+    def setUp(self):
+        self.ir = tiny_ir()
+        o = self.ir["objects"]
+        o[0].update(title="EA-3.2.F Falešné dilema", code="EA-3.2.F",
+                    aliases=["Internacionalizace", "False dilemma"])
+        o[1].update(title="Internacionalismus a dilema", code="")
+        o[2].update(title="1.1 Účel kompendia", code="")
+        o[3]["aliases"] = o[4]["aliases"] = ["aaa", "zzz"]  # first and last key, two postings
+        self.data = pocket.encode(self.ir)
+        self.dump = pocket.decode(self.data)
+
+    def test_tokens_fold_and_compact_the_code(self):
+        self.assertEqual(pocket.search_tokens("Falešné dilema – ČSN 1.2"),
+                         ["falesne", "dilema", "csn", "1", "2"])
+        terms = pocket.search_terms(self.ir["objects"][0])
+        self.assertIn(("ea32f", True), terms)  # the code without punctuation, any length
+        self.assertIn(("ea", True), terms)
+        self.assertIn(("falesne", True), terms)  # the first title word after the code
+        self.assertIn(("dilema", False), terms)
+        self.assertIn(("internacionalizace", False), terms)
+        self.assertNotIn(("f", True), terms)  # one character is not a word
+        self.assertIn(("ucel", True), pocket.search_terms(self.ir["objects"][2]))
+        self.assertEqual(pocket.search_query(" EA-3.2.F Ünď–something long"), "ea32fundso")
+
+    def test_truncated_keys_merge(self):
+        index = pocket.search_index(sorted(self.ir["objects"], key=lambda o: o["id"]))
+        self.assertNotIn("internacionalizace", index)
+        # both words cut to "internacio": one key; object 1's title word is strong there
+        self.assertEqual(index["internacio"], [(0, False), (1, True)])
+        self.assertEqual(index["dilema"], [(0, False), (1, False)])
+        self.assertEqual(list(index), sorted(index))
+
+    def test_round_trip_and_reference_search(self):
+        keys = [e["key"] for e in self.dump["search"]]
+        self.assertEqual(keys, sorted(keys))
+        titles = [o["title"] for o in self.dump["objects"]]
+        found = pocket.search(self.dump, "dil")
+        self.assertEqual(found["query"], "dil")
+        self.assertEqual(sorted(titles[i] for i in found["results"]),
+                         ["EA-3.2.F Falesne dilema", "Internacionalismus a dilema"])
+        found = pocket.search(self.dump, "inter")
+        strong = titles.index("Internacionalismus a dilema")
+        self.assertEqual(found["results"][0], strong)  # strong first
+        self.assertEqual(found["strong"], [strong])
+        self.assertEqual(found["next"], "n")
+        empty = pocket.search(self.dump, "")
+        self.assertEqual(empty["results"], [])
+        self.assertEqual(empty["next"], "".join(sorted({k[0] for k in keys})))
+        self.assertEqual(pocket.search(self.dump, "qqq")["results"], [])
+        self.assertEqual(pocket.search(self.dump, "ea32f")["next"], "")
+        self.assertEqual(pocket.search({"search": None}, "a")["results"], [])
+
+    def test_report(self):
+        report = pocket.pack_report("t.pkp", self.data)["search"]
+        self.assertEqual(report["keys"], len(self.dump["search"]))
+        self.assertEqual(report["bytes"], 16 * report["keys"] + 2 * report["postings"])
+        self.assertEqual(report["objects"], 5)
+        self.assertGreater(report["strong"], 0)
+        self.assertGreaterEqual(report["largest_first_letter"], report["longest_run"])
+        self.assertIsNone(pocket.search_report(None))
+        self.assertEqual(pocket.search_report([])["longest_run"], 0)
+
+    def test_without_an_index(self):
+        plain = pocket.encode(self.ir, search=False)
+        self.assertIsNone(pocket.decode(plain)["search"])
+        with mock.patch.object(pocket, "SEARCH_MAX_OBJECTS", 4):
+            self.assertIsNone(pocket.decode(pocket.encode(self.ir))["search"])
+        self.assertIsNone(pocket.pack_report("t.pkp", plain)["search"])
+        # an old reader's view: the same dump, less the index
+        self.assertEqual({**pocket.decode(plain), "search": self.dump["search"]}, self.dump)
+
+    def bad(self, mutate, msg):
+        d = bytearray(self.data)
+        mutate(d)
+        reseal(d)
+        with self.assertRaisesRegex(pocket.PocketError, msg):
+            pocket.decode(bytes(d))
+
+    def test_rejections(self):
+        koff = struct.unpack_from("<I", self.data, section(self.data, 10) + 4)[0]
+        poff = struct.unpack_from("<I", self.data, section(self.data, 11) + 4)[0]
+        nkeys = struct.unpack_from("<I", self.data, section(self.data, 10) + 12)[0]
+        last = koff + 16 * (nkeys - 1)
+        self.bad(lambda d: struct.pack_into("<H", d, section(d, 11), 99), "together")
+        self.bad(lambda d: struct.pack_into("<H", d, section(d, 10), 99), "together")
+        self.bad(lambda d: d.__setitem__(koff, ord("A")), "key malformed")  # charset
+        self.bad(lambda d: d.__setitem__(slice(koff, koff + 10), b"\0" * 10), "key malformed")
+        self.bad(lambda d: d.__setitem__(slice(koff, koff + 3), b"a\0b"), "key malformed")
+        self.bad(lambda d: struct.pack_into("<H", d, koff + 14, 0), "key malformed")  # count 0
+        self.bad(lambda d: struct.pack_into("<H", d, last + 14, 999), "key malformed")
+        self.bad(lambda d: d.__setitem__(slice(koff + 16, koff + 32), d[koff:koff + 16]),
+                 "out of order")  # not strictly ascending
+        self.bad(lambda d: struct.pack_into("<I", d, koff + 10, 1), "out of order")  # a gap
+        self.bad(lambda d: struct.pack_into("<H", d, last + 14,
+                                            struct.unpack_from("<H", d, last + 14)[0] - 1),
+                 "out of order")  # a posting no key covers
+        self.bad(lambda d: struct.pack_into("<H", d, poff, 0x7FFF), "posting out of range")
+        self.bad(lambda d: d.__setitem__(slice(poff + 2, poff + 4), d[poff:poff + 2]),
+                 "posting out of range")  # the first key's two postings, one object twice
+
+
 class CliTest(Fixture):
     def test_extract_reports_rejections(self):
         rc, out, err = quiet(pocket.main, ["extract", "--source", str(self.src)])
@@ -664,6 +768,16 @@ class CliBuildTest(Fixture):
         rc, out, _ = quiet(pocket.main, ["decode", str(out_pack), "--strings"])
         self.assertEqual(rc, 0)
         self.assertIn('"objects"', out)
+        rc, out, _ = quiet(pocket.main, ["search", str(out_pack), "Fal"])
+        self.assertEqual(rc, 0)
+        found = json.loads(out)
+        self.assertEqual(found["count"], len(found["titles"]))
+        self.assertTrue(found["titles"])
+        plain = Path(self.tmp.name) / "plain.pkp"
+        plain.write_bytes(pocket.encode(json.loads(sub.read_text()), search=False))
+        rc, _, err = quiet(pocket.main, ["search", str(plain), "a"])
+        self.assertEqual(rc, 1)
+        self.assertIn("no search index", err)
         rc, out, _ = quiet(pocket.main, ["summary", "OUN"])
         self.assertEqual(json.loads(out)["unknown"], 1)
 

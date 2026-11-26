@@ -54,6 +54,10 @@ def pack_stats():
         ("Actions and escalation steps", s["items"]["actions"] + s["items"]["escalation"]),
         ("Chapters", s["items"]["heading"]),
     ]
+    if s.get("search"):
+        rows += [("Find by name: search keys (titles, aliases, codes)", s["search"]["keys"]),
+                 ("  their postings (key to object)", s["search"]["postings"]),
+                 ("  bytes of the index on the card", s["search"]["bytes"])]
     out = ["| | |", "|---|---:|"]
     out += [f"| {label} | **{fmt(value)}** |" for label, value in rows]
     out.append("")

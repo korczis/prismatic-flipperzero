@@ -100,6 +100,10 @@ class DocsTest(unittest.TestCase):
         stats = docs.pack_stats()
         self.assertIn("| Knowledge objects | **3** |", stats)
         self.assertIn("| Quiz questions | **3** |", stats)
+        self.assertNotIn("search keys", stats)  # a pack without the index
+        report = dict(REPORT, search={"keys": 4, "postings": 9, "bytes": 82})
+        (self.root / "docs" / "data" / "pack-stats.json").write_text(json.dumps(report))
+        self.assertIn("|   bytes of the index on the card | **82** |", docs.pack_stats())
         kinds = docs.pack_kinds()
         self.assertLess(kinds.index("technique"), kinds.index("concept"))
         self.assertIn("66.7 %", kinds)
