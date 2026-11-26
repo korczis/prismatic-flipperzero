@@ -38,7 +38,7 @@ CHUNK = 512
 MD5_TIMEOUT = 600.0
 
 # PB.Main content fields (flipper.proto) and their payload fields (storage.proto, system.proto).
-LIST_REQ, LIST_RESP, READ_REQ, READ_RESP, WRITE_REQ = 7, 8, 9, 10, 11
+PING_REQ, LIST_REQ, LIST_RESP, READ_REQ, READ_RESP, WRITE_REQ = 5, 7, 8, 9, 10, 11
 DELETE_REQ, MKDIR_REQ, MD5_REQ, MD5_RESP = 12, 13, 14, 15
 LOCK_REQ, LOCK_RESP, STAT_REQ, STAT_RESP = 17, 18, 24, 25
 INFO_REQ, INFO_RESP, RENAME_REQ, DEVINFO_REQ, DEVINFO_RESP = 28, 29, 30, 32, 33
@@ -73,8 +73,17 @@ def text(num, value):
 class Device:
     """One RPC session: every request waits for its own responses, has_next included."""
 
-    def __init__(self, port):
+    def __init__(self, port, tries=5):
         self.rpc = fs.Rpc(port)
+        # The device can drop the first request after start_rpc_session (measured on 1.5.1: an
+        # MD5 request sent first went unanswered for ten minutes). Ping until one is answered.
+        for _ in range(tries):
+            try:
+                self.request(PING_REQ, timeout=1.0)
+                return
+            except TimeoutError:
+                continue
+        raise BridgeError("the device opened an RPC session but answers no ping")
 
     def close(self):
         self.rpc.s.write(fs.main_msg(self.rpc.cid + 1, 19, b""))  # StopSession: back to the CLI

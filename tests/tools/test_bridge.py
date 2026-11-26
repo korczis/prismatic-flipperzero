@@ -40,10 +40,11 @@ class FakeDevice:
     files = {}
     dirs = set()
     locked = False
-    mode = ""  # "bad-md5", "bad-rename", "refuse-write", "refuse-info"
+    mode = ""  # "bad-md5", "bad-rename", "refuse-write", "refuse-info", "drop-first", "mute"
 
     def __init__(self, port, baud, timeout):
         self.out, self.rx, self.rpc, self.writes, self.closed = bytearray(), b"", False, {}, False
+        self.dropped = False
 
     @property
     def in_waiting(self):
@@ -84,8 +85,13 @@ class FakeDevice:
         cid, more = bridge.one(m, 1, 0), bridge.one(m, 3, 0)
         arg = {k: bridge.fields(v[0]) for k, v in m.items() if k > 3}
         path = lambda a, n=1: bridge.one(a, n, b"").decode()  # noqa: E731
+        if self.mode == "mute" or (self.mode == "drop-first" and not self.dropped):
+            self.dropped = True  # the first request after start_rpc_session, lost
+            return
         self.reply(cid + 1000)  # a stray answer to some other command, which must be skipped
-        if bridge.DEVINFO_REQ in arg:
+        if bridge.PING_REQ in arg:
+            self.reply(cid, 6, b"")
+        elif bridge.DEVINFO_REQ in arg:
             pairs = [("hardware_name", "Iruqli"), ("firmware_version", "1.5.1"), ("", "")]
             for k, (key, val) in enumerate(pairs):
                 self.reply(cid, bridge.DEVINFO_RESP, text(1, key) + text(2, val),
@@ -289,6 +295,17 @@ class DeviceTest(unittest.TestCase):
         self.assertEqual(FakeDevice.files["/ext/zero"], b"")
         dev.close()
         self.assertTrue(dev.rpc.s.closed)
+
+    def test_a_lost_first_request_is_retried_by_ping(self):
+        with mock.patch.dict(sys.modules, {"serial": types.SimpleNamespace(Serial=FakeDevice)}):
+            FakeDevice.mode = "drop-first"
+            dev = bridge.Device("/dev/fake")
+            self.assertTrue(dev.rpc.s.dropped)
+            self.assertEqual(dev.device_info()["firmware_version"], "1.5.1")
+            FakeDevice.mode = "mute"
+            with self.assertRaises(bridge.BridgeError):
+                bridge.Device("/dev/fake", tries=1)
+        FakeDevice.mode = ""
 
 
 class DecodeTest(unittest.TestCase):

@@ -87,6 +87,7 @@ generated code and no dependency beyond pyserial.
 
 | Request (`PB.Main` field) | Response | Used for |
 |---|---|---|
+| `system_ping_request` (5) | `system_ping_response` (6) | the session is ready |
 | `system_device_info_request` (32) | `system_device_info_response` (33), one key per message | hardware name, firmware version |
 | `storage_info_request` (28) | `storage_info_response` (29) | card space |
 | `storage_list_request` (7) | `storage_list_response` (8) | the app's files and sizes; is the FAP installed |
@@ -96,6 +97,10 @@ generated code and no dependency beyond pyserial.
 | `storage_mkdir_request` (13), `storage_delete_request` (12), `storage_rename_request` (30) | status | `push-pack` |
 | `app_lock_status_request` (17) | `app_lock_status_response` (18) | refusing to push while an app runs |
 | `stop_session` (19) | none | back to the CLI |
+
+A session starts with `system_ping_request` (5), repeated until one is answered: on 1.5.1 the
+first request after `start_rpc_session` can be lost, and an MD5 request sent first went
+unanswered for ten minutes while the same request after a ping answered at once.
 
 Each request has its own `command_id`; a response with `has_next` set is followed by more under
 the same id, and a message with another id is skipped. A status other than OK is an error,
@@ -123,10 +128,19 @@ against packs, sessions and progress images built in the test, including torn li
 an unknown version and the two-copy rule. The tools coverage gate requires every line of
 `bridge.py` to run.
 
-On the device (official 1.5.1), device info, card space and the folder listing answered as
-specified. Hashing the 20 MB pack on the device took longer than two minutes, which is why
-`status` hashes only with `--md5` and a push waits up to ten minutes for the hash; during that
-first long hash the Flipper dropped off USB and did not come back while it was observed, so the
-full device run (`status --md5`, `push-pack`, `pull`) is still to be recorded. It goes under
-`docs/evidence/bridge/` with the firmware, the commands and their results, as counts and hashes
-only: what the reader saved stays on the reader's side.
+On the device (official 1.5.1, 2026-11-26):
+
+- `status` and `status --md5` work: the device hashed the 20 MB pack in 50.4 s over RPC (the CLI's
+  `storage md5` took 50.3 s) and the hash matched the local pack.
+- A push of the 20 MB pack sent every part (4 min 47 s) but the write's final status did not
+  arrive within the 60 s the bridge then waited; the bridge ended the session, and the Flipper
+  dropped off USB. The installed pack was not touched: the failure came before the rename.
+- The first incident had the same shape: an MD5 request that the bridge stopped waiting for after
+  120 s, the session ended, the Flipper gone from USB. Ending an RPC session while the device is
+  still inside a long storage request is what both have in common; the bridge must not do it.
+
+So `push-pack` is not yet proven on the device, and the evidence for it is not recorded. What
+remains: wait for the write's status as long as the device needs (or move the transfer to the
+storage CLI, which `just deploy-pack` uses for the same pack without trouble), run `push-pack` and
+`pull`, and record the run under `docs/evidence/bridge/` as counts and hashes only: what the
+reader saved stays on the reader's side.
