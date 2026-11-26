@@ -314,6 +314,10 @@ class ExtractTest(Fixture):
     def test_markdown_helpers(self):
         self.assertEqual(pocket.plain("**a** [b](x) `c` *d*"), "a b c d")
         self.assertEqual(pocket.items_of("Jen odstavec.\n\nDruhý."), ["Jen odstavec.", "Druhý."])
+        # a lead-in that introduces the next paragraph is not an item; a lone one stays
+        self.assertEqual(pocket.items_of("Indikována v kontextech:\n\nKult, vztah."),
+                         ["Kult, vztah."])
+        self.assertEqual(pocket.items_of("Jen úvod:"), ["Jen úvod:"])
         long = "Slovo " * 400
         pieces = pocket.chunks(long.strip(), 100)
         self.assertTrue(all(len(p) <= 100 for p in pieces))

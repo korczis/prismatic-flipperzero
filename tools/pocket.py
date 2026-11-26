@@ -169,10 +169,17 @@ def blocks(md):
 
 
 def items_of(md):
-    """List items of a role section: bullets and table rows when present, else paragraphs."""
+    """List items of a role section: bullets and table rows when present, else paragraphs.
+
+    A paragraph that ends in ':' and is followed by another introduces what follows ("Technika
+    je primarne indikovana v nasledujicich klinickych kontextech:"); it is a lead-in, not an
+    item, so a detector never asks it as a marker."""
     bl = blocks(md)
     listed = [t for k, t in bl if k in ("bullet", "row")]
-    return listed or [t for k, t in bl if k == "para"]
+    if listed:
+        return listed
+    paras = [t for k, t in bl if k == "para"]
+    return [t for i, t in enumerate(paras) if not (t.rstrip().endswith(":") and i < len(paras) - 1)]
 
 
 def chunks(text, size=CHUNK):

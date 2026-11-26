@@ -85,6 +85,7 @@ Generated from the repository's history by [`tools/docs.py`](../tools/docs.py). 
 | `1a6f1d5` | 14:46 | docs(evidence): parity 24 of 24 on the 0.2.0 build |
 | `0fc3fd4` | 14:50 | docs(release): v0.2.0 notes say which build the device gallery shows |
 | `64de98d` | 14:55 | fix(screen): end an RPC session only after the device confirms it |
+| `7ee9310` | 15:31 | docs(evidence): device gallery recaptured on the 0.2.0 build |
 <!-- docs:end timeline -->
 
 ## What made it fast
@@ -172,11 +173,11 @@ The pack this session produced:
 | Quiz questions | **2 856** |
 |   of which: recognise the term from its definition | **1 671** |
 |   of which: manipulative or benign? (catalogue examples) | **1 185** |
-| Markers (indicators) | **4 246** |
+| Markers (indicators) | **4 196** |
 | Actions and escalation steps | **4 567** |
 | Chapters | **16 807** |
 
-Pack `kompendium.pkp`: 20 706 184 bytes, sha256 `641489c56b6748d0…`, rebuilt byte-for-byte identical by CI from the pinned source.
+Pack `kompendium.pkp`: 20 705 248 bytes, sha256 `b2b7788af2f9b574…`, rebuilt byte-for-byte identical by CI from the pinned source.
 <!-- docs:end pack-stats -->
 
 ## What it would have taken otherwise

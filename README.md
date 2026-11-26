@@ -341,11 +341,11 @@ numbers disagree with the build.
 | Quiz questions | **2 856** |
 |   of which: recognise the term from its definition | **1 671** |
 |   of which: manipulative or benign? (catalogue examples) | **1 185** |
-| Markers (indicators) | **4 246** |
+| Markers (indicators) | **4 196** |
 | Actions and escalation steps | **4 567** |
 | Chapters | **16 807** |
 
-Pack `kompendium.pkp`: 20 706 184 bytes, sha256 `641489c56b6748d0…`, rebuilt byte-for-byte identical by CI from the pinned source.
+Pack `kompendium.pkp`: 20 705 248 bytes, sha256 `b2b7788af2f9b574…`, rebuilt byte-for-byte identical by CI from the pinned source.
 <!-- docs:end pack-stats -->
 
 <details>

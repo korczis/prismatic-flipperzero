@@ -1,5 +1,5 @@
 {
- "bytes": 20706184,
+ "bytes": 20705248,
  "capabilities": {
   "apply": 1548,
   "assess": 5,
@@ -13,12 +13,12 @@
  "categories": 66,
  "items": {
   "actions": 4087,
-  "alternatives": 3842,
+  "alternatives": 3792,
   "axis": 6,
   "calc": 1,
   "escalation": 480,
   "heading": 16807,
-  "indicators": 4246,
+  "indicators": 4196,
   "level": 40,
   "score_band": 10,
   "score_choice": 26,
@@ -50,5 +50,5 @@
   "trainer": 1185
  },
  "relations": 37567,
- "sha256": "641489c56b6748d0f7fd752bd123390b64bcf658bbdc51ef62ca59943a29f58a"
+ "sha256": "b2b7788af2f9b574d7ddf3ac01917b68e1d4865a9ff8a3fe7fc172ea88a85e2d"
 }
