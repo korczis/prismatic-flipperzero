@@ -70,6 +70,7 @@ Generated from the repository's history by [`tools/docs.py`](../tools/docs.py). 
 | `7fc8536` | 14:42 | feat(ui): live tools on the device: steppers change values in real time |
 | `169ba75` | 14:47 | feat(calculate): one stepper adds a source; the calculator fits one screen |
 | `0ff2236` | 14:57 | docs(evidence): device parity recorded with the live tools build |
+| `dfcbdc8` | 12:16 | chore(release): 0.1.0 Pocket: version, changelog, release notes, security scope |
 <!-- docs:end timeline -->
 
 ## What made it fast
