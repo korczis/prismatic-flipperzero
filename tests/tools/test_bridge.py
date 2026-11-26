@@ -4,6 +4,7 @@ import hashlib
 import io
 import json
 import re
+import shlex
 import struct
 import sys
 import tempfile
@@ -89,6 +90,10 @@ class FakeDevice:
                 self.target, self.expect = m.group(1).decode(), int(m.group(2))
                 self.out += b"Ready\r\n"
                 return
+            if data.startswith((b"storage ", b"loader ")):
+                self.out += data + b"\n"  # the CLI echoes the command line
+                self.out += self.cli(shlex.split(data.decode().strip())) + b"\r\n>: "
+                return
             if data == b"\x03\r":
                 self.out += b"\r\n>: "
             elif data == b"start_rpc_session\r":
@@ -100,6 +105,36 @@ class FakeDevice:
             ln, i = fs.read_varint(self.rx, 0)
             msg, self.rx = self.rx[i: i + ln], self.rx[i + ln:]
             self.handle(bridge.fields(msg))
+
+    def cli(self, argv):
+        """The storage and loader commands push-pack uses, with the firmware's error texts."""
+        part = any(p.endswith(".part") for p in self.files)
+        if argv[:2] == ["loader", "info"]:
+            running = self.locked or (self.mode == "lock-later" and part)
+            if running:
+                return b'Application "Prismatic" is running'
+            return b"No application is running"
+        verb, path = argv[1], argv[2]
+        missing = b"Storage error: file/dir not exist"
+        if verb == "md5":
+            if path not in self.files:
+                return missing
+            digest = hashlib.md5(self.files[path]).hexdigest()
+            if self.mode == "bad-md5" and path.endswith(".part"):
+                digest = "0" * 32
+            return digest.encode()
+        if verb == "remove":
+            return b"" if self.files.pop(path, None) is not None else missing
+        if verb == "mkdir":
+            if path in self.dirs:
+                return b"Storage error: file/dir already exist"
+            self.dirs.add(path)
+            return b""
+        if self.mode == "refuse-rename":  # rename
+            return b"Storage error: access denied"
+        data = self.files.pop(path)
+        self.files[argv[3]] = data + (b"!" if self.mode == "bad-rename" else b"")
+        return b""
 
     def handle(self, m):
         cid, more = bridge.one(m, 1, 0), bridge.one(m, 3, 0)
@@ -150,24 +185,6 @@ class FakeDevice:
             for k, part in enumerate(parts):
                 self.reply(cid, bridge.READ_RESP, F(1, 2, file_msg("x", len(part), part)),
                            has_next=k < len(parts) - 1)
-        elif bridge.DELETE_REQ in arg:
-            p = path(arg[bridge.DELETE_REQ])
-            if self.files.pop(p, None) is None:
-                return self.reply(cid, status=bridge.STORAGE_NOT_EXIST)
-            self.reply(cid)
-        elif bridge.MKDIR_REQ in arg:
-            d = path(arg[bridge.MKDIR_REQ])
-            if d in self.dirs:
-                return self.reply(cid, status=bridge.STORAGE_EXIST)
-            self.dirs.add(d)
-            self.reply(cid)
-        elif bridge.RENAME_REQ in arg:
-            a = arg[bridge.RENAME_REQ]
-            if self.mode == "refuse-rename":
-                return self.reply(cid, status=9)
-            data = self.files.pop(path(a))
-            self.files[path(a, 2)] = data + (b"!" if self.mode == "bad-rename" else b"")
-            self.reply(cid)
         elif 19 in m:
             self.rpc = False
             type(self).stops = getattr(type(self), "stops", 0) + 1
@@ -362,10 +379,12 @@ class DeviceTest(unittest.TestCase):
         data = bytes(range(256)) * 70  # three chunks, the last one short
         seen = []
         with mock.patch.dict(sys.modules, {"serial": types.SimpleNamespace(Serial=FakeDevice)}):
-            bridge.send_file("/dev/fake", "/ext/f.part", data, lambda d, n: seen.append(d))
+            cli = bridge.Cli("/dev/fake")
+            for at in range(0, len(data), bridge.CHUNK):
+                cli.write_chunk("/ext/f.part", data[at: at + bridge.CHUNK])
+                seen.append(len(FakeDevice.files["/ext/f.part"]))
             self.assertEqual(FakeDevice.files["/ext/f.part"], data)
             self.assertEqual(seen, [8192, 16384, len(data)])
-            cli = bridge.Cli("/dev/fake")
             with self.assertRaises(TimeoutError):
                 cli.until(b"never", timeout=0.2)
             cli.close()

@@ -74,6 +74,7 @@ Generated from the repository's history by [`tools/docs.py`](../tools/docs.py). 
 | `7f2bc73` | 12:19 | docs(evidence): parity 24 of 24 and device gallery recaptured on 0.1.0 |
 | `005e714` | 12:39 | feat(bridge): host bridge over the Flipper's own RPC |
 | `29db801` | 13:20 | fix(bridge): ping until the RPC session answers; record the device run |
+| `b33816e` | 13:39 | fix(bridge): push-pack over acknowledged CLI chunks; never end a busy session |
 <!-- docs:end timeline -->
 
 ## What made it fast

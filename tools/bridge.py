@@ -45,10 +45,10 @@ MD5_TIMEOUT = 600.0
 
 # PB.Main content fields (flipper.proto) and their payload fields (storage.proto, system.proto).
 PING_REQ, LIST_REQ, LIST_RESP, READ_REQ, READ_RESP = 5, 7, 8, 9, 10
-DELETE_REQ, MKDIR_REQ, MD5_REQ, MD5_RESP = 12, 13, 14, 15
+MD5_REQ, MD5_RESP = 14, 15
 LOCK_REQ, LOCK_RESP, STAT_REQ, STAT_RESP = 17, 18, 24, 25
-INFO_REQ, INFO_RESP, RENAME_REQ, DEVINFO_REQ, DEVINFO_RESP = 28, 29, 30, 32, 33
-OK, STORAGE_EXIST, STORAGE_NOT_EXIST = 0, 6, 7
+INFO_REQ, INFO_RESP, DEVINFO_REQ, DEVINFO_RESP = 28, 29, 32, 33
+OK, STORAGE_NOT_EXIST = 0, 7
 FILE_TYPE, FILE_NAME, FILE_SIZE, FILE_DATA = 1, 2, 3, 4
 
 MARKS = {"O": "observed", "N": "not_observed", "U": "unknown", "A": "not_applicable",
@@ -190,19 +190,13 @@ class Device:
             data += one(f, FILE_DATA, b"")
         return data
 
-    def mkdir(self, path):
-        self.request(MKDIR_REQ, text(1, path), allow=(OK, STORAGE_EXIST))
-
-    def delete(self, path):
-        self.request(DELETE_REQ, text(1, path), allow=(OK, STORAGE_NOT_EXIST))
-
-    def rename(self, old, new):
-        self.request(RENAME_REQ, text(1, old) + text(2, new))
-
 
 class Cli:
-    """The device's text CLI, for the one thing it does better than RPC: an appending write
-    whose every chunk is acknowledged."""
+    """The device's text CLI, which installs packs: an appending write whose every chunk is
+    acknowledged, and the storage and loader commands around it, all in one session.
+
+    Measured on 1.5.1: switching from an RPC session to the CLI by reopening the port left the
+    device deaf to both until a restart, so an install never mixes the two."""
 
     def __init__(self, port):
         import serial  # deferred: only the device path needs pyserial
@@ -242,18 +236,30 @@ class Cli:
             detail = after[after.index(b"Storage error"):].split(b"\r")[0]
             raise BridgeError(f"{path}: {detail.decode('ascii', 'replace')}")
 
+    def command(self, line, timeout=CHUNK_TIMEOUT):
+        """One command; its output without the echo and the prompt."""
+        self.until(b"\n", send=line.encode("ascii") + b"\r")  # the echoed command line
+        return self.until(b">: ", timeout=timeout)[:-3].decode("ascii", "replace").strip()
+
+    def storage(self, verb, *paths, accept=(), timeout=CHUNK_TIMEOUT):
+        """`storage <verb> "<path>"...`; None when the error is one of `accept`."""
+        out = self.command(f"storage {verb} " + " ".join(f'"{p}"' for p in paths), timeout)
+        if "Storage error" not in out:
+            return out
+        detail = out[out.index("Storage error"):].splitlines()[0]
+        if any(a in detail for a in accept):
+            return None
+        raise BridgeError(f"storage {verb} {paths[0]}: {detail}")
+
+    def md5(self, path):
+        out = self.storage("md5", path, accept=("not exist",), timeout=MD5_TIMEOUT)
+        return out.split()[-1] if out else None
+
+    def app_running(self):
+        return "No application" not in self.command("loader info")
+
     def close(self):
         self.s.close()
-
-
-def send_file(port, path, data, progress):
-    cli = Cli(port)
-    try:
-        for at in range(0, len(data), CHUNK):
-            cli.write_chunk(path, data[at: at + CHUNK])
-            progress(min(at + CHUNK, len(data)), len(data))
-    finally:
-        cli.close()
 
 
 def md5_of(data):
@@ -315,8 +321,7 @@ def progress_line(done, total):
 
 
 def cmd_push_pack(args):
-    """RPC to check and prepare, the CLI to write, RPC to verify and swap: three sessions, none
-    ended while the device is still answering."""
+    """One CLI session: check, write the part chunk by acknowledged chunk, verify, swap."""
     pack = Path(args.pack)
     if not re.fullmatch(r"[A-Za-z0-9._-]+\.pkp", pack.name):
         raise BridgeError(f"{pack.name}: a pack is a .pkp named with letters, digits, . _ - only")
@@ -324,38 +329,36 @@ def cmd_push_pack(args):
     pocket.decode(data)  # never install a pack the reader would refuse
     local = md5_of(data)
     target, tmp = f"{APP_DIR}/{pack.name}", f"{APP_DIR}/{pack.name}.part"
-    dev = connect(args)
+    cli = Cli(args.port or fs.find_port())
     try:
-        if dev.locked():
+        if cli.app_running():
             raise BridgeError("an application is running on the Flipper; close it first")
-        if not args.force and dev.md5(target) == local:
+        if not args.force and cli.md5(target) == local:
             print(f"{target}: already current (md5 {local})")
             return 0
-        dev.mkdir(APP_DIR)
-        dev.delete(tmp)  # write_chunk appends: a leftover part must go first
-    finally:
-        dev.close()
-    send_file(args.port, tmp, data, progress_line)
-    print(file=sys.stderr)
-    dev = Device(args.port)
-    try:
-        got = dev.md5(tmp)
+        cli.storage("mkdir", APP_DIR, accept=("already exist",))
+        cli.storage("remove", tmp, accept=("not exist",))  # write_chunk appends
+        for at in range(0, len(data), CHUNK):
+            cli.write_chunk(tmp, data[at: at + CHUNK])
+            progress_line(min(at + CHUNK, len(data)), len(data))
+        print(file=sys.stderr)
+        got = cli.md5(tmp)
         if got != local:
-            dev.delete(tmp)
+            cli.storage("remove", tmp, accept=("not exist",))
             raise BridgeError(f"md5 after the write is {got}, expected {local}; nothing replaced")
-        if dev.locked():
+        if cli.app_running():
             raise BridgeError(f"an application started during the upload; nothing replaced, the "
                               f"verified pack waits as {tmp}")
-        dev.delete(target)
+        cli.storage("remove", target, accept=("not exist",))
         try:
-            dev.rename(tmp, target)
+            cli.storage("rename", tmp, target)
         except BridgeError as e:
             raise BridgeError(f"{e}; the old pack is gone and the verified pack is {tmp}: "
                               f"rename it to {pack.name}, or run push-pack again") from e
-        if dev.md5(target) != local:
+        if cli.md5(target) != local:
             raise BridgeError(f"{target}: md5 differs after the rename")
     finally:
-        dev.close()
+        cli.close()
     print(f"{target}: installed, {len(data)} bytes, md5 {local}")
     return 0
 
