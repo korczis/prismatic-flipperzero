@@ -10,6 +10,7 @@
  * starts with no pack; "!<path>" opens a pack whose open fails, to show the error path.
  * The steps "eject" and "insert" make every later pack read fail or work again: an SD card
  * pulled while the app runs. "tickN" passes N idle ticks of 250 ms (the label marquee).
+ * stderr gets each step's card reads ("step NN key: R card reads") and the totals at the end.
  */
 #define _POSIX_C_SOURCE 200809L /* strdup, strtok on glibc under -std=c11 */
 #include "../../app/ui/ui_app.h"
@@ -135,7 +136,11 @@ static void heap(void* ctx, uint32_t* free_b, uint32_t* largest) {
 }
 
 static void frame(UiApp* app, Canvas* canvas, const char* dir, int n, const char* name) {
+    static unsigned long reads_before;
     char path[512], lines[16][64];
+    /* what this step cost the card, for tools/cache-bench.sh */
+    fprintf(stderr, "step %02d %s: %lu card reads\n", n, name, file_reads - reads_before);
+    reads_before = file_reads;
     ui_app_draw(app, canvas);
     snprintf(path, sizeof(path), "%s/%02d-%s.bin", dir, n, name);
     FILE* out = fopen(path, "wb");

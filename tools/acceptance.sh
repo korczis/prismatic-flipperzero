@@ -53,7 +53,7 @@ cat = pack["objects"][index]["category"]
 first = min(i for i, o in enumerate(pack["objects"]) if o["category"] == cat)
 row, page = (index - first) % 40, (index - first) // 40
 quiz = next(q for q in pack["quiz"] if q["kind"] == 1 and q["options"][q["answer"]] == index)
-keys = ["ok", "ok"] + ["down"] * cat + ["ok"]          # Library, By chapter, its chapter
+keys = ["ok", "down", "ok"] + ["down"] * cat + ["ok"]  # Library, By chapter, its chapter
 keys += ["up", "ok"] * page                           # "Next page >" is the last row
 keys += ["down"] * (row + (1 if page else 0)) + ["ok"]  # past "< Previous page" on later pages
 keys += ["down", "ok", "right", "right", "left"]      # the detect chip; Yes, Yes, No

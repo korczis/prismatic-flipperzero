@@ -18,10 +18,11 @@ so an entry with nothing behind it disappears. This tree is generated from that 
 flowchart LR
   home(["Home"])
   home --> h0["Library"]
-  h0 --> h0e0["By chapter<br/><small>Chapters in book order</small>"]
-  h0 --> h0e1["By kind<br/><small>One list per kind</small>"]
-  h0 --> h0e2["Everything<br/><small>All, in pack order</small>"]
-  h0 --> h0e3["Surprise me<br/><small>A random article</small>"]
+  h0 --> h0e0["Find by name<br/><small>Type it a letter at a time</small>"]
+  h0 --> h0e1["By chapter<br/><small>Chapters in book order</small>"]
+  h0 --> h0e2["By kind<br/><small>One list per kind</small>"]
+  h0 --> h0e3["Everything<br/><small>All, in pack order</small>"]
+  h0 --> h0e4["Surprise me<br/><small>A random article</small>"]
   home --> h1["Detect"]
   h1 --> h1e0["Detectors<br/><small>Objects with markers</small>"]
   h1 --> h1e1["Random detector<br/><small>Markers of a random one</small>"]
@@ -137,6 +138,31 @@ and read it with any JSON Lines tool. Info lists the sessions newest first and d
 behind a confirmation. A line torn off by a lost write is skipped, and the next save starts on a
 new line so it is not lost with it.
 
+### Find by name
+
+**Library > Find by name** types a name a letter at a time on a wheel of its own, not the
+firmware's on-screen keyboard (that needs a view dispatcher and would not run in the simulator,
+the atlas or the parity test). The query sits left in bold with a cursor; the wheel sits right,
+five letters with the current one inverted. **Up/Down** turn the wheel, **Right** adds its letter,
+**Left** deletes one and **holding Left** deletes all, **OK** lists every match, **Back** leaves.
+The header counts the matches and the body shows the best three.
+
+The wheel offers only letters that some indexed word continues with, so a query can never reach
+zero matches and no letter is typed in vain. A word matches when it *starts with* the query:
+words of the title and of the aliases, the code's words and the code without its punctuation
+(`EA-3.2.F` is also `ea32f`), folded to ASCII and cut to ten characters; definitions are not
+searched. Matches whose title starts with the word (after a leading code) or whose code matches
+are listed first, each group in book order. The [online explorer](https://korczis.github.io/prismatic-flipperzero/)
+searches differently: it finds the query *anywhere* in a title, code or alias, as a browser can
+afford to.
+
+What a step costs the SD card is measured in the simulator over the real pack
+([the cache, measured](../README.md#the-cache-measured)): opening Find checks the whole index
+once per pack, a first letter reads a few dozen 256-byte blocks, a third letter a handful, and
+turning the wheel reads nothing. No time on the device is claimed. A pack without the index (an
+older compiler's) or with more than 4 096 objects says so on the Find screen, and Info shows the
+index's size and its check.
+
 ## Typography
 
 There are three roles, all from one family:
@@ -226,6 +252,9 @@ The table below is read from the engine's `#define`s by `tools/docs.py`. Do not 
 | Back | one step back, restoring the scroll and the focused row | same | same |
 | Hold OK | context menu (Back or holding OK again closes it) | context menu | the softkey's long action |
 
+On Find the keys turn the letter wheel instead (Up/Down a letter, Right add, Left delete, hold
+Left clear, OK the matches); Back and holding Back work as everywhere.
+
 On the map, a direction focuses the neighbour on that side. The same direction again shows the
 next four neighbours, and the opposite direction returns to the centre. OK on a neighbour
 re-centres the map there, so you can walk the book's links. Holding OK opens the neighbour's
@@ -277,6 +306,24 @@ reviewer, and each finding is recorded here with what was done.
 
 The same pass found two defects by eye: the detector legend fell back to bare numbers (fixed
 by a tighter swatch spacing), and the Info tile's caption was cut (now `device`).
+
+### 2026-11-26: Find by name, self-review (no independent reviewer)
+
+The new frames (`find-empty`, `find-typed`, `find-results`) and the two that changed
+(`hub-library`, which gained the first row, and `info-cache`, which gained the index check) were
+reviewed by the implementing agent against the rendered frames and their captions. No second
+model or peer reviewed them; that review is still owed. Every other frame of the atlas rendered
+byte for byte as before, which also proves that the key paths shifted for the new Library row
+reach the same screens.
+
+| # | Finding | Decision |
+|---|---|---|
+| 1 | The magnifier icon on Find repeated the Detect hub's, two meanings for one mark | Done: Find has its own icon, a letter and a cursor (`tools/icons.py`). |
+| 2 | A bare number in the header ("72") did not say what it counts | Done: the header says `72 found`. |
+| 3 | The key help is gone once the first letter is typed | Kept: once a letter is typed the lines belong to the matches; the help is back on the empty query, one held Left away. |
+| 4 | The wheel's neighbours are in the caption face, the current letter in the title face, so the strip reads unevenly | Kept: the difference is the point (what Right adds stands out), and the box marks it twice. |
+| 5 | An empty query shows a lone cursor at the left | Kept: the wheel and the help below it say what to do; a placeholder word would read as a query. |
+| 6 | Titles under the wheel are cut with an ellipsis | Kept: OK opens the full list, where a focused row scrolls its whole name. |
 
 ## How it is tested
 

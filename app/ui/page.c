@@ -7,16 +7,17 @@
 #include <stdio.h>
 #include <string.h>
 
-#define TEXT_CAP  12288u
-#define BLOCK_CAP 220u
-#define LINE_CAP  900u
-#define TITLE_CAP 48u
-#define POS_CAP   12u
-#define KEY_CAP   10u
-#define MENU_CAP  8u
-#define LABEL_CAP 48u
-#define NODE_CAP  24u
-#define CONTENTS  0xFFFFFFFEu /* the engine's own "Contents" menu entry */
+#define TEXT_CAP       12288u
+#define BLOCK_CAP      220u
+#define LINE_CAP       900u
+#define TITLE_CAP      48u
+#define POS_CAP        12u
+#define KEY_CAP        10u
+#define MENU_CAP       8u
+#define LABEL_CAP      48u
+#define NODE_CAP       24u
+#define PAGE_QUERY_CAP 16u /* a wheel's query: the app's is ten letters */
+#define CONTENTS       0xFFFFFFFEu /* the engine's own "Contents" menu entry */
 
 /* Geometry: docs/ui.md explains every number. */
 #define SCREEN_W      128
@@ -34,6 +35,8 @@
 #define BAR_H         21
 #define TILE_H        19
 #define TILE_W        64
+#define WHEEL_H       14
+#define WHEEL_CELL    9 /* one letter of the wheel; five of them end at RIGHT */
 #define MARQUEE_START 10 /* ticks still before a cut label starts to move (2.5 s at 250 ms) */
 #define MARQUEE_END   6 /* ticks it rests at its end */
 #define GAP           3
@@ -547,7 +550,11 @@ static void layout(Page* p, Canvas* canvas) {
         switch(st) {
         case PageRow:
         case PageStepper:
+        case PageItem:
             push_line(p, b, 0, 0, ROW_H, LINE_FIRST | LINE_LAST | LINE_BODY);
+            break;
+        case PageWheel:
+            push_line(p, b, 0, 0, WHEEL_H, LINE_FIRST | LINE_LAST | LINE_BODY);
             break;
         case PageBig:
             push_line(p, b, 0, 0, BIG_H, LINE_FIRST | LINE_LAST | LINE_BODY);
@@ -965,6 +972,36 @@ static void
     canvas_set_color(canvas, ColorBlack);
 }
 
+/* "query\tWINDOW": the query in bold with a cursor, its tail when it is too long; at the right
+ * the wheel, five letters, the current one (third) inverted in a box, its neighbours small. */
+static void draw_wheel(Canvas* canvas, const Page* p, const Block* blk, int y) {
+    const char* s = p->text + blk->off;
+    size_t n = blk->len, k = 0;
+    while(k < n && s[k] != '\t')
+        k++;
+    int x0 = RIGHT + 1 - 5 * WHEEL_CELL;
+    for(size_t i = 0; k + 1 + i < n && i < 5; i++) {
+        char cell[2] = {s[k + 1 + i], '\0'};
+        if(cell[0] == ' ') continue;
+        int x = x0 + (int)i * WHEEL_CELL;
+        set_role(canvas, i == 2 ? RoleTitle : RoleCaption);
+        if(i == 2) {
+            canvas_draw_rbox(canvas, x - 1, y + 1, WHEEL_CELL + 1, 12, 2);
+            canvas_set_color(canvas, ColorWhite);
+        }
+        canvas_draw_str(
+            canvas, x + (WHEEL_CELL - canvas_string_width(canvas, cell)) / 2, y + 10, cell);
+        canvas_set_color(canvas, ColorBlack);
+    }
+    char buf[PAGE_QUERY_CAP + 2];
+    size_t qn = k < PAGE_QUERY_CAP ? k : PAGE_QUERY_CAP, from = 0;
+    set_role(canvas, RoleTitle);
+    do {
+        snprintf(buf, sizeof(buf), "%.*s_", (int)(qn - from), s + from);
+    } while(canvas_string_width(canvas, buf) > x0 - 4 - LEFT && ++from < qn);
+    canvas_draw_str(canvas, LEFT, y + 10, buf);
+}
+
 static void draw_line(Canvas* canvas, const Page* p, const Line* l, int y) {
     const Block* blk = &p->blocks[l->block];
     char buf[256];
@@ -985,7 +1022,11 @@ static void draw_line(Canvas* canvas, const Page* p, const Line* l, int y) {
     switch(blk->style) {
     case PageRow:
     case PageStepper:
+    case PageItem:
         draw_row(canvas, p, blk, y, focused);
+        return;
+    case PageWheel:
+        draw_wheel(canvas, p, blk, y);
         return;
     case PageBig:
         draw_big(canvas, p, blk, y);
@@ -1745,9 +1786,26 @@ uint16_t page_visible_lines(const Page* p, char out[][64], uint16_t cap) {
         const Line* l = &p->lines[i];
         const Block* blk = &p->blocks[l->block];
         if(!(l->flags & LINE_BODY)) continue; /* a gap */
+        if(blk->style == PageWheel) { /* "query_ ab[c]de": the wheel, its current letter */
+            const char* w = p->text + blk->off;
+            size_t k = 0, m = 0;
+            while(k < blk->len && w[k] != '\t' && m < 30)
+                out[n][m++] = w[k++];
+            out[n][m++] = '_';
+            out[n][m++] = ' ';
+            for(size_t i = 0; k + 1 + i < blk->len && i < 5; i++) {
+                char c = w[k + 1 + i];
+                if(i == 2) out[n][m++] = '[';
+                if(c != ' ') out[n][m++] = c;
+                if(i == 2) out[n][m++] = ']';
+            }
+            out[n++][m] = '\0';
+            continue;
+        }
         bool whole = blk->style == PageRow || blk->style == PageBig || blk->style == PageBar ||
-                     blk->style == PageSteps || blk->style == PageBadge ||
-                     blk->style == PageChip || blk->style == PageTile || blk->style == PageStepper;
+                     blk->style == PageItem || blk->style == PageSteps ||
+                     blk->style == PageBadge || blk->style == PageChip || blk->style == PageTile ||
+                     blk->style == PageStepper;
         const char* s = p->text + (whole ? blk->off : l->off);
         size_t len = whole ? blk->len : l->len;
         if(len == 0) continue;

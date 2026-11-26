@@ -24,7 +24,7 @@ walk() { # name keys [settle]
 
 # Both walks are designed in the simulator, whose frames tools/parity.sh proves identical; the
 # frame numbers below are those walks' steps (NN-<key>.png).
-walk tour "right,left,ok,ok,back,back,right,ok,ok,ok,down,ok,left,ok,right,ok:long,right,down,back,right,ok:long,ok,back,ok:long,down,down,ok,up,back,back,back,back:long,down,ok"
+walk tour "right,left,ok,down,ok,back,back,right,ok,ok,ok,down,ok,left,ok,right,ok:long,right,down,back,right,ok:long,ok,back,ok:long,down,down,ok,up,back,back,back,back:long,down,ok"
 walk learn "down,right,ok,ok,ok,ok,back,down,ok,left,back,back:long,down,down,ok,right,right,right,right,back,right,ok"
 
 mkdir -p "$out"
@@ -33,19 +33,19 @@ keep() { cp "$tmp/$1" "$out/$2"; }
 keep tour/00-start.png 01-home.png
 keep tour/01-right.png 02-home-detect.png
 keep tour/03-ok.png 03-hub-library.png
-keep tour/04-ok.png 04-chapters.png
-keep tour/08-ok.png 05-hub-detect.png
-keep tour/09-ok.png 06-detectors.png
-keep tour/10-ok.png 07-article.png
-keep tour/11-down.png 08-chips.png
-keep tour/12-ok.png 09-detector.png
-keep tour/17-right.png 10-result.png
-keep tour/18-down.png 11-result-legend.png
-keep tour/21-ok-long.png 12-menu.png
-keep tour/22-ok.png 13-contents.png
-keep tour/27-ok.png 14-map.png
-keep tour/28-up.png 15-map-focus.png
-keep tour/34-ok.png 16-hub-act.png
+keep tour/05-ok.png 04-chapters.png
+keep tour/09-ok.png 05-hub-detect.png
+keep tour/10-ok.png 06-detectors.png
+keep tour/11-ok.png 07-article.png
+keep tour/12-down.png 08-chips.png
+keep tour/13-ok.png 09-detector.png
+keep tour/18-right.png 10-result.png
+keep tour/19-down.png 11-result-legend.png
+keep tour/22-ok-long.png 12-menu.png
+keep tour/23-ok.png 13-contents.png
+keep tour/28-ok.png 14-map.png
+keep tour/29-up.png 15-map-focus.png
+keep tour/35-ok.png 16-hub-act.png
 keep learn/03-ok.png 17-hub-train.png
 keep learn/04-ok.png 18-quiz.png
 keep learn/05-ok.png 19-options.png
@@ -62,7 +62,7 @@ import json, sys, datetime
 captions = [
     ("01-home.png", "Home: six tiles with counts; the status line explains the focused one"),
     ("02-home-detect.png", "Right moves along a row of the grid; the hint follows the focus"),
-    ("03-hub-library.png", "Library: chapters, kinds, everything, a random article"),
+    ("03-hub-library.png", "Library: find by name, chapters, kinds, everything, a random article"),
     ("04-chapters.png", "The book's chapters with square-root share bars"),
     ("05-hub-detect.png", "Detect: every detector, or a random one"),
     ("06-detectors.png", "Every object with markers to check, paged by forty"),

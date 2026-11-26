@@ -7,15 +7,18 @@
 home             | kompendium | | Home | Home: six tiles with counts; the status line explains the focused one
 home-detect      | kompendium | right | Home | Right moves along a row of the grid; the hint follows the focus
 home-info        | kompendium | down,down | Home | The third row: Info and About, reached by scrolling whole rows
-hub-library      | kompendium | ok | Hub | Library: chapters, kinds, everything, a random article
+hub-library      | kompendium | ok | Hub | Library: find by name, chapters, kinds, everything, a random article
 hub-detect       | kompendium | right,ok | Hub | Detect: every detector, or a random one
 hub-act          | kompendium | down,ok | Hub | Act: what to do, and pairs to tell apart, with their share of the pack
 hub-train        | kompendium | down,right,ok | Hub | Train: two kinds of question and objects to quiz
-chapters         | kompendium | ok,ok | Categories | The book's chapters with square-root share bars
-chapters-marquee | kompendium | ok,ok,down,tick10,tick6 | Categories | Rest on a cut name and it scrolls, after a pause, like a feature phone's list
-chapter-list     | kompendium | ok,ok,ok | Objects | One chapter's objects, paged by forty
-kinds            | kompendium | ok,down,ok | Kinds | Every kind of object with its count
-kind-list        | kompendium | ok,down,ok,down,ok | Filter | All objects of one kind
+chapters         | kompendium | ok,down,ok | Categories | The book's chapters with square-root share bars
+chapters-marquee | kompendium | ok,down,ok,down,tick10,tick6 | Categories | Rest on a cut name and it scrolls, after a pause, like a feature phone's list
+chapter-list     | kompendium | ok,down,ok,ok | Objects | One chapter's objects, paged by forty
+kinds            | kompendium | ok,down,down,ok | Kinds | Every kind of object with its count
+kind-list        | kompendium | ok,down,down,ok,down,ok | Filter | All objects of one kind
+find-empty       | kompendium | ok,ok | Find | Find by name: Up/Down turn a wheel of only the letters that have matches
+find-typed       | kompendium | ok,ok,down,down,down,down,down,right,right,down,down,down,down,right | Find | Three letters in: how many match and the best three, strong matches first
+find-results     | kompendium | ok,ok,down,down,down,down,down,right,right,down,down,down,down,right,ok | FindResults | OK lists every match, paged by forty; OK opens one
 detectors        | kompendium | right,ok,ok | Filter | Every object with markers to check
 article          | kompendium | right,ok,ok,ok | Article | An article: bold title, the kind in a pill, its code
 article-chips    | kompendium | right,ok,ok,ok,down | Article | Chips: detector markers and links on the map, one press away
@@ -27,8 +30,8 @@ map              | kompendium | right,ok,ok,ok,ok:long,down,down,ok | Map | Map 
 map-focus        | kompendium | right,ok,ok,ok,ok:long,down,down,ok,up | Map | A focused neighbour's full name in the header; OK walks there
 detect           | kompendium | right,ok,ok,ok,down,ok | Detect | Detector: progress cells, one marker at a time: No, Unsure, Yes
 detect-result    | kompendium | right,ok,ok,ok,down,ok,left,ok,right,ok:long,right | DetectResult | Result: your marks as a number and a bar, never a score
-compare-pick     | ui | ok,ok,up,up,up,up,ok,ok,ok:long,down,down,ok | Compare | Compare with a look-alike: only those with markers of their own
-compare-result   | ui | ok,ok,up,up,up,up,ok,ok,ok:long,down,down,ok,ok,right,right,left,right,ok:long,right | DetectResult | Side by side: your marks for both, a count and a bar each, no ranking
+compare-pick     | ui | ok,down,ok,up,up,up,up,ok,ok,ok:long,down,down,ok | Compare | Compare with a look-alike: only those with markers of their own
+compare-result   | ui | ok,down,ok,up,up,up,up,ok,ok,ok:long,down,down,ok,ok,right,right,left,right,ok:long,right | DetectResult | Side by side: your marks for both, a count and a bar each, no ranking
 assess-scale     | kompendium | down,ok,down,down,ok,ok,down,ok,right,down,right | Assess | An assessment on one screen: each scale a stepper, Left/Right change its grade, the code builds in the header
 assess-result    | kompendium | down,ok,down,down,ok,ok,down,ok,right,down,right,down,ok | AssessResult | The grade: the codes together, each grade's meaning, then what to do with it
 sim-step         | kompendium | down,right,ok,down,down,ok,ok,down,ok | SimStep | A crisis simulation from the Prismatic Platform: the situation, your options and their risk
@@ -44,7 +47,7 @@ trainer          | kompendium | down,right,ok,down,ok | Quiz | Manipulative or b
 trainer-result   | kompendium | down,right,ok,down,ok,left | QuizResult | Why, and a good response, from the catalogue
 review-empty     | ui | down,right,ok,ok,ok,ok,restart,restart,down,right,ok,down,down,ok,ok,ok,down,down,ok | Quiz | Review: questions come back by their Leitner box; here nothing is due
 forget           | ui | down,right,ok,ok,ok,ok,back:long,down,down,ok,right,right,right,right,right,down,ok | Forget | Forgetting your progress asks first; Back keeps it
-sessions         | ui | ok,ok,down,ok,down,ok,down,ok,right,right,left,down,down,ok,back:long,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,up,ok | Sessions | Saved sessions, newest first: only those you chose to save
+sessions         | ui | ok,down,ok,down,ok,down,ok,down,ok,right,right,left,down,down,ok,back:long,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,up,ok | Sessions | Saved sessions, newest first: only those you chose to save
 info             | kompendium | down,down,ok | Info | Pack & device: what the pack is and where it came from
 info-cache       | kompendium | down,down,ok,right,right,right | Info | Measured here: open time, scan time, the read cache's hits
 about            | kompendium | down,down,right,ok | About | About: what the app is and the keys

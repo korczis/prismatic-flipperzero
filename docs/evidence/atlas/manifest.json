@@ -28,7 +28,9 @@
   "SimOutcome",
   "Score",
   "ScoreResult",
-  "Calc"
+  "Calc",
+  "Find",
+  "FindResults"
  ],
  "frames": [
   {
@@ -63,7 +65,7 @@
    "pack": "kompendium",
    "keys": "ok",
    "view": "Hub",
-   "caption": "Library: chapters, kinds, everything, a random article",
+   "caption": "Library: find by name, chapters, kinds, everything, a random article",
    "file": "04-hub-library.png",
    "screen": "Hub"
   },
@@ -97,7 +99,7 @@
   {
    "name": "chapters",
    "pack": "kompendium",
-   "keys": "ok,ok",
+   "keys": "ok,down,ok",
    "view": "Categories",
    "caption": "The book's chapters with square-root share bars",
    "file": "08-chapters.png",
@@ -106,7 +108,7 @@
   {
    "name": "chapters-marquee",
    "pack": "kompendium",
-   "keys": "ok,ok,down,tick10,tick6",
+   "keys": "ok,down,ok,down,tick10,tick6",
    "view": "Categories",
    "caption": "Rest on a cut name and it scrolls, after a pause, like a feature phone's list",
    "file": "09-chapters-marquee.png",
@@ -115,7 +117,7 @@
   {
    "name": "chapter-list",
    "pack": "kompendium",
-   "keys": "ok,ok,ok",
+   "keys": "ok,down,ok,ok",
    "view": "Objects",
    "caption": "One chapter's objects, paged by forty",
    "file": "10-chapter-list.png",
@@ -124,7 +126,7 @@
   {
    "name": "kinds",
    "pack": "kompendium",
-   "keys": "ok,down,ok",
+   "keys": "ok,down,down,ok",
    "view": "Kinds",
    "caption": "Every kind of object with its count",
    "file": "11-kinds.png",
@@ -133,11 +135,38 @@
   {
    "name": "kind-list",
    "pack": "kompendium",
-   "keys": "ok,down,ok,down,ok",
+   "keys": "ok,down,down,ok,down,ok",
    "view": "Filter",
    "caption": "All objects of one kind",
    "file": "12-kind-list.png",
    "screen": "Filter"
+  },
+  {
+   "name": "find-empty",
+   "pack": "kompendium",
+   "keys": "ok,ok",
+   "view": "Find",
+   "caption": "Find by name: Up/Down turn a wheel of only the letters that have matches",
+   "file": "13-find-empty.png",
+   "screen": "Find"
+  },
+  {
+   "name": "find-typed",
+   "pack": "kompendium",
+   "keys": "ok,ok,down,down,down,down,down,right,right,down,down,down,down,right",
+   "view": "Find",
+   "caption": "Three letters in: how many match and the best three, strong matches first",
+   "file": "14-find-typed.png",
+   "screen": "Find"
+  },
+  {
+   "name": "find-results",
+   "pack": "kompendium",
+   "keys": "ok,ok,down,down,down,down,down,right,right,down,down,down,down,right,ok",
+   "view": "FindResults",
+   "caption": "OK lists every match, paged by forty; OK opens one",
+   "file": "15-find-results.png",
+   "screen": "FindResults"
   },
   {
    "name": "detectors",
@@ -145,7 +174,7 @@
    "keys": "right,ok,ok",
    "view": "Filter",
    "caption": "Every object with markers to check",
-   "file": "13-detectors.png",
+   "file": "16-detectors.png",
    "screen": "Filter"
   },
   {
@@ -154,7 +183,7 @@
    "keys": "right,ok,ok,ok",
    "view": "Article",
    "caption": "An article: bold title, the kind in a pill, its code",
-   "file": "14-article.png",
+   "file": "17-article.png",
    "screen": "Article"
   },
   {
@@ -163,7 +192,7 @@
    "keys": "right,ok,ok,ok,down",
    "view": "Article",
    "caption": "Chips: detector markers and links on the map, one press away",
-   "file": "15-article-chips.png",
+   "file": "18-article-chips.png",
    "screen": "Article"
   },
   {
@@ -172,7 +201,7 @@
    "keys": "right,ok,ok,ok,right",
    "view": "Article",
    "caption": "Right jumps a section; its heading moves into the header",
-   "file": "16-article-section.png",
+   "file": "19-article-section.png",
    "screen": "Article"
   },
   {
@@ -181,7 +210,7 @@
    "keys": "right,ok,ok,ok,ok:long",
    "view": "Article+menu",
    "caption": "Hold OK: the page's actions over the dimmed page",
-   "file": "17-article-menu.png",
+   "file": "20-article-menu.png",
    "screen": "Article"
   },
   {
@@ -190,7 +219,7 @@
    "keys": "right,ok,ok,ok,ok:long,ok",
    "view": "Article+contents",
    "caption": "Contents: every section, OK jumps there",
-   "file": "18-article-contents.png",
+   "file": "21-article-contents.png",
    "screen": "Article"
   },
   {
@@ -199,7 +228,7 @@
    "keys": "right,ok,ok,ok,ok:long,ok,down,down,down,ok,down,ok",
    "view": "Chapter",
    "caption": "A chapter of the book, paged, with next and previous",
-   "file": "19-chapter.png",
+   "file": "22-chapter.png",
    "screen": "Chapter"
   },
   {
@@ -208,7 +237,7 @@
    "keys": "right,ok,ok,ok,ok:long,down,down,ok",
    "view": "Map",
    "caption": "Map of links: four neighbours at a time, confusables dotted",
-   "file": "20-map.png",
+   "file": "23-map.png",
    "screen": "Map"
   },
   {
@@ -217,7 +246,7 @@
    "keys": "right,ok,ok,ok,ok:long,down,down,ok,up",
    "view": "Map",
    "caption": "A focused neighbour's full name in the header; OK walks there",
-   "file": "21-map-focus.png",
+   "file": "24-map-focus.png",
    "screen": "Map"
   },
   {
@@ -226,7 +255,7 @@
    "keys": "right,ok,ok,ok,down,ok",
    "view": "Detect",
    "caption": "Detector: progress cells, one marker at a time: No, Unsure, Yes",
-   "file": "22-detect.png",
+   "file": "25-detect.png",
    "screen": "Detect"
   },
   {
@@ -235,25 +264,25 @@
    "keys": "right,ok,ok,ok,down,ok,left,ok,right,ok:long,right",
    "view": "DetectResult",
    "caption": "Result: your marks as a number and a bar, never a score",
-   "file": "23-detect-result.png",
+   "file": "26-detect-result.png",
    "screen": "DetectResult"
   },
   {
    "name": "compare-pick",
    "pack": "ui",
-   "keys": "ok,ok,up,up,up,up,ok,ok,ok:long,down,down,ok",
+   "keys": "ok,down,ok,up,up,up,up,ok,ok,ok:long,down,down,ok",
    "view": "Compare",
    "caption": "Compare with a look-alike: only those with markers of their own",
-   "file": "24-compare-pick.png",
+   "file": "27-compare-pick.png",
    "screen": "Compare"
   },
   {
    "name": "compare-result",
    "pack": "ui",
-   "keys": "ok,ok,up,up,up,up,ok,ok,ok:long,down,down,ok,ok,right,right,left,right,ok:long,right",
+   "keys": "ok,down,ok,up,up,up,up,ok,ok,ok:long,down,down,ok,ok,right,right,left,right,ok:long,right",
    "view": "DetectResult",
    "caption": "Side by side: your marks for both, a count and a bar each, no ranking",
-   "file": "25-compare-result.png",
+   "file": "28-compare-result.png",
    "screen": "DetectResult"
   },
   {
@@ -262,7 +291,7 @@
    "keys": "down,ok,down,down,ok,ok,down,ok,right,down,right",
    "view": "Assess",
    "caption": "An assessment on one screen: each scale a stepper, Left/Right change its grade, the code builds in the header",
-   "file": "26-assess-scale.png",
+   "file": "29-assess-scale.png",
    "screen": "Assess"
   },
   {
@@ -271,7 +300,7 @@
    "keys": "down,ok,down,down,ok,ok,down,ok,right,down,right,down,ok",
    "view": "AssessResult",
    "caption": "The grade: the codes together, each grade's meaning, then what to do with it",
-   "file": "27-assess-result.png",
+   "file": "30-assess-result.png",
    "screen": "AssessResult"
   },
   {
@@ -280,7 +309,7 @@
    "keys": "down,right,ok,down,down,ok,ok,down,ok",
    "view": "SimStep",
    "caption": "A crisis simulation from the Prismatic Platform: the situation, your options and their risk",
-   "file": "28-sim-step.png",
+   "file": "31-sim-step.png",
    "screen": "SimStep"
   },
   {
@@ -289,7 +318,7 @@
    "keys": "down,right,ok,down,down,ok,ok,down,ok,down,down,down,ok",
    "view": "SimResult",
    "caption": "The consequence of a decision, and trust before and after it",
-   "file": "29-sim-result.png",
+   "file": "32-sim-result.png",
    "screen": "SimResult"
   },
   {
@@ -298,7 +327,7 @@
    "keys": "down,right,ok,down,down,ok,ok,down,ok,down,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,ok,down,down,down,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,ok,down,down,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,ok,down,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,ok,down,ok",
    "view": "SimOutcome",
    "caption": "The outcome by the source's rules, and every decision with its trust change",
-   "file": "30-sim-outcome.png",
+   "file": "33-sim-outcome.png",
    "screen": "SimOutcome"
   },
   {
@@ -307,7 +336,7 @@
    "keys": "down,ok,down,down,down,ok,ok,down,ok,right,down,right",
    "view": "Score",
    "caption": "A scorecard on one screen: Left/Right change an answer, the score and band follow live, the red flag in the status line",
-   "file": "31-score.png",
+   "file": "34-score.png",
    "screen": "Score"
   },
   {
@@ -316,7 +345,7 @@
    "keys": "down,ok,down,down,down,ok,ok,down,ok,right,down,right,down,down,down,down,down,ok",
    "view": "ScoreResult",
    "caption": "The score, its band, and what moved it, with each red flag's evidence",
-   "file": "32-score-result.png",
+   "file": "35-score-result.png",
    "screen": "ScoreResult"
   },
   {
@@ -325,7 +354,7 @@
    "keys": "down,ok,down,down,down,down,ok,ok,down,ok,right,ok,right,ok,down,right",
    "view": "Calc",
    "caption": "A calculator: Left/Right choose a source's confidence or move the prior, OK adds; the belief follows at once",
-   "file": "33-calc.png",
+   "file": "36-calc.png",
    "screen": "Calc"
   },
   {
@@ -334,7 +363,7 @@
    "keys": "down,right,ok,ok",
    "view": "Quiz",
    "caption": "Which term? The definition with the name masked",
-   "file": "34-quiz.png",
+   "file": "37-quiz.png",
    "screen": "Quiz"
   },
   {
@@ -343,7 +372,7 @@
    "keys": "down,right,ok,ok,ok",
    "view": "QuizOptions",
    "caption": "Distractors are the objects the page calls confusable",
-   "file": "35-quiz-options.png",
+   "file": "38-quiz-options.png",
    "screen": "QuizOptions"
   },
   {
@@ -352,7 +381,7 @@
    "keys": "down,right,ok,ok,ok,ok",
    "view": "QuizResult",
    "caption": "The answer, the definition, a link to the article",
-   "file": "36-quiz-result.png",
+   "file": "39-quiz-result.png",
    "screen": "QuizResult"
   },
   {
@@ -361,7 +390,7 @@
    "keys": "down,right,ok,down,ok",
    "view": "Quiz",
    "caption": "Manipulative or benign? A catalogue example",
-   "file": "37-trainer.png",
+   "file": "40-trainer.png",
    "screen": "Quiz"
   },
   {
@@ -370,7 +399,7 @@
    "keys": "down,right,ok,down,ok,left",
    "view": "QuizResult",
    "caption": "Why, and a good response, from the catalogue",
-   "file": "38-trainer-result.png",
+   "file": "41-trainer-result.png",
    "screen": "QuizResult"
   },
   {
@@ -379,7 +408,7 @@
    "keys": "down,right,ok,ok,ok,ok,restart,restart,down,right,ok,down,down,ok,ok,ok,down,down,ok",
    "view": "Quiz",
    "caption": "Review: questions come back by their Leitner box; here nothing is due",
-   "file": "39-review-empty.png",
+   "file": "42-review-empty.png",
    "screen": "Quiz"
   },
   {
@@ -388,16 +417,16 @@
    "keys": "down,right,ok,ok,ok,ok,back:long,down,down,ok,right,right,right,right,right,down,ok",
    "view": "Forget",
    "caption": "Forgetting your progress asks first; Back keeps it",
-   "file": "40-forget.png",
+   "file": "43-forget.png",
    "screen": "Forget"
   },
   {
    "name": "sessions",
    "pack": "ui",
-   "keys": "ok,ok,down,ok,down,ok,down,ok,right,right,left,down,down,ok,back:long,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,up,ok",
+   "keys": "ok,down,ok,down,ok,down,ok,down,ok,right,right,left,down,down,ok,back:long,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,up,ok",
    "view": "Sessions",
    "caption": "Saved sessions, newest first: only those you chose to save",
-   "file": "41-sessions.png",
+   "file": "44-sessions.png",
    "screen": "Sessions"
   },
   {
@@ -406,7 +435,7 @@
    "keys": "down,down,ok",
    "view": "Info",
    "caption": "Pack & device: what the pack is and where it came from",
-   "file": "42-info.png",
+   "file": "45-info.png",
    "screen": "Info"
   },
   {
@@ -415,7 +444,7 @@
    "keys": "down,down,ok,right,right,right",
    "view": "Info",
    "caption": "Measured here: open time, scan time, the read cache's hits",
-   "file": "43-info-cache.png",
+   "file": "46-info-cache.png",
    "screen": "Info"
   },
   {
@@ -424,7 +453,7 @@
    "keys": "down,down,right,ok",
    "view": "About",
    "caption": "About: what the app is and the keys",
-   "file": "44-about.png",
+   "file": "47-about.png",
    "screen": "About"
   },
   {
@@ -433,7 +462,7 @@
    "keys": "",
    "view": "Home",
    "caption": "No pack: Info and About still work and say what to do",
-   "file": "45-no-pack.png",
+   "file": "48-no-pack.png",
    "screen": "Home"
   }
  ]

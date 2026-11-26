@@ -1,22 +1,33 @@
 {
  "command": "tools/cache-bench.sh",
  "walk": "tour of tools/capture-screens.sh",
- "keys": "right,left,ok,ok,back,back,right,ok,ok,ok,down,ok,left,ok,right,ok:long,right,down,back,right,ok:long,ok,back,ok:long,down,down,ok,up,back,back,back,back:long,down,ok",
- "steps": 34,
+ "keys": "right,left,ok,down,ok,back,back,right,ok,ok,ok,down,ok,left,ok,right,ok:long,right,down,back,right,ok:long,ok,back,ok:long,down,down,ok,up,back,back,back,back:long,down,ok",
+ "steps": 35,
  "cache": {
   "blocks": 8,
   "block_bytes": 256
  },
  "cached": {
-  "card_reads": 4060,
-  "bytes": 1038520,
-  "hits": 9440,
-  "misses": 4060
+  "card_reads": 4598,
+  "bytes": 1176840,
+  "hits": 10355,
+  "misses": 4598
  },
  "direct": {
-  "card_reads": 9890,
-  "bytes": 967257,
+  "card_reads": 10630,
+  "bytes": 1111530,
   "hits": 0,
   "misses": 0
+ },
+ "find": {
+  "open": 788,
+  "first_letter_worst": 77,
+  "worst_letter": "s",
+  "first_letter_median": 36,
+  "third_letter": 6,
+  "third_query": "fal",
+  "wheel_turn": 0,
+  "left": 9,
+  "block_bytes": 256
  }
 }

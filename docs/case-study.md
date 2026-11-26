@@ -87,6 +87,10 @@ Generated from the repository's history by [`tools/docs.py`](../tools/docs.py). 
 | `64de98d` | 14:55 | fix(screen): end an RPC session only after the device confirms it |
 | `7ee9310` | 15:31 | docs(evidence): device gallery recaptured on the 0.2.0 build |
 | `2307960` | 16:21 | fix(pocket): a lead-in sentence ending in ':' is not a marker or an item |
+| `9041735` | 16:34 | feat(pocket): search index sections for Find by name |
+| `8f8c61a` | 16:38 | feat(core): read the optional search index |
+| `c523d64` | 16:42 | feat(core): Find by name search engine |
+| `8fd5982` | 16:51 | fix(core): search only a verified index, within one object bound |
 <!-- docs:end timeline -->
 
 ## What made it fast

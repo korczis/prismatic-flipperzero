@@ -116,6 +116,16 @@ class DocsTest(unittest.TestCase):
         bench = docs.cache_bench()
         self.assertIn("| Reading the card directly | 100 | 1 000 |", bench)
         self.assertIn("60 of 100 block requests from memory: 60% fewer card reads for +10%", bench)
+        self.assertNotIn("Find by name", bench)
+        bench_path = self.root / "docs" / "evidence" / "cache" / "bench.json"
+        b = json.loads(bench_path.read_text())
+        b["find"] = {"open": 1788, "first_letter_worst": 77, "worst_letter": "s",
+                     "first_letter_median": 36, "third_letter": 6, "third_query": "fal",
+                     "wheel_turn": 0, "left": 9}
+        bench_path.write_text(json.dumps(b))
+        bench = docs.cache_bench()
+        self.assertIn("| Opening Find, once per pack (the index checked whole) | 1 788 |", bench)
+        self.assertIn("| The first letter, worst (`s`) | 77 |", bench)
         acc = docs.acceptance()
         self.assertIn("the same sha256, `aaaaaaaaaaaaaaaa`", acc)
         self.assertIn("The same 3 key presses on the Flipper (firmware 1.5.1) | 3 frames", acc)

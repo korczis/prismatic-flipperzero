@@ -5,9 +5,13 @@
 
 ui.pkp: a long category (paging, list wrap), a full object (every section, chapters, both
 example kinds, confusables and related links), a bare article (no links), and an object whose
-chapter is too long for one page. bad.pkp: ui.pkp with one object, one item, one relation, one
-category and one quiz record made invalid and the index checksum resealed, so the pack opens
-and the app meets each broken record in turn.
+chapter is too long for one page; aliases and codes give Find by name something to find, a word
+as wide as ten letters can be among them. bad.pkp: ui.pkp with one object, one item, one
+relation, one category, one quiz record and one search posting made invalid and the index
+checksum resealed, so the pack opens and the app meets each broken record in turn.
+noindex.pkp: ui.pkp without the search index, as an older compiler wrote it. big.pkp: 4 097
+objects with an index the compiler would not write (it stops at the device's 4 096), so the
+app's own limit shows.
 """
 
 import struct
@@ -51,8 +55,10 @@ def ir():
                   {"utterance": "Could you check this?", "context": "At home", "benign": True,
                    "marker": "request", "response": "Sure."}],
         relations=[{"type": "confused_with", "target": "bare"},
-                   {"type": "related_to", "target": "huge"}]))
-    objects.append(obj("bare", "Bare article", "B short", kind="article", definition="Short."))
+                   {"type": "related_to", "target": "huge"}],
+        aliases=["Every section", "Complete object"]))
+    objects.append(obj("bare", "Bare article", "B short", kind="article", definition="Short.",
+                       aliases=["Plain page"]))
     objects.append(obj(
         "hub", "Hub of links", "B short", kind="concept",
         definition="The hub links to many entries. It exists to test the map. A map shows four "
@@ -60,7 +66,8 @@ def ir():
                    "ends here.",
         relations=[{"type": "confused_with", "target": f"long/{i:02d}"} for i in range(3)] +
                   [{"type": "related_to", "target": f"long/{i:02d}"} for i in range(3, 9)]))
-    objects.append(obj("huge", "Huge chapter", "B short", kind="concept",
+    objects.append(obj("huge", "Huge chapter", "B short", kind="concept", code="H-9.1",
+                       aliases=["Wuwmmwwumm"],
                        chapters=[{"heading": "Everything", "text": "word " * 2600}] +
                        [{"heading": f"Part {k}", "text": "x"} for k in range(240)],
                        relations=[{"type": "related_to", "target": "full"}]))
@@ -147,6 +154,8 @@ def corrupt(data, titles, full_quiz, confused):
     struct.pack_into("<H", d, off + size * full_quiz + 2, 0xFFFF)
     size, off, _len, _n = section(d, 9)  # RELNAMES: confused_with's name becomes empty
     struct.pack_into("<H", d, off + size * confused + 4, 0)
+    size, off, _len, _n = section(d, 11)  # SEARCH_POSTINGS: the first names no object
+    struct.pack_into("<H", d, off, 0x7FFF)
     reseal(d)
     return bytes(d)
 
@@ -163,7 +172,13 @@ def main(argv):
                      if q["kind"] == 1 and q["options"][q["answer"]] == full)
     confused = pocket.RELATIONS.index("confused_with")
     (out / "bad.pkp").write_bytes(corrupt(data, titles, full_quiz, confused))
-    print(f"packs: {out}/ui.pkp {len(data)} B, {out}/bad.pkp")
+    (out / "noindex.pkp").write_bytes(pocket.encode(ir(), search=False))
+    big = {**ir(), "objects": [obj(f"big/{i:04d}", f"Big {i}", "Big", definition="d")
+                               for i in range(pocket.SEARCH_MAX_OBJECTS + 1)]}
+    cap, pocket.SEARCH_MAX_OBJECTS = pocket.SEARCH_MAX_OBJECTS, 0x7FFF
+    (out / "big.pkp").write_bytes(pocket.encode(big))
+    pocket.SEARCH_MAX_OBJECTS = cap
+    print(f"packs: {out}/ui.pkp {len(data)} B, {out}/bad.pkp, {out}/noindex.pkp")
     return 0
 
 

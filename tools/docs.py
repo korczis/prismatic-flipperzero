@@ -123,7 +123,20 @@ def cache_bench():
         f"The cache served {fmt(c['hits'])} of {fmt(asked)} block requests from memory: "
         f"{fewer}% fewer card reads for {more:+d}% bytes, since a miss reads a whole block. "
         f"Walk: {b['steps']} key presses ({b['walk']}); measured by `{b['command']}`.",
-    ]) + "\n"
+    ] + find_bench(b.get("find"))) + "\n"
+
+
+def find_bench(f):
+    """Find by name's card reads (256-byte blocks) per step, measured in the simulator."""
+    if not f:
+        return []
+    return ["", "| Find by name, through the cache | Card reads |", "|---|---:|",
+            f"| Opening Find, once per pack (the index checked whole) | {fmt(f['open'])} |",
+            f"| The first letter, worst (`{f['worst_letter']}`) | {f['first_letter_worst']} |",
+            f"| The first letter, median | {f['first_letter_median']} |",
+            f"| The third letter (`{f['third_query']}`) | {f['third_letter']} |",
+            f"| Turning the wheel | {f['wheel_turn']} |",
+            f"| Left, deleting a letter | {f['left']} |"]
 
 
 def acceptance():

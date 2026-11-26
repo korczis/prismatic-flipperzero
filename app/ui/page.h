@@ -40,6 +40,9 @@ typedef enum {
     PageChip, /* selectable: icon + short text; consecutive chips share one row */
     PageTile, /* selectable: big icon, label, caption; consecutive tiles form a 2-column grid */
     PageStepper, /* selectable row with a value Left/Right change in place: "label  < value >" */
+    PageWheel, /* a query and its letter wheel: "query\tWINDOW", five letters, the current one
+                * third (a space: none there), drawn inverted; the app turns it, not the page */
+    PageItem, /* a row that is not selectable: one line of text, cut to fit */
 } PageStyle;
 
 typedef enum {

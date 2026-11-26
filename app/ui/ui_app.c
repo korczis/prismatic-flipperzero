@@ -3,6 +3,7 @@
 #include "../core/pocket.h"
 #include "../core/bayes.h"
 #include "../core/scorecard.h"
+#include "../core/search.h"
 #include "../core/simulate.h"
 #include "../version.h"
 #include "icons.h"
@@ -81,7 +82,9 @@
     X(SimOutcome)   \
     X(Score)        \
     X(ScoreResult)  \
-    X(Calc)
+    X(Calc)         \
+    X(Find)         \
+    X(FindResults)
 
 typedef enum {
 #define SCREEN_ENUM(name) Scr##name,
@@ -121,6 +124,7 @@ enum {
     HomeSessions,
     HomeForgetSessions,
     HomeForgetSessionsNow,
+    HomeFind,
     HomeHub, /* HomeHub + n: hub n of the hubs table */
 };
 
@@ -195,6 +199,15 @@ struct UiApp {
     Progress progress; /* Leitner boxes, loaded from and saved to storage */
     uint8_t* file; /* PROGRESS_MAX_FILE bytes for reading and writing it */
     bool progress_ok; /* the last save succeeded */
+
+    /* Find by name: the engine, opened (and its index verified) once per pack, the wheel's
+     * letter, and how the last letter went */
+    PkpSearch search;
+    bool search_open;
+    PkpStatus search_status; /* of pkp_search_init: PKP_OK, or why there is no search */
+    uint32_t search_ms; /* how long opening it took, the index check included */
+    uint8_t wheel; /* a position in PKP_SEARCH_LETTERS */
+    PkpStatus search_error; /* of the last push or pop */
 };
 
 /* ------------------------------------------------------------------ helpers */
@@ -218,6 +231,7 @@ static Frame* top(UiApp* app) {
 }
 
 static void render(UiApp* app);
+static PkpStatus search_ready(UiApp* app);
 
 static void remember(UiApp* app) {
     top(app)->sel = page_focused_target(app->page);
@@ -343,6 +357,7 @@ static uint32_t entry_count(UiApp* app, uint32_t entry) {
         [HomeSimulate] = app->cap_count[cap_index(PKP_CAP_SIMULATE)],
         [HomeScore] = app->cap_count[cap_index(PKP_CAP_SCORE)],
         [HomeCalc] = app->kind_count[app->calc_kind],
+        [HomeFind] = total, /* always there: the screen says when the pack has no index */
     };
     return entry < sizeof(counts) / sizeof(counts[0]) ? counts[entry] : 0;
 }
@@ -378,7 +393,8 @@ static const Hub hubs[] = {
      "Library",
      HomeAll,
      "%lu objects to read",
-     {{UiIconFolder, HomeBrowse, "By chapter", "%lu", "Chapters in book order", ShareNone},
+     {{UiIconFind, HomeFind, "Find by name", "", "Type it a letter at a time", ShareNone},
+      {UiIconFolder, HomeBrowse, "By chapter", "%lu", "Chapters in book order", ShareNone},
       {UiIconArticle, HomeKinds, "By kind", "%lu", "One list per kind", ShareNone},
       {UiIconBrowse, HomeAll, "Everything", "%lu", "All, in pack order", ShareObjects},
       {UiIconMap, HomeRandom, "Surprise me", "", "A random article", ShareNone}}},
@@ -1547,12 +1563,32 @@ static void render_info(UiApp* app) {
             (unsigned long)pkp_count(app->pack, PKP_SEC_RELATIONS),
             (unsigned long)pkp_count(app->pack, PKP_SEC_QUIZ));
         page_add(app->page, PageBullet, line, 0);
+        if(pkp_has_search(app->pack)) {
+            snprintf(
+                line,
+                sizeof(line),
+                "%lu search keys, %lu postings",
+                (unsigned long)pkp_count(app->pack, PKP_SEC_SEARCH_KEYS),
+                (unsigned long)pkp_count(app->pack, PKP_SEC_SEARCH_POSTINGS));
+            page_add(app->page, PageBullet, line, 0);
+        }
         page_add(app->page, PageHeading, "Measured here", 0);
         snprintf(line, sizeof(line), "Open + index CRC: %lu ms", (unsigned long)app->open_ms);
         page_add(app->page, PageBullet, line, 0);
         snprintf(line, sizeof(line), "Index scan: %lu ms", (unsigned long)app->scan_ms);
         page_add(app->page, PageBullet, line, 0);
         snprintf(line, sizeof(line), "Pack size: %lu B", (unsigned long)app->pack->size);
+        page_add(app->page, PageBullet, line, 0);
+        PkpStatus st = pkp_has_search(app->pack) ? search_ready(app) : PKP_E_MISSING;
+        if(st == PKP_OK)
+            snprintf(
+                line, sizeof(line), "Search index check: %lu ms", (unsigned long)app->search_ms);
+        else
+            snprintf(
+                line,
+                sizeof(line),
+                "Search index: %s",
+                st == PKP_E_MISSING ? "none in this pack" : pkp_status_text(st));
         page_add(app->page, PageBullet, line, 0);
         const PkpCache* c = app->platform.cache;
         uint32_t asked = c->hits + c->misses;
@@ -1657,6 +1693,152 @@ static void render_about(UiApp* app) {
     restore(app);
 }
 
+/* ------------------------------------------------------------------ find by name */
+
+#define FIND_TOP 3u /* titles Find shows under the wheel */
+
+/* The search engine over this pack, opened once (pkp_search_init verifies the index first, so
+ * this is also the check Info shows); a failed read is tried again next time. */
+static PkpStatus search_ready(UiApp* app) {
+    if(!app->search_open || app->search_status == PKP_E_IO) {
+        uint32_t t0 = app->platform.tick_ms(app->platform.ctx);
+        app->search_status = pkp_search_init(&app->search, app->pack);
+        app->search_ms = app->platform.tick_ms(app->platform.ctx) - t0;
+        app->search_open = true;
+    }
+    return app->search_status;
+}
+
+/* The next offered letter from `at` in direction `dir` (wrapping); for 0, `at` itself when
+ * offered, else the next one after it. */
+static uint8_t wheel_step(uint64_t mask, uint8_t at, int dir) {
+    int step = dir ? dir : 1;
+    for(uint32_t k = dir ? 1 : 0; k <= PKP_SEARCH_LETTER_COUNT; k++) {
+        uint32_t i = (at + PKP_SEARCH_LETTER_COUNT * 2 + (uint32_t)(step * (int)k)) %
+                     PKP_SEARCH_LETTER_COUNT;
+        if(mask & (1ull << i)) return (uint8_t)i;
+    }
+    return at;
+}
+
+/* Five letters around the current one, none twice: "cd" e "fg", spaces where there are none. */
+static void wheel_window(uint64_t mask, uint8_t at, char out[6]) {
+    memset(out, ' ', 5);
+    out[5] = '\0';
+    uint32_t n = 0;
+    for(uint32_t i = 0; i < PKP_SEARCH_LETTER_COUNT; i++)
+        n += (mask >> i) & 1u;
+    if(n == 0) return;
+    uint32_t before = (n - 1) / 2 < 2 ? (n - 1) / 2 : 2, after = n - 1 - before;
+    if(after > 2) after = 2;
+    out[2] = pkp_search_letter(at);
+    for(uint32_t k = 1, i = at; k <= before; k++)
+        out[2 - k] = pkp_search_letter(i = wheel_step(mask, (uint8_t)i, -1));
+    for(uint32_t k = 1, i = at; k <= after; k++)
+        out[2 + k] = pkp_search_letter(i = wheel_step(mask, (uint8_t)i, 1));
+}
+
+/* Find: the query and its wheel, the match count in the header, the best three titles. */
+static void render_find(UiApp* app) {
+    PkpSearch* s = &app->search;
+    char line[32], win[6];
+    page_reset(app->page, "Find by name");
+    page_set_title_icon(app->page, UiIconFind);
+    PkpStatus st = search_ready(app);
+    if(st != PKP_OK) {
+        page_add(
+            app->page,
+            PageNote,
+            st == PKP_E_MISSING ? "This pack has no search index." :
+            pkp_count(app->pack, PKP_SEC_OBJECTS) > PKP_SEARCH_MAX_OBJECTS ?
+                                  "This pack is too large to search on the Flipper." :
+            st == PKP_E_IO ? "The search index could not be read." :
+                             "This pack's search index is damaged.",
+            0);
+        restore(app);
+        return;
+    }
+    uint64_t mask = pkp_search_next(s);
+    app->wheel = wheel_step(mask, app->wheel, 0);
+    if(s->len) {
+        snprintf(line, sizeof(line), "%u found", s->count);
+        page_set_position(app->page, line);
+    }
+    wheel_window(mask, app->wheel, win);
+    snprintf(line, sizeof(line), "%s\t%s", s->query, win);
+    page_add(app->page, PageWheel, line, 0);
+    if(app->search_error != PKP_OK) {
+        page_add(app->page, PageNote, "The search index could not be read.", 0);
+    } else if(s->len == 0) {
+        page_add(
+            app->page,
+            PageNote,
+            "Up/Down: a letter. Right: add it. Left: delete, hold: all. OK: every match.",
+            0);
+    }
+    uint16_t best[FIND_TOP];
+    uint32_t n = pkp_search_results(s, 0, best, FIND_TOP);
+    for(uint32_t k = 0; k < n; k++) {
+        PkpObject o;
+        if(pkp_object(app->pack, best[k], &o) == PKP_OK)
+            page_add(app->page, PageItem, str(app, o.title), 0);
+    }
+    restore(app);
+}
+
+/* Every match, strong first, paged by forty like a chapter's objects. */
+static void render_find_results(UiApp* app) {
+    Frame* f = top(app);
+    PkpSearch* s = &app->search;
+    uint16_t found[PAGE_ROWS];
+    char title[24];
+    snprintf(title, sizeof(title), "Found: %s", s->query);
+    page_reset(app->page, title);
+    page_set_title_icon(app->page, UiIconFind);
+    uint32_t pages = (s->count + PAGE_ROWS - 1) / PAGE_ROWS;
+    paging(app, f->page, pages, true);
+    uint32_t n = pkp_search_results(s, (uint32_t)f->page * PAGE_ROWS, found, PAGE_ROWS);
+    for(uint32_t k = 0; k < n; k++) {
+        PkpObject o;
+        if(pkp_object(app->pack, found[k], &o) != PKP_OK) continue;
+        page_add_row(app->page, 0, str(app, o.title), NULL, T_OBJECT | found[k]);
+    }
+    paging(app, f->page, pages, false);
+    restore(app);
+}
+
+/* Find's keys turn the wheel, not the page: Up/Down a letter, Right adds it, Left deletes one
+ * (held: all), OK lists the matches. Back, and every key where there is no search, go to the
+ * page as anywhere else. */
+static bool find_input(UiApp* app, PageKey key, PagePress press) {
+    PkpSearch* s = &app->search;
+    if(key == PageKeyBack || app->search_status != PKP_OK) return false;
+    uint64_t mask = pkp_search_next(s);
+    if(key == PageKeyOk) {
+        if(press == PagePressShort && s->len) {
+            push(app, (Frame){.screen = ScrFindResults});
+            return true;
+        }
+        return true; /* held OK opens no menu over the wheel */
+    }
+    app->search_error = PKP_OK;
+    if(key == PageKeyUp || key == PageKeyDown) {
+        app->wheel = wheel_step(mask, app->wheel, key == PageKeyDown ? 1 : -1);
+    } else if(key == PageKeyRight && mask && press != PagePressLong) {
+        app->search_error = pkp_search_push(s, pkp_search_letter(app->wheel));
+        app->wheel = 0; /* the first letter the longer query offers */
+    } else if(key == PageKeyLeft && press == PagePressLong) {
+        pkp_search_clear(s);
+        app->wheel = 0;
+    } else if(key == PageKeyLeft && s->len) {
+        char last = s->query[s->len - 1];
+        app->search_error = pkp_search_pop(s);
+        app->wheel = (uint8_t)pkp_search_position(last); /* Right adds it again */
+    }
+    render(app);
+    return true;
+}
+
 static void render(UiApp* app) {
     switch(top(app)->screen) {
     case ScrHome:
@@ -1736,6 +1918,12 @@ static void render(UiApp* app) {
         break;
     case ScrCalc:
         render_calc(app);
+        break;
+    case ScrFind:
+        render_find(app);
+        break;
+    case ScrFindResults:
+        render_find_results(app);
         break;
     default:
         render_about(app);
@@ -1961,6 +2149,12 @@ static void home(UiApp* app, uint32_t entry) {
         app->depth--; /* back to Info, which now shows none */
         render(app);
         break;
+    case HomeFind:
+        if(search_ready(app) == PKP_OK) pkp_search_clear(&app->search);
+        app->wheel = 0;
+        app->search_error = PKP_OK;
+        push(app, (Frame){.screen = ScrFind});
+        break;
     case HomeQuizTerm:
     case HomeQuizExample:
         start_quiz(
@@ -2156,6 +2350,7 @@ void ui_app_set_pack(UiApp* app, PkpReader* pack, PkpStatus status, uint32_t ope
     app->pack = pack;
     app->pack_status = status;
     app->open_ms = open_ms;
+    app->search_open = false; /* Find opens the new pack's index when it is first needed */
     if(status == PKP_OK) {
         /* one pass over the object index for the home counts (sequential, cached reads) */
         uint32_t t0 = app->platform.tick_ms(app->platform.ctx);
@@ -2198,6 +2393,7 @@ void ui_app_draw(UiApp* app, Canvas* canvas) {
 }
 
 bool ui_app_input(UiApp* app, PageKey key, PagePress press) {
+    if(top(app)->screen == ScrFind && find_input(app, key, press)) return true;
     PageAction act = page_input(app->page, key, press);
     switch(act.kind) {
     case PageActBack:

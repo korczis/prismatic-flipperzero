@@ -6,53 +6,53 @@
 # Paths: the full object's article is "ok,down,ok,down,ok".
 home-and-exit        | ui  | down,right,up,back | # Prismatic Pocket [1/6];>Detect;EXIT
 home-wraps           | ui  | up,down,down:repeat | >Info;# Prismatic Pocket [5/6];>Library;>Act
-browse-paging        | ui  | ok,ok,ok,right,right,right,right,right,right,right,right,right,right,right,ok,down,down,down,down,down,down,ok | # A long category [p1/2];a b c d e f;Long entry 38;>Next page >;# A long category [p2/2];>< Previous page;>Long entry 44;technique - L-44
-category-back        | ui  | ok,ok,down,ok,down,back,back | # Chapters;>B short;Bare article
-article-full         | ui  | ok,ok,down,ok,down,ok,down,right,right,left,down,down:long,right,right,right,right,right,right,right,left,up:long,left:long | technique - F-1;>3;>Quiz;# How to recognise it [1/7];# What to do [2/7];# When to escalate [3/7];# Don't confuse with [4/7];# Validation tests [5/7];# Chapters [6/7];# See also [7/7];In: B short;Markers describe
-article-links        | ui  | ok,ok,down,ok,down,ok,right,right,right,down,ok,back,right,right,right,down,down,down,ok,back,down,ok | # B short;Bare article;Short.;article;Huge chapter;# Chapters
-chapter              | ui  | ok,ok,down,ok,down,ok,right,right,right,right,right,down,ok,down,down,ok | # Full object with every section;Chapter one;First chapter text.;>Next: Chapter two;Second chapter text.
-huge-page            | ui  | ok,ok,down,ok,down,down,down,ok,right,down,ok,down:long,down,up,up:long | # Huge chapter;Everything;word word;more in the pack than fits
-detector             | ui  | ok,ok,down,ok,down,ok,down,ok,left,ok,right,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down | # Full object with every section [1/3];0/3;[No|Unsure|Yes];[2/3];[3/3];1/3 markers observed;1 seen,1 no,1 ?,0 n/a;Your marks only;# Your observations;Rule out first;Validate;Next steps;When to escalate
-detector-na          | ui  | ok,ok,down,ok,down,ok,down,ok,ok:long,ok:long,ok:long | 0/3 markers observed;0 seen,0 no,0 ?,3 n/a
+browse-paging        | ui  | ok,down,ok,ok,right,right,right,right,right,right,right,right,right,right,right,ok,down,down,down,down,down,down,ok | # A long category [p1/2];a b c d e f;Long entry 38;>Next page >;# A long category [p2/2];>< Previous page;>Long entry 44;technique - L-44
+category-back        | ui  | ok,down,ok,down,ok,down,back,back | # Chapters;>B short;Bare article
+article-full         | ui  | ok,down,ok,down,ok,down,ok,down,right,right,left,down,down:long,right,right,right,right,right,right,right,left,up:long,left:long | technique - F-1;>3;>Quiz;# How to recognise it [1/7];# What to do [2/7];# When to escalate [3/7];# Don't confuse with [4/7];# Validation tests [5/7];# Chapters [6/7];# See also [7/7];In: B short;Markers describe
+article-links        | ui  | ok,down,ok,down,ok,down,ok,right,right,right,down,ok,back,right,right,right,down,down,down,ok,back,down,ok | # B short;Bare article;Short.;article;Huge chapter;# Chapters
+chapter              | ui  | ok,down,ok,down,ok,down,ok,right,right,right,right,right,down,ok,down,down,ok | # Full object with every section;Chapter one;First chapter text.;>Next: Chapter two;Second chapter text.
+huge-page            | ui  | ok,down,ok,down,ok,down,down,down,ok,right,down,ok,down:long,down,up,up:long | # Huge chapter;Everything;word word;more in the pack than fits
+detector             | ui  | ok,down,ok,down,ok,down,ok,down,ok,left,ok,right,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down | # Full object with every section [1/3];0/3;[No|Unsure|Yes];[2/3];[3/3];1/3 markers observed;1 seen,1 no,1 ?,0 n/a;Your marks only;# Your observations;Rule out first;Validate;Next steps;When to escalate
+detector-na          | ui  | ok,down,ok,down,ok,down,ok,down,ok,ok:long,ok:long,ok:long | 0/3 markers observed;0 seen,0 no,0 ?,3 n/a
 detector-from-list   | ui  | right,ok,ok,ok,down,ok,ok,ok,ok,ok,ok,ok,ok,ok,ok | # Detectors;Long entry 00;markers observed
 filter-lists         | ui  | down,ok,ok,back,down,ok,ok,back,back,back | # What to do;# Confusables;Full object with every section
 quiz-term            | ui  | down,right,ok,ok,ok,down,down,down,ok,down,down,down,down,ok | # Which term?;[|Choose|];The term was;>Next question
-quiz-term-right      | ui  | ok,ok,down,ok,down,ok,down,right,ok,ok,ok,back,ok,ok,down,ok,back,ok,ok,down,down,ok,back,ok,ok,down,down,down,ok | # Correct;# Not quite;The term was
+quiz-term-right      | ui  | ok,down,ok,down,ok,down,ok,down,right,ok,ok,ok,back,ok,ok,down,ok,back,ok,ok,down,down,ok,back,ok,ok,down,down,down,ok | # Correct;# Not quite;The term was
 quiz-trainer         | ui  | down,right,ok,down,ok,left,down,down,down,down,ok,right,back,back | # Manipulative?;[Manip.||Benign];This example is;Why;A good response
-info-and-about       | ui  | down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,back,right,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down:long | # Pack & device;Title: UI test pack;Contents;Measured here;Read cache;hits,;Free heap: 123456 B;App v;# About;Keys;github.com
+info-and-about       | ui  | down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,back,right,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down:long | # Pack & device;Title: UI test pack;Contents;Measured here;Read cache;hits,;Free heap: 123456 B;App v;# About;Keys;github.com
 no-pack              | -   | ok,ok,ok,back,down,ok | No knowledge pack yet;# Pack & device;No usable pack;None found.
 broken-pack          | !ui | ok,ok | No usable pack
-bad-records          | bad | ok,ok,ok,back,down,ok,ok,back,back,down,ok,ok,down,down,down,down,down,down,down,ok,ok,ok,ok,down,down,down,down,ok | A long category;!Long entry 01
+bad-records          | bad | ok,down,ok,ok,back,down,ok,ok,back,back,down,ok,ok,down,down,down,down,down,down,down,ok,ok,ok,ok,down,down,down,down,ok | A long category;!Long entry 01
 bad-quiz             | bad | down,right,ok,ok,back,down,ok,left | # Which term?;# Manipulative?
-eject-article        | ui  | ok,ok,down,ok,down,ok,eject,back,ok,down,back,back,insert,ok | could not be;Nothing could be read
-eject-everywhere     | ui  | ok,ok,down,ok,down,ok,down,ok,eject,left,insert,back,back,ok,down,ok,right,right,right,right,right,down,eject,ok,insert,back,eject,back,back,down,ok,insert | could not be
-eject-quiz           | ui  | down,right,ok,ok,ok,eject,ok,insert,back,back,down,ok,eject,left,insert,back,eject,down,ok,ok,insert | This question could not be
-eject-lists          | ui  | eject,ok,ok,back,back,right,ok,ok,back,back,down,ok,ok,back,back,down,left,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,insert | Nothing could be read;# Pack & device;Free heap
-eject-detector       | ui  | ok,ok,down,ok,down,ok,down,eject,ok,insert,back,eject,back,insert | could not be
-eject-result         | ui  | ok,ok,down,ok,down,ok,down,ok,left,left,eject,left,insert | This object could not be
-deep-stack           | ui  | ok,ok,down,ok,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,back,back | # Huge chapter;# See also
+eject-article        | ui  | ok,down,ok,down,ok,down,ok,eject,back,ok,down,back,back,insert,ok | could not be;Nothing could be read
+eject-everywhere     | ui  | ok,down,ok,down,ok,down,ok,down,ok,eject,left,insert,back,back,ok,down,ok,right,right,right,right,right,down,eject,ok,insert,back,eject,back,back,down,ok,insert | could not be
+eject-quiz           | ui  | down,right,ok,ok,ok,eject,ok,insert,back,back,down,ok,eject,left,insert,back,eject,down,ok,down,ok,insert | This question could not be
+eject-lists          | ui  | eject,ok,down,ok,back,back,right,ok,ok,back,back,down,ok,ok,back,back,down,left,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,insert | Nothing could be read;# Pack & device;Free heap
+eject-detector       | ui  | ok,down,ok,down,ok,down,ok,down,eject,ok,insert,back,eject,back,insert | could not be
+eject-result         | ui  | ok,down,ok,down,ok,down,ok,down,ok,left,left,eject,left,insert | This object could not be
+deep-stack           | ui  | ok,down,ok,down,ok,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,right,right,right,right,right,right,right,down,ok,right,right,down,ok,back,back | # Huge chapter;# See also
 next-quiz            | ui  | down,right,ok,ok,ok,ok,down,down,ok | >Next question;# Which term?
-scroll-up            | ui  | ok,ok,down,ok,down,ok,down,down,down,down,down,down,down,down,up,up,up,up,up,up,up,up,up,up | Full object with every;technique - F-1
-quiz-binary          | ui  | ok,ok,ok,right,right,right,right,right,right,right,ok,down,down,down,down,down,ok | ___ has a definition;# Which term?
+scroll-up            | ui  | ok,down,ok,down,ok,down,ok,down,down,down,down,down,down,down,down,up,up,up,up,up,up,up,up,up,up | Full object with every;technique - F-1
+quiz-binary          | ui  | ok,down,ok,ok,right,right,right,right,right,right,right,ok,down,down,down,down,down,ok | ___ has a definition;# Which term?
 bad-quiz-article     | bad | down,ok,down,ok,ok,down,right,ok | # Confusables;Full object with every;This question could not be
-eject-back-article   | ui  | ok,ok,down,ok,down,ok,right,right,right,right,right,right,right,down,ok,eject,back,insert | This object could not be
+eject-back-article   | ui  | ok,down,ok,down,ok,down,ok,right,right,right,right,right,right,right,down,ok,eject,back,insert | This object could not be
 eject-quiz-random    | ui  | down,right,ok,eject,ok,insert,back | # Quiz;This question could not be
-eject-chapter        | ui  | ok,ok,down,ok,down,ok,right,right,right,right,right,down,eject,ok,insert | This chapter could not be
-menu-and-contents    | ui  | ok,ok,down,ok,down,ok,ok:long,down,up,up,down,ok,down,ok,ok:long,back,ok:long,ok:long,ok:long,down,ok | [Actions];>Contents;>Home;[Contents];>What to do;# What to do [2/7];# Full object with every section [1/3]
-menu-detector-quiz   | ui  | ok,ok,down,ok,down,ok,ok:long,down,down,ok,back,ok:long,down,down,down,down,ok | # Which term?;# B short
-list-menu-home       | ui  | ok,ok,ok,ok:long,ok,ok:long | [Actions];>Home;# Prismatic Pocket [1/6]
-map-small            | ui  | ok,ok,down,ok,down,ok,right,right,right,right,right,right,right,down,ok,up,left,down,right,down,right,left,ok,back,up,ok:long,back,right,ok | o Full object with every section;*^ Bare article;*> Huge chapter;Short.;o Huge chapter
-map-hub              | ui  | ok,ok,down,ok,down,down,ok,ok:long,down,down,ok,right,right,right,up,up,up,down,left,ok,back,right,ok:long | # Hub of links [1/3];# Hub of links [2/3];# Hub of links [3/3];o Hub of links;Long entry 05;technique - L-1
-map-eject            | ui  | ok,ok,down,ok,down,down,ok,ok:long,down,down,eject,ok,insert | This object could not be
-paragraph-split      | ui  | ok,ok,down,ok,down,down,ok,down,down,down,down,down,down,down,down | The hub links to many;neighbours at a time.;More neighbours rotate
+eject-chapter        | ui  | ok,down,ok,down,ok,down,ok,right,right,right,right,right,down,eject,ok,insert | This chapter could not be
+menu-and-contents    | ui  | ok,down,ok,down,ok,down,ok,ok:long,down,up,up,down,ok,down,ok,ok:long,back,ok:long,ok:long,ok:long,down,ok | [Actions];>Contents;>Home;[Contents];>What to do;# What to do [2/7];# Full object with every section [1/3]
+menu-detector-quiz   | ui  | ok,down,ok,down,ok,down,ok,ok:long,down,down,ok,back,ok:long,down,down,down,down,ok | # Which term?;# B short
+list-menu-home       | ui  | ok,down,ok,ok,ok:long,ok,ok:long | [Actions];>Home;# Prismatic Pocket [1/6]
+map-small            | ui  | ok,down,ok,down,ok,down,ok,right,right,right,right,right,right,right,down,ok,up,left,down,right,down,right,left,ok,back,up,ok:long,back,right,ok | o Full object with every section;*^ Bare article;*> Huge chapter;Short.;o Huge chapter
+map-hub              | ui  | ok,down,ok,down,ok,down,down,ok,ok:long,down,down,ok,right,right,right,up,up,up,down,left,ok,back,right,ok:long | # Hub of links [1/3];# Hub of links [2/3];# Hub of links [3/3];o Hub of links;Long entry 05;technique - L-1
+map-eject            | ui  | ok,down,ok,down,ok,down,down,ok,ok:long,down,down,eject,ok,insert | This object could not be
+paragraph-split      | ui  | ok,down,ok,down,ok,down,down,ok,down,down,down,down,down,down,down,down | The hub links to many;neighbours at a time.;More neighbours rotate
 home-grid            | ui  | right,right,left,left,down,right,down,left,up,ok | >Detect;>Library;>Act;>Train;>About;>Info;# Act;~ Objects with steps
 home-hints           | ui  | right,down,down | ~ 55 objects to read;~ 47: mark what you saw;~ 18 questions to try;~ Keys; hold Back: Home
-hub-library          | ui  | ok,down,ok,up,ok,ok,back,back,back,down,ok,back,down,ok | # Library;~ Chapters in book order;# By kind;>technique;>article;# article;>Bare article;# Everything [p1/2];~ A random article
+hub-library          | ui  | ok,down,down,ok,up,ok,ok,back,back,back,down,ok,back,down,ok | # Library;~ Chapters in book order;# By kind;>technique;>article;# article;>Bare article;# Everything [p1/2];~ A random article
 hub-detect           | ui  | right,ok,ok,back,down,ok | # Detect;# Detectors;~ Markers of a random one;[No|Unsure|Yes]
 hub-train            | ui  | down,right,ok,down,down,down,ok,ok | # Train;~ Pick the term of four;~ Manipulative or benign;# Quiz [1/18];technique - 
-back-long-home       | ui  | ok,ok,ok,ok,back:long,back:long,back | # A long category;# Prismatic Pocket [1/6];EXIT
-eject-random         | ui  | eject,ok,down,down,down,ok,insert,back,back:long,right,ok,eject,down,ok,insert | This object could not be;# Detector
-marquee              | ui  | ok,ok,ok,tick10,tick,tick30,tick6,tick,down,tick,ok:long,tick20,back,back,back,tick | == 04 tick10-idle;== 05 tick;# A long category;== 10 tick-idle;[Actions];== 12 tick20-idle
+back-long-home       | ui  | ok,down,ok,ok,ok,back:long,back:long,back | # A long category;# Prismatic Pocket [1/6];EXIT
+eject-random         | ui  | eject,ok,down,down,down,down,ok,insert,back,back:long,right,ok,eject,down,ok,insert | This object could not be;# Detector
+marquee              | ui  | ok,down,ok,ok,tick10,tick,tick30,tick6,tick,down,tick,ok:long,tick20,back,back,back,tick | == 05 tick10-idle;== 06 tick;# A long category;== 11 tick-idle;[Actions];== 13 tick20-idle
 quiz-score           | ui  | down,right,ok,ok,ok,ok,back,down,ok,left | # Which term?;# Correct [1 of 1];# Manipulative? [1 of 1];# Not quite [1 of 2]
 review               | ui  | down,right,ok,ok,ok,ok,restart,restart,down,right,ok,down,down,ok,ok,ok,down,down,ok | # Correct [1 of 1];~ Due again: boxes 1 to 5;>Next due question;# Review;Nothing is due now.
 progress-two         | ui  | down,right,ok,ok,ok,ok,back,down,ok,left,restart,down,down,ok,right,right,right,right,right | # Your progress;Answered: 2.;Session 2.;Forget my progress
@@ -61,33 +61,45 @@ progress-no-rename   | ui  | down,right,ok,ok,ok,ok,back,norename,down,ok,left,r
 progress-card-full   | ui  | full,down,right,ok,ok,ok,ok,back:long,down,down,ok,right,right,right,right,right | The last save failed.;Answered: 1.
 progress-forget      | ui  | down,right,ok,ok,ok,ok,back:long,down,down,ok,right,right,right,right,right,down,ok,down,ok | # Forget progress?;>Forget it;Answered: 0.;!The last save failed.
 progress-stale-entry | ui  | down,right,ok,ok,ok,ok,back,ok,ok,ok,rekey,restart,restart,restart,down,right,ok,down,down,ok | # Review;Nothing is due now.
-compare              | ui  | ok,ok,up,up,up,up,ok,ok,ok:long,down,down,ok,ok,right,right,left,right,ok:long,right,down,down,down,down,down,down,ok | # Compare with;>Full object with every section;# Pair with the full object [1/5];# Full object with every section [3/5];# Side by side;2/2 markers observed;1/3 markers observed;# Full object with every section
-eject-compare        | ui  | ok,ok,up,up,up,up,ok,ok,ok:long,down,down,ok,eject,ok,insert | This marker could not be
+compare              | ui  | ok,down,ok,up,up,up,up,ok,ok,ok:long,down,down,ok,ok,right,right,left,right,ok:long,right,down,down,down,down,down,down,ok | # Compare with;>Full object with every section;# Pair with the full object [1/5];# Full object with every section [3/5];# Side by side;2/2 markers observed;1/3 markers observed;# Full object with every section
+eject-compare        | ui  | ok,down,ok,up,up,up,up,ok,ok,ok:long,down,down,ok,eject,ok,insert | This marker could not be
 assess               | ui  | down,ok,down,down,ok,ok,down,ok,right,down,ok,right:repeat,left,right:long,down,ok,down,down,down,down,down,down,down,down,ok,back,back | # Assess [A1];>Axis one < A Alpha >;~ first meaning;# Assess [B1];# Assess [B2];# Assess [B3];~ second;~ Left/Right change a grade;# Your grade;B2 R;# What to do with it;>Assess again;# D assess
 assess-scales        | ui  | down,ok,down,down,ok,ok,right,right | # Axis one [1/4];A  Alpha: first meaning;# Axis two [2/4];2  Two: second
 assess-unreadable    | ui  | down,ok,down,down,ok,ok,eject,down,ok,insert | This assessment could not
 assess-lost-result   | ui  | down,ok,down,down,ok,ok,down,ok,down,down,eject,ok,insert | # Your grade;This assessment could not
-session-save-list    | ui  | ok,ok,down,ok,down,ok,down,ok,right,right,left,down,down,ok,back:long,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,up,ok,ok | Saved: 1. Only when you;# Saved sessions;>11-25 12:00 Full object with every section;~ 2026-11-25T12:00:00;# B short
-session-foreign-torn | ui  | foreign,tornsession,ok,ok,down,ok,down,ok,down,ok,right,right,left,down,down,ok,back:long,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,up,ok | Saved: 2.;>11-25 12:00 Full object with every section;01-02 03:04 elsewhere/x
-session-card-full    | ui  | full,ok,ok,down,ok,down,ok,down,ok,right,right,left,down,down,ok,down,down | Not saved: the card is
-session-delete       | ui  | ok,ok,down,ok,down,ok,down,ok,right,right,left,down,down,ok,back:long,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,ok,down,ok | # Delete sessions?;>Delete them;Saved: 0.
-session-eject        | ui  | ok,ok,down,ok,down,ok,down,ok,right,right,left,down,down,ok,back:long,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,up,eject,ok,insert | 11-25 12:00 full;!>11-25
-session-compare      | ui  | ok,ok,up,up,up,up,ok,ok,ok:long,down,down,ok,ok,right,right,left,right,ok:long,right,down,down,down,down,down,down,down,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down | # Side by side;Saved: Info > Saved sessions.
-session-saved-note   | ui  | ok,ok,down,ok,down,ok,down,ok,right,right,left,down,down,ok,down,down | Saved: Info > Saved sessions.
-sim-optimal          | ui  | ok,ok,up,up,ok,ok,down,ok,down,ok,down,down,down,ok,down,ok,down,down,down,ok | # Step 1 of 2 [trust 50];# Success;75 trust (+25);# Step 2 of 2 [trust 75];85 trust (+10);# Outcome;Optimal
-sim-acceptable       | ui  | ok,ok,up,up,ok,ok,down,ok,down,ok,down,down,down,ok,down,down,down,ok,down,down,down,ok | 65 trust (-10);# Outcome;Acceptable
-sim-suboptimal       | ui  | ok,ok,up,up,ok,ok,down,ok,down,ok,down,down,down,ok,down,down,ok,down,down,down,ok | 35 trust (-40);Suboptimal
-sim-critical         | ui  | ok,ok,up,up,ok,ok,down,ok,down,down,ok,down,down,down,ok,down,down,ok,down,down,down,ok | # Danger;20 trust (-30);0 trust (-20);Critical failure
-sim-back-repick      | ui  | ok,ok,up,up,ok,ok,down,ok,down,ok,back,down,ok | 75 trust (+25);# Danger;20 trust (-30)
-sim-again            | ui  | ok,ok,up,up,ok,ok,down,ok,down,ok,down,down,down,ok,down,ok,down,down,down,ok,down,down,down,ok,back | >Run it again;# Step 1 of 2 [trust 50];# E simulate
-sim-unreadable       | ui  | ok,ok,up,up,ok,ok,down,eject,ok,insert | This simulation could not
-sim-lost-step        | ui  | ok,ok,up,up,ok,ok,down,ok,down,eject,ok,insert | This step could not
-score-high           | ui  | ok,ok,up,ok,ok,down,ok,right,down,down,ok | # Score [50 MID];>Raise? < +0 No >;~ raised a lot;# Score [90 HI];~ Left/Right change an answer;# Your score;90 HI High
-score-low            | ui  | ok,ok,up,ok,ok,down,ok,down,left,ok,ok,down,ok,down,down | >Lower? < -60 Yes >;# Score [0 LO];# Your score;0 LO Low;below thirty
-score-again          | ui  | ok,ok,up,ok,ok,down,ok,down,down,ok,down,ok,back | 50 MID Middle;>Score again;# Score [50 MID];# F score
-score-unreadable     | ui  | ok,ok,up,ok,ok,down,eject,ok,insert | This scorecard could not
-score-eject-live     | ui  | ok,ok,up,ok,ok,down,ok,eject,right,insert | # Score [50 ];>See the result
-score-lost-result    | ui  | ok,ok,up,ok,ok,down,ok,down,down,eject,ok,insert | This scorecard could not
+session-save-list    | ui  | ok,down,ok,down,ok,down,ok,down,ok,right,right,left,down,down,ok,back:long,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,up,ok,ok | Saved: 1. Only when you;# Saved sessions;>11-25 12:00 Full object with every section;~ 2026-11-25T12:00:00;# B short
+session-foreign-torn | ui  | foreign,tornsession,ok,down,ok,down,ok,down,ok,down,ok,right,right,left,down,down,ok,back:long,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,up,ok | Saved: 2.;>11-25 12:00 Full object with every section;01-02 03:04 elsewhere/x
+session-card-full    | ui  | full,ok,down,ok,down,ok,down,ok,down,ok,right,right,left,down,down,ok,down,down | Not saved: the card is
+session-delete       | ui  | ok,down,ok,down,ok,down,ok,down,ok,right,right,left,down,down,ok,back:long,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,ok,down,ok | # Delete sessions?;>Delete them;Saved: 0.
+session-eject        | ui  | ok,down,ok,down,ok,down,ok,down,ok,right,right,left,down,down,ok,back:long,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,down,up,eject,ok,insert | 11-25 12:00 full;!>11-25
+session-compare      | ui  | ok,down,ok,up,up,up,up,ok,ok,ok:long,down,down,ok,ok,right,right,left,right,ok:long,right,down,down,down,down,down,down,down,down,down,ok,down,down,down,down,down,down,down,down,down,down,down,down | # Side by side;Saved: Info > Saved sessions.
+session-saved-note   | ui  | ok,down,ok,down,ok,down,ok,down,ok,right,right,left,down,down,ok,down,down | Saved: Info > Saved sessions.
+sim-optimal          | ui  | ok,down,ok,up,up,ok,ok,down,ok,down,ok,down,down,down,ok,down,ok,down,down,down,ok | # Step 1 of 2 [trust 50];# Success;75 trust (+25);# Step 2 of 2 [trust 75];85 trust (+10);# Outcome;Optimal
+sim-acceptable       | ui  | ok,down,ok,up,up,ok,ok,down,ok,down,ok,down,down,down,ok,down,down,down,ok,down,down,down,ok | 65 trust (-10);# Outcome;Acceptable
+sim-suboptimal       | ui  | ok,down,ok,up,up,ok,ok,down,ok,down,ok,down,down,down,ok,down,down,ok,down,down,down,ok | 35 trust (-40);Suboptimal
+sim-critical         | ui  | ok,down,ok,up,up,ok,ok,down,ok,down,down,ok,down,down,down,ok,down,down,ok,down,down,down,ok | # Danger;20 trust (-30);0 trust (-20);Critical failure
+sim-back-repick      | ui  | ok,down,ok,up,up,ok,ok,down,ok,down,ok,back,down,ok | 75 trust (+25);# Danger;20 trust (-30)
+sim-again            | ui  | ok,down,ok,up,up,ok,ok,down,ok,down,ok,down,down,down,ok,down,ok,down,down,down,ok,down,down,down,ok,back | >Run it again;# Step 1 of 2 [trust 50];# E simulate
+sim-unreadable       | ui  | ok,down,ok,up,up,ok,ok,down,eject,ok,insert | This simulation could not
+sim-lost-step        | ui  | ok,down,ok,up,up,ok,ok,down,ok,down,eject,ok,insert | This step could not
+score-high           | ui  | ok,down,ok,up,ok,ok,down,ok,right,down,down,ok | # Score [50 MID];>Raise? < +0 No >;~ raised a lot;# Score [90 HI];~ Left/Right change an answer;# Your score;90 HI High
+score-low            | ui  | ok,down,ok,up,ok,ok,down,ok,down,left,ok,ok,down,ok,down,down | >Lower? < -60 Yes >;# Score [0 LO];# Your score;0 LO Low;below thirty
+score-again          | ui  | ok,down,ok,up,ok,ok,down,ok,down,down,ok,down,ok,back | 50 MID Middle;>Score again;# Score [50 MID];# F score
+score-unreadable     | ui  | ok,down,ok,up,ok,ok,down,eject,ok,insert | This scorecard could not
+score-eject-live     | ui  | ok,down,ok,up,ok,ok,down,ok,eject,right,insert | # Score [50 ];>See the result
+score-lost-result    | ui  | ok,down,ok,up,ok,ok,down,ok,down,down,eject,ok,insert | This scorecard could not
 calc                 | ui  | down,ok,down,down,down,down,ok,ok,down,ok,ok,ok,left,ok,down,right,right,left,down,ok | # algorithm;>Zeta calculator;# Bayes update [50.0%];>Add a source < 90% >;# Bayes update [90.0%];~ confirmed;# Bayes update [98.8%];>Add a source < 10% >;>Prior < 70% >;# Bayes update [99.2%];from 60%: 90 90
 calc-prior-undo      | ui  | down,ok,down,down,down,down,ok,ok,down,ok,down,left,left,left,left,left,right,right,right,right,right,right,right,right,right,ok,down,ok,down,ok | >Prior < 10% >;~ rejected;>Prior < 90% >;# Bayes update [90.0%];# Bayes update [50.0%];~ tentative
 calc-unreadable      | ui  | down,ok,down,down,down,down,ok,ok,down,eject,ok,insert | This calculator could not
+find-type            | ui  | ok,ok,down,down,down,down,down,down,down,right,down,right | # Find by name;_ 34[a]bc;Up/Down: a letter.;# Find by name [46 found];l_ 89[i]o0;# Find by name [45 found];lo_ [n];Long entry 00;Long entry 02;!Long entry 03
+find-delete          | ui  | ok,ok,down,down,down,down,down,down,down,right,down,right,left,left:long,left,up,right,ok:long | l_ 9i[o]01;_ 34[a]bc;_ 23[4]ab;4_ 34[0]12;# Find by name [5 found];Long entry 40
+find-paging          | ui  | ok,ok,down,down,down,down,down,down,down,right,down,right,ok,up,ok,back | # Found: lo [p1/2];>Long entry 00;>Next page >;# Found: lo [p2/2];Long entry 42;lo_ [n]
+find-open            | ui  | ok,ok,down,down,down,down,down,down,right,right,ok,down,ok,back,back,back,back | # Found: hu;>Hub of links;>Huge chapter;# B short;Huge chapter;hu_ [b];# Library;>Find by name
+find-wide            | ui  | ok,ok,down,down,down,down,down,down,down,down,down,down,down,down,down,right,down,right,right,right,right,right,right,right,right,right,right,down,up | wuwmmwwumm_;wuwmmwwu_ [m];# Find by name [1 found];Huge chapter
+find-no-index        | noindex | ok,ok,down,right,ok,back,back,down,down,ok,right,right,right,down,down,down,down,down | This pack has no search;Search index: none in;!search keys
+find-bad-index       | bad | ok,ok,right,back,back,down,down,ok,right,right,right,down,down,down,down,down | This pack's search index is;Search index: index out
+find-too-large       | big | ok,ok,right | This pack is too large to
+eject-find           | ui  | ok,ok,eject,right,insert,down,down,down,down,down,down,down,right,down,right,eject,left,insert,right | The search index could not;l_ 9i[o]01;lo_ [n]
+eject-find-open      | ui  | eject,ok,ok,insert,back,ok,down,down,down,down,down,down,right,right,ok,eject,ok,back,insert | The search index could not;_ 34[a]bc;Nothing could be read
+info-search          | ui  | down,down,ok,right,right,right,down,down,down,down,down | Search index check:
+info-search-count    | ui  | down,down,ok,down,down,down,down,down,down,down,down,down,down | 119 search keys, 210
