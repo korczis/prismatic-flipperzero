@@ -504,7 +504,8 @@ timeline
   title Prismatic Pocket
   v0.0.1 First Light : native FAP on hardware : pinned SDK matrix : preview release
   v0.1.0 Pocket : full Kompendium pack : reader, detector, applicator, trainer : sessions and spaced repetition : Prismatic assessments, scorecards, simulations
-  next : host bridge over RPC : search index : multi-pattern detector with shared markers : Momentum on hardware
+  v0.2.0 Bridge : host bridge over USB : checked pack install : sessions and progress on a computer
+  next : search index : multi-pattern detector with shared markers : Momentum on hardware
   later : Prismatic adapter over the bridge's JSON : more packs from the same compiler
 ```
 

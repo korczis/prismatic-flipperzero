@@ -77,6 +77,10 @@ Generated from the repository's history by [`tools/docs.py`](../tools/docs.py). 
 | `b33816e` | 13:39 | fix(bridge): push-pack over acknowledged CLI chunks; never end a busy session |
 | `85f461a` | 13:47 | fix(bridge): install a pack in one CLI session, never mixing RPC and CLI |
 | `c8d58d7` | 13:56 | docs(evidence): bridge device run: status and small installs proven |
+| `8f53906` | 14:16 | fix(bridge): never release the port while the device is still working |
+| `8413a03` | 14:16 | docs(evidence): the bridge proven on the device, end to end |
+| `8755d42` | 14:18 | chore(just): run the bridge recipe without echoing its shell line |
+| `24ee70d` | 14:38 | docs(adr): ADR 0001-0005 accepted by the owner; UI workflow invokes the Flowbite skill |
 <!-- docs:end timeline -->
 
 ## What made it fast

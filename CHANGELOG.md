@@ -1,13 +1,16 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 — Bridge (preview)
 
-- Host bridge, `tools/bridge.py` (`just bridge`): the Flipper's own RPC over USB. Device and
-  card status, a pack installed through a temporary name with an MD5 check, saved sessions and
-  quiz progress pulled and decoded against the pack; the FAP gains no interface (ADR 0005,
-  `docs/bridge.md`). Proven on the device: status, a 20 MB install, pull, and decoding of a
-  session saved through the detector. It never ends a session or releases the port while the
+- Host bridge, `tools/bridge.py` (`just bridge`), over the Flipper's own USB interfaces, with no
+  interface added to the app (ADR 0005, `docs/bridge.md`): device and card status over RPC, a
+  pack installed over the storage CLI in acknowledged chunks with MD5 checks on the device
+  before the swap and after it, saved sessions and quiz progress pulled and decoded against the
+  pack with every object, marker and question named.
+- Proven on official 1.5.1: status, a 20 MB install (479 s), pull, and decoding of a session
+  saved through the detector. The bridge never ends a session or releases the port while the
   device is still working, which is what stopped the Flipper four times during development.
+- ADR 0001 to 0005 accepted; a UI workflow for the Pages explorer.
 
 ## 0.1.0 — Pocket (preview)
 

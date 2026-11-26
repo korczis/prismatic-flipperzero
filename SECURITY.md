@@ -15,4 +15,6 @@ Scope and boundaries:
   its screen.
 - Release `SHA256SUMS` detect accidental corruption. They are not signatures and do not
   authenticate the publisher; verify downloads come from this repository's Releases page.
-- Device tooling (`tools/device.sh`) never flashes firmware.
+- Device tooling (`tools/device.sh`) never flashes firmware. The host bridge writes only
+  `*.pkp` packs under `SD/apps_data/prismatic/`, decoded and checked on the host first, and
+  never deletes what the reader saved.
