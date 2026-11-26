@@ -71,7 +71,7 @@ walk dir keys settle="0.4":
 
 # Host bridge: status, push-pack, pull over RPC; sessions, progress decode pulled files
 bridge cmd *args:
-    if [ "{{cmd}}" = sessions ] || [ "{{cmd}}" = progress ]; then python3 tools/bridge.py {{cmd}} {{args}}; else tools/device.sh bridge {{cmd}} {{args}}; fi
+    @if [ "{{cmd}}" = sessions ] || [ "{{cmd}}" = progress ]; then python3 tools/bridge.py {{cmd}} {{args}}; else tools/device.sh bridge {{cmd}} {{args}}; fi
 
 # The one verification entry point (CI and majordomus finish use it too)
 verify:
