@@ -81,6 +81,7 @@ Generated from the repository's history by [`tools/docs.py`](../tools/docs.py). 
 | `8413a03` | 14:16 | docs(evidence): the bridge proven on the device, end to end |
 | `8755d42` | 14:18 | chore(just): run the bridge recipe without echoing its shell line |
 | `24ee70d` | 14:38 | docs(adr): ADR 0001-0005 accepted by the owner; UI workflow invokes the Flowbite skill |
+| `3c8502a` | 14:42 | chore(release): 0.2.0 Bridge: version, changelog, release notes, security |
 <!-- docs:end timeline -->
 
 ## What made it fast
