@@ -1,0 +1,45 @@
+{
+ "date": "2026-11-26",
+ "firmware": "1.5.1",
+ "hardware": "Iruqli3",
+ "tool": "tools/bridge.py via tools/device.sh bridge",
+ "source_commit": "85f461a",
+ "runs": [
+  {
+   "command": "status --md5",
+   "pack_bytes": 20706184,
+   "pack_md5": "2f3f93bb7d2c5d0ceade8b5c157fbc4f",
+   "device_md5_seconds": 50.4,
+   "result": "current"
+  },
+  {
+   "command": "push-pack acceptance-bridge.pkp",
+   "pack_bytes": 9500,
+   "pack_md5": "ddc7650dc38f6221635d7c9f5f88f5eb",
+   "result": "installed; CLI storage md5 on the device matched"
+  },
+  {
+   "command": "push-pack acceptance-bridge.pkp (again)",
+   "result": "already current"
+  },
+  {
+   "command": "status --md5 --pack acceptance-bridge.pkp",
+   "result": "current"
+  },
+  {
+   "command": "push-pack --force (kompendium.pkp)",
+   "pack_bytes": 20706184,
+   "result": "every chunk acknowledged (100%), then the device CLI gave no prompt within 60 s at the next step; the device stopped answering and needs a restart; the installed pack was not removed (removal comes later in the sequence)",
+   "seconds": 326
+  }
+ ],
+ "not_run": [
+  "pull on the device"
+ ],
+ "incidents": [
+  "RPC MD5 of the 20 MB pack abandoned after 120 s, session ended: device off USB",
+  "RPC write of the 20 MB pack, status not awaited past 60 s, session ended: device off USB",
+  "CLI opened milliseconds after an RPC session ended: device deaf until restart",
+  "CLI-only push of the 20 MB pack: no prompt after the last chunk's follow-up command"
+ ]
+}

@@ -75,6 +75,7 @@ Generated from the repository's history by [`tools/docs.py`](../tools/docs.py). 
 | `005e714` | 12:39 | feat(bridge): host bridge over the Flipper's own RPC |
 | `29db801` | 13:20 | fix(bridge): ping until the RPC session answers; record the device run |
 | `b33816e` | 13:39 | fix(bridge): push-pack over acknowledged CLI chunks; never end a busy session |
+| `85f461a` | 13:47 | fix(bridge): install a pack in one CLI session, never mixing RPC and CLI |
 <!-- docs:end timeline -->
 
 ## What made it fast

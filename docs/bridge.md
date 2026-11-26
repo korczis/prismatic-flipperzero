@@ -152,19 +152,20 @@ against packs, sessions and progress images built in the test, including torn li
 an unknown version and the two-copy rule. The tools coverage gate requires every line of
 `bridge.py` to run.
 
-On the device (official 1.5.1, 2026-11-26):
+On the device (official 1.5.1, 2026-11-26; every run in
+[`docs/evidence/bridge/manifest.json`](evidence/bridge/manifest.json), counts and hashes only):
 
-- `status` and `status --md5` work: the device hashed the 20 MB pack in 50.4 s over RPC (the CLI's
-  `storage md5` took 50.3 s) and the hash matched the local pack.
-- A push of the 20 MB pack sent every part (4 min 47 s) but the write's final status did not
-  arrive within the 60 s the bridge then waited; the bridge ended the session, and the Flipper
-  dropped off USB. The installed pack was not touched: the failure came before the rename.
-- The first incident had the same shape: an MD5 request that the bridge stopped waiting for after
-  120 s, the session ended, the Flipper gone from USB. Ending an RPC session while the device is
-  still inside a long storage request is what both have in common; the bridge must not do it.
-
-So `push-pack` is not yet proven on the device, and the evidence for it is not recorded. What
-remains: wait for the write's status as long as the device needs (or move the transfer to the
-storage CLI, which `just deploy-pack` uses for the same pack without trouble), run `push-pack` and
-`pull`, and record the run under `docs/evidence/bridge/` as counts and hashes only: what the
-reader saved stays on the reader's side.
+- `status` and `status --md5` work: the device hashed the 20 MB pack in 50.4 s over RPC and the
+  hash matched the local pack.
+- `push-pack` works end to end for a small pack (9 500 bytes): installed, MD5 checked on the
+  device, a second run reports it already current, `status --md5` agrees, and the device stays
+  responsive throughout.
+- `push-pack` of the 20 MB pack is **not** proven. Over the CLI every chunk was acknowledged, but
+  a command after the upload (the device's MD5, then `loader info`, or removing a mismatched
+  part) got no prompt within 60 s,
+  and the device stopped answering until a restart. The installed pack was not touched: the
+  swap comes later. Until this is understood, install the full pack with `just deploy-pack`.
+- Three earlier attempts stopped the device too: an RPC session ended inside a long storage
+  request (twice), and the port reopened for the CLI milliseconds after an RPC session ended.
+  The bridge no longer does either.
+- `pull` has not been run on the device yet.
