@@ -304,6 +304,7 @@ only in this text:
 | **Partial failure** | A corrupted record or a pulled SD card shows *"could not be read"* on that screen, and the rest of the app keeps working (scenarios `eject-*`, `bad-*`). |
 | **Two copies, one winner** | Quiz progress (Leitner boxes, [`progress.c`](app/core/progress.c)) is a bounded, versioned, checksummed file of at most 3 KiB. A save writes a temporary copy, then replaces the file; the reader takes the valid copy with the higher generation, so a torn write or a rename that never happened costs at most the last answer (scenarios `progress-*`). |
 | **State, not screens** | A live tool keeps only its choices: one byte per scale or question, up to eight source confidences and a prior. Every key press recomputes the result from them and the pack (the Bayes fusion is a loop of floats over at most eight bytes, [`bayes.c`](app/core/bayes.c)) and redraws the one page; there is no per-step screen stack to keep. |
+| **Index, not scan** | Find by name never reads the titles: a sorted table of 16-byte keys and a run of 2-byte postings per key (137 KB of a 20 MB pack). A letter costs two binary searches inside the previous range and one pass over one run, in 64-byte chunks; the matches are two 512-byte bitsets, the letters that can follow a 64-bit mask, and turning the wheel reads nothing ([`search.c`](app/core/search.c), [measured](#the-cache-measured)). |
 | **Exhaustion test** | The parser is fuzzed with thousands of mutated packs under ASan and UBSan, and checked against an independent Python decoder. |
 
 ### The cache, measured

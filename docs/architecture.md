@@ -60,19 +60,39 @@ The format is little-endian throughout, and every integer is decoded explicitly.
 | RELATIONS | `{type, target object}` |
 | QUIZ | 34-byte records: kind, answer, four options, prompt, context, explanation, response |
 | KINDS, RELNAMES | the vocabularies, so a new kind needs no new firmware |
+| SEARCH_KEYS (10, optional) | 16-byte keys of Find by name: up to ten characters of `[a-z0-9]`, NUL-padded, strictly ascending, each with the first posting (u32) and a count (u16) of its run; the runs are contiguous |
+| SEARCH_POSTINGS (11, optional) | u16 per (key, object): bits 0-14 the object, ascending within a run; bit 15 a strong match (the title's first word after a leading code, or the code) |
 
 The index CRC covers everything after the header except the string pool and is checked when a
-pack is opened. The pool is most of the file and has its own CRC, checked on request; corrupted
-text cannot escape its bounds. No two sections may overlap. A pack with unknown required-feature
-flags is refused.
+pack is opened; the search index lies outside the pool, so the CRC covers it too. The pool is
+most of the file and has its own CRC, checked on request; corrupted text cannot escape its
+bounds. No two sections may overlap. A pack with unknown required-feature flags is refused.
+
+Sections 1-9 are required; 10 and 11 come together or not at all. A reader skips any section
+type it does not know, which is how the format grows without a version bump: a required-feature
+flag is only for data an old reader would misread, and a changed layout of an existing section
+takes new section types instead of a new version. So the v0.2.0 app opens a pack with a search
+index and simply offers no search, and this app opens a v0.2.0 pack and says it has no index;
+`tests/native/run.sh` builds the v0.2.0 reader and compiler from their tag and proves both.
+Types 12-14 are reserved for a multi-pattern detector; the next free type is 15.
+
+The index holds the words of each title and its aliases, the code's words and the code without
+its punctuation (`EA-3.2.F` also as `ea32f`), folded to ASCII, lower case, two characters at
+least (the compacted code any length), cut to ten characters, colliding keys merged. Definitions
+are not indexed. A pack of more than 4 096 objects gets no index: the device's matches are two
+4 096-bit sets.
 
 ## 3. Runtime (`app/`)
 
 - **`app/core/`**: portable C99 with no Furi and no allocation. It holds the pack reader
   (`pkp.c`), the LRU block cache every read goes through (`cache.c`: eight 256-byte blocks), and
   the detector summary and quiz check (`pocket.c`), and quiz progress for spaced repetition
-  (`progress.c`: Leitner boxes in a bounded, checksummed file kept as two copies). It is tested on
-  the host under sanitizers.
+  (`progress.c`: Leitner boxes in a bounded, checksummed file kept as two copies), and Find by
+  name (`search.c`: a query typed a letter at a time is two lower-bound searches inside the
+  previous key range and one pass over a contiguous postings run; the letters that can follow are
+  a 64-bit mask, the matches two bitsets, 1.2 KiB in all). It is tested on the host under
+  sanitizers, and `search.c` against `tools/pocket.py search` on every prefix of one to three
+  letters and every key typed in full.
 - **`app/ui/`**: the whole user interface, portable as well. It uses only the canvas API and C99.
   - `page.c` is the one view engine. A page is a pinned header (the title, or the section whose
     heading scrolled by, plus the position), a body of styled blocks and optional softkeys.

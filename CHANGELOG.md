@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+- **Find by name** (Library, first entry): type a title, alias or code a letter at a time on a
+  wheel that offers only letters with matches, so a query never reaches zero; the best three
+  under the wheel, every match on OK, strong matches (the title's first word, the code) first.
+  Prefix search on the device; the Pages explorer keeps its substring search.
+- The pack carries a search index in two new optional sections (10 keys, 11 postings: 6 440
+  keys, 17 220 postings, 137 480 bytes). The format version stays 1: the v0.2.0 app opens the
+  new pack and offers no search, and this app opens a v0.2.0 pack without one (both proven in
+  `tests/native/run.sh`). Sections 12-14 are reserved for a multi-pattern detector.
+- `app/core/search.c` (1.2 KiB, no allocation), checked against the reference
+  `tools/pocket.py search` on every prefix of one to three letters and every key typed in full;
+  `tools/cache-bench.sh` measures what each Find step reads from the card in the simulator.
+- Not yet on a device: the gallery, the parity record and the acceptance record still show the
+  0.2.0 build.
+
 ## 0.2.0 — Bridge (preview)
 
 - Host bridge, `tools/bridge.py` (`just bridge`), over the Flipper's own USB interfaces, with no
