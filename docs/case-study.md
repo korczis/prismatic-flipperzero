@@ -93,6 +93,7 @@ Generated from the repository's history by [`tools/docs.py`](../tools/docs.py). 
 | `8fd5982` | 16:51 | fix(core): search only a verified index, within one object bound |
 | `f92fa09` | 17:02 | feat(ui): Find by name, a letter wheel over the search index |
 | `c4e3e28` | 17:03 | docs: the search index in the pack format, the runtime and the changelog |
+| `da03023` | 17:19 | fix(ui): Find by name after the independent atlas review |
 <!-- docs:end timeline -->
 
 ## What made it fast

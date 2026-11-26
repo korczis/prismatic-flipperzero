@@ -165,6 +165,8 @@ turning the wheel reads nothing. No time on the device is claimed. A pack withou
 older compiler's), a damaged index, a pack of more than 4 096 objects and a pulled card each say
 so on the Find screen with what to do, and Info shows the index's size and its check.
 
+On the device (official 1.5.1, 2026-11-26) the walk Library > Find by name, two letters, the results, an article and back gave 14 of 14 frames identical to the simulator, with the pack installed by the host bridge; the frames and their manifest are in [`docs/evidence/find/`](evidence/find/).
+
 ## Typography
 
 There are three roles, all from one family:

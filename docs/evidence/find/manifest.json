@@ -1,0 +1,28 @@
+{
+ "date": "2026-11-26",
+ "firmware": "1.5.1",
+ "command": "tools/parity.sh \"ok,ok,down,right,down,right,right,ok,ok,back,left,back,back\"",
+ "keys": "ok,ok,down,right,down,right,right,ok,ok,back,left,back,back",
+ "frames_identical": 14,
+ "frames_different": 0,
+ "fap_sha256": "50b6e7cf29f3fd0b76fe7d958d6038a7e6c92b259de1341931a19f44ccc24a69",
+ "pack_sha256": "82809d190c8b9425119a22c46108726ca3be0e9babc6fed0c5244703145aac44",
+ "pack_installed_by": "tools/bridge.py push-pack (20842760 bytes, md5 ddf86a6ff153d58d03cec9a70e6c8289, 551 s)",
+ "frames": [
+  "00-start.png",
+  "01-ok.png",
+  "02-ok.png",
+  "03-down.png",
+  "04-right.png",
+  "05-down.png",
+  "06-right.png",
+  "07-right.png",
+  "08-ok.png",
+  "09-ok.png",
+  "10-back.png",
+  "11-left.png",
+  "12-back.png",
+  "13-back.png"
+ ],
+ "what": "Library > Find by name, two letters on the wheel, the results, an article, Back and Left; device frames compared with the simulator frame for frame"
+}
