@@ -20,8 +20,10 @@ Flipper found); sessions and progress work offline on pulled files.
 import argparse
 import hashlib
 import json
+import re
 import struct
 import sys
+import time
 import zlib
 from pathlib import Path
 
@@ -33,12 +35,16 @@ APP_DIR = "/ext/apps_data/prismatic"
 FAP_PATH = "/ext/apps/Tools/prismatic.fap"
 DEFAULT_PACK = ROOT / "build" / "packs" / "kompendium.pkp"
 PULLED = ("sessions.jsonl", "progress.bin", "progress.tmp")
-CHUNK = 512
-# The device hashes a 20 MB pack slowly; one request waits this long for the answer.
+# A pack goes over the storage CLI in acknowledged chunks (`storage write_chunk`, as uFBT's
+# storage.py sends files): the device answers each chunk before the next is sent, so the host
+# never runs ahead of the card and never ends a session inside a long write.
+CHUNK = 8192
+CHUNK_TIMEOUT = 60.0
+# The device hashes a 20 MB pack in about 50 s; one request waits this long for the answer.
 MD5_TIMEOUT = 600.0
 
 # PB.Main content fields (flipper.proto) and their payload fields (storage.proto, system.proto).
-PING_REQ, LIST_REQ, LIST_RESP, READ_REQ, READ_RESP, WRITE_REQ = 5, 7, 8, 9, 10, 11
+PING_REQ, LIST_REQ, LIST_RESP, READ_REQ, READ_RESP = 5, 7, 8, 9, 10
 DELETE_REQ, MKDIR_REQ, MD5_REQ, MD5_RESP = 12, 13, 14, 15
 LOCK_REQ, LOCK_RESP, STAT_REQ, STAT_RESP = 17, 18, 24, 25
 INFO_REQ, INFO_RESP, RENAME_REQ, DEVINFO_REQ, DEVINFO_RESP = 28, 29, 30, 32, 33
@@ -75,6 +81,7 @@ class Device:
 
     def __init__(self, port, tries=5):
         self.rpc = fs.Rpc(port)
+        self.pending = 0  # the command id still waiting for its answer
         # The device can drop the first request after start_rpc_session (measured on 1.5.1: an
         # MD5 request sent first went unanswered for ten minutes). Ping until one is answered.
         for _ in range(tries):
@@ -85,8 +92,24 @@ class Device:
                 continue
         raise BridgeError("the device opened an RPC session but answers no ping")
 
-    def close(self):
-        self.rpc.s.write(fs.main_msg(self.rpc.cid + 1, 19, b""))  # StopSession: back to the CLI
+    def close(self, grace=MD5_TIMEOUT):
+        """StopSession, back to the CLI; never while a request is unanswered.
+
+        Ending the session inside a long storage request (an MD5 given up after 120 s, a write
+        whose status was not awaited) took the Flipper off USB twice, and releasing the port
+        ends it as well. So a request still pending is waited for (up to `grace` seconds more)
+        before the session ends; only if it never answers is the port released with a warning.
+        """
+        if self.pending:
+            try:
+                for _raw in self._responses(self.pending, grace):
+                    pass
+                self.pending = 0
+            except (TimeoutError, ValueError, IndexError):
+                print("bridge: the device never answered its last request; it may need a "
+                      "restart (hold Left and Back)", file=sys.stderr)
+        if not self.pending:
+            self.rpc.s.write(fs.main_msg(self.rpc.cid + 1, 19, b""))
         self.rpc.s.close()
 
     def _send(self, cid, content_field, content, has_next=False):
@@ -109,9 +132,11 @@ class Device:
         cid = self.rpc.cid
         self._send(cid, content_field, content)
         parts, status = [], OK
+        self.pending = cid
         for raw in self._responses(cid, timeout):
             status = raw.get(2, OK)
             parts.append(raw)
+        self.pending = 0
         if status not in allow:
             raise BridgeError(f"device refused request {content_field}: status {status}")
         return status, parts
@@ -165,22 +190,6 @@ class Device:
             data += one(f, FILE_DATA, b"")
         return data
 
-    def write(self, path, data, progress=None):
-        """One WriteRequest split into chunks under one command id, has_next on all but the last."""
-        self.rpc.cid += 1
-        cid = self.rpc.cid
-        chunks = [data[i: i + CHUNK] for i in range(0, len(data), CHUNK)] or [b""]
-        for n, chunk in enumerate(chunks, 1):
-            content = text(1, path) + fs.field(2, 2, fs.field(FILE_DATA, 2, chunk))
-            self._send(cid, WRITE_REQ, content, has_next=n < len(chunks))
-            if progress and (n % 256 == 0 or n == len(chunks)):
-                progress(n * CHUNK if n < len(chunks) else len(data), len(data))
-        status = OK
-        for raw in self._responses(cid, timeout=60.0):
-            status = raw.get(2, OK)
-        if status != OK:
-            raise BridgeError(f"device refused the write of {path}: status {status}")
-
     def mkdir(self, path):
         self.request(MKDIR_REQ, text(1, path), allow=(OK, STORAGE_EXIST))
 
@@ -191,12 +200,69 @@ class Device:
         self.request(RENAME_REQ, text(1, old) + text(2, new))
 
 
+class Cli:
+    """The device's text CLI, for the one thing it does better than RPC: an appending write
+    whose every chunk is acknowledged."""
+
+    def __init__(self, port):
+        import serial  # deferred: only the device path needs pyserial
+
+        self.s = serial.Serial(port, 230400, timeout=0.2)
+        self.buf = b""
+        self.until(b">: ", send=b"\x03\r")  # Ctrl-C ends any command left running
+        self.s.reset_input_buffer()
+        self.buf = b""
+
+    def until(self, tokens, send=None, timeout=CHUNK_TIMEOUT):
+        """Bytes up to and including the earliest token; what follows stays buffered."""
+        if isinstance(tokens, bytes):
+            tokens = (tokens,)
+        if send:
+            self.s.write(send)
+        end = time.time() + timeout
+        while time.time() < end:
+            hits = [(self.buf.find(tok), tok) for tok in tokens if tok in self.buf]
+            if hits:
+                at, tok = min(hits)
+                got, self.buf = self.buf[: at + len(tok)], self.buf[at + len(tok):]
+                return got
+            self.buf += self.s.read(self.s.in_waiting or 1)
+        raise TimeoutError(f"the device CLI did not answer {tokens[0]!r} within {timeout} s")
+
+    def write_chunk(self, path, data):
+        command = f'storage write_chunk "{path}" {len(data)}\r'.encode("ascii")
+        self.until(b"\n", send=command)  # the echoed command line, which may hold any text
+        if self.until((b"Ready", b"Storage error")).endswith(b"Storage error"):
+            detail = self.until(b"\r").decode("ascii", "replace").strip()
+            self.until(b">: ")
+            raise BridgeError(f"{path}: Storage error{detail}")
+        self.s.write(data)
+        after = self.until(b">: ")
+        if b"Storage error" in after:  # the write itself failed, e.g. a full card
+            detail = after[after.index(b"Storage error"):].split(b"\r")[0]
+            raise BridgeError(f"{path}: {detail.decode('ascii', 'replace')}")
+
+    def close(self):
+        self.s.close()
+
+
+def send_file(port, path, data, progress):
+    cli = Cli(port)
+    try:
+        for at in range(0, len(data), CHUNK):
+            cli.write_chunk(path, data[at: at + CHUNK])
+            progress(min(at + CHUNK, len(data)), len(data))
+    finally:
+        cli.close()
+
+
 def md5_of(data):
     return hashlib.md5(data).hexdigest()  # what the device's Md5sumRequest computes
 
 
 def connect(args):
-    return Device(args.port or fs.find_port())
+    args.port = args.port or fs.find_port()
+    return Device(args.port)
 
 
 def pack_state(local, size, remote_size, remote_md5):
@@ -244,10 +310,16 @@ def cmd_status(args):
     return 0
 
 
+def progress_line(done, total):
+    print(f"\r{done * 100 // total:3d}% of {total} bytes", end="", file=sys.stderr)
+
+
 def cmd_push_pack(args):
+    """RPC to check and prepare, the CLI to write, RPC to verify and swap: three sessions, none
+    ended while the device is still answering."""
     pack = Path(args.pack)
-    if pack.suffix != ".pkp":
-        raise BridgeError(f"{pack}: only a .pkp pack is installed")
+    if not re.fullmatch(r"[A-Za-z0-9._-]+\.pkp", pack.name):
+        raise BridgeError(f"{pack.name}: a pack is a .pkp named with letters, digits, . _ - only")
     data = pack.read_bytes()
     pocket.decode(data)  # never install a pack the reader would refuse
     local = md5_of(data)
@@ -260,19 +332,26 @@ def cmd_push_pack(args):
             print(f"{target}: already current (md5 {local})")
             return 0
         dev.mkdir(APP_DIR)
-        dev.delete(tmp)
-
-        def progress(done, total):
-            print(f"\r{done * 100 // total:3d}% of {total} bytes", end="", file=sys.stderr)
-
-        dev.write(tmp, data, progress)
-        print(file=sys.stderr)
+        dev.delete(tmp)  # write_chunk appends: a leftover part must go first
+    finally:
+        dev.close()
+    send_file(args.port, tmp, data, progress_line)
+    print(file=sys.stderr)
+    dev = Device(args.port)
+    try:
         got = dev.md5(tmp)
         if got != local:
             dev.delete(tmp)
             raise BridgeError(f"md5 after the write is {got}, expected {local}; nothing replaced")
+        if dev.locked():
+            raise BridgeError(f"an application started during the upload; nothing replaced, the "
+                              f"verified pack waits as {tmp}")
         dev.delete(target)
-        dev.rename(tmp, target)
+        try:
+            dev.rename(tmp, target)
+        except BridgeError as e:
+            raise BridgeError(f"{e}; the old pack is gone and the verified pack is {tmp}: "
+                              f"rename it to {pack.name}, or run push-pack again") from e
         if dev.md5(target) != local:
             raise BridgeError(f"{target}: md5 differs after the rename")
     finally:
@@ -382,7 +461,7 @@ def decode_progress_image(d):
     return {"generation": generation, "session": session, "entries": entries}
 
 
-def decode_progress(a, b, pack):
+def decode_progress(a, b, pack, names=("progress.bin", "progress.tmp")):
     """The better of the two copies, as the app loads it, with each question's prompt."""
     pa, pb = decode_progress_image(a), decode_progress_image(b)
     taken = pb if pb and (not pa or pb["generation"] > pa["generation"]) else pa
@@ -397,7 +476,7 @@ def decode_progress(a, b, pack):
         boxes[str(e["box"])] += 1
         e["due_now"] = e["due"] <= taken["session"]
         e["prompt"] = prompts.get(e["key"])
-    return {"valid": True, "from": "progress.bin" if taken is pa else "progress.tmp",
+    return {"valid": True, "from": names[0] if taken is pa else names[1],
             "generation": taken["generation"], "session": taken["session"], "boxes": boxes,
             "due_now": sum(e["due_now"] for e in taken["entries"]), "entries": taken["entries"]}
 
@@ -413,8 +492,9 @@ def cmd_sessions(args):
 
 
 def cmd_progress(args):
+    names = (Path(args.file).name, Path(args.other).name if args.other else None)
     report = decode_progress(read_optional(args.file), read_optional(args.other),
-                             load_pack(args.pack))
+                             load_pack(args.pack), names)
     print(json.dumps(report, ensure_ascii=False, indent=1))
     return 0 if report["valid"] else 1
 
@@ -445,7 +525,7 @@ def main(argv):
            "sessions": cmd_sessions, "progress": cmd_progress}[args.cmd]
     try:
         return run(args)
-    except (BridgeError, pocket.PocketError, TimeoutError) as e:
+    except (BridgeError, pocket.PocketError, OSError, ValueError, IndexError) as e:
         print(f"bridge: {e}", file=sys.stderr)
         return 1
 

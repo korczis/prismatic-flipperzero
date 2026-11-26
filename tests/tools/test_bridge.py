@@ -3,6 +3,7 @@
 import hashlib
 import io
 import json
+import re
 import struct
 import sys
 import tempfile
@@ -40,11 +41,11 @@ class FakeDevice:
     files = {}
     dirs = set()
     locked = False
-    mode = ""  # "bad-md5", "bad-rename", "refuse-write", "refuse-info", "drop-first", "mute"
+    mode = ""  # "bad-md5", "bad-rename", "cli-error", "refuse-info", "drop-first", "mute"
 
     def __init__(self, port, baud, timeout):
         self.out, self.rx, self.rpc, self.writes, self.closed = bytearray(), b"", False, {}, False
-        self.dropped = False
+        self.dropped, self.expect, self.target, self.stopped = False, 0, "", 0
 
     @property
     def in_waiting(self):
@@ -68,7 +69,26 @@ class FakeDevice:
         self.out += fs.varint(len(body)) + body
 
     def write(self, data):
+        if self.expect:  # the raw bytes of a write_chunk; split arrivals are allowed
+            take, rest = data[: self.expect], data[self.expect:]
+            self.files[self.target] = self.files.get(self.target, b"") + take
+            self.expect -= len(take)
+            if not self.expect:
+                full = self.mode == "full"
+                self.out += b"\r\nStorage error: out of space\r\n\r\n>: " if full else b"\r\n>: "
+            data = rest
+            if not data:
+                return
         if not self.rpc:
+            m = re.fullmatch(rb'storage write_chunk "([^"]+)" (\d+)\r', data)
+            if m:
+                self.out += data + b"\n"  # the CLI echoes the command line
+                if self.mode == "cli-error":
+                    self.out += b"Storage error: access denied\r\n\r\n>: "
+                    return
+                self.target, self.expect = m.group(1).decode(), int(m.group(2))
+                self.out += b"Ready\r\n"
+                return
             if data == b"\x03\r":
                 self.out += b"\r\n>: "
             elif data == b"start_rpc_session\r":
@@ -102,7 +122,8 @@ class FakeDevice:
             else:
                 self.reply(cid, bridge.INFO_RESP, F(1, 0, 1000) + F(2, 0, 400))
         elif bridge.LOCK_REQ in arg:
-            self.reply(cid, bridge.LOCK_RESP, F(1, 0, 1) if self.locked else b"")
+            later = self.mode == "lock-later" and any(p.endswith(".part") for p in self.files)
+            self.reply(cid, bridge.LOCK_RESP, F(1, 0, 1) if self.locked or later else b"")
         elif bridge.LIST_REQ in arg:
             d = path(arg[bridge.LIST_REQ])
             if d not in self.dirs:
@@ -129,15 +150,6 @@ class FakeDevice:
             for k, part in enumerate(parts):
                 self.reply(cid, bridge.READ_RESP, F(1, 2, file_msg("x", len(part), part)),
                            has_next=k < len(parts) - 1)
-        elif bridge.WRITE_REQ in arg:
-            a = arg[bridge.WRITE_REQ]
-            chunk = bridge.one(bridge.fields(bridge.one(a, 2, b"")), 4, b"")
-            self.writes[cid] = self.writes.get(cid, b"") + chunk
-            if not more:
-                if self.mode == "refuse-write":
-                    return self.reply(cid, status=9)
-                self.files[path(a)] = self.writes.pop(cid)
-                self.reply(cid)
         elif bridge.DELETE_REQ in arg:
             p = path(arg[bridge.DELETE_REQ])
             if self.files.pop(p, None) is None:
@@ -151,11 +163,14 @@ class FakeDevice:
             self.reply(cid)
         elif bridge.RENAME_REQ in arg:
             a = arg[bridge.RENAME_REQ]
+            if self.mode == "refuse-rename":
+                return self.reply(cid, status=9)
             data = self.files.pop(path(a))
             self.files[path(a, 2)] = data + (b"!" if self.mode == "bad-rename" else b"")
             self.reply(cid)
         elif 19 in m:
             self.rpc = False
+            type(self).stops = getattr(type(self), "stops", 0) + 1
 
 
 def pack_bytes():
@@ -244,6 +259,12 @@ class DeviceTest(unittest.TestCase):
         rc, out, _ = run(["push-pack", str(self.pack), "--force"], files=dict(FakeDevice.files),
                          dirs={bridge.APP_DIR})
         self.assertIn("installed", out)
+        # the CLI echoes the command: a pack named like a CLI answer does not confuse the reader
+        odd = Path(self.tmp.name) / "Ready_Storage_error.pkp"
+        odd.write_bytes(self.pack.read_bytes())
+        rc, _, err = run(["push-pack", str(odd)])
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(FakeDevice.files[f"{bridge.APP_DIR}/{odd.name}"], odd.read_bytes())
         # a leftover .part from an interrupted push is replaced
         part = target + ".part"
         rc, _, _ = run(["push-pack", str(self.pack)], files={part: b"old"})
@@ -260,9 +281,27 @@ class DeviceTest(unittest.TestCase):
         rc, _, err = run(["push-pack", str(self.pack)], mode="bad-rename")
         self.assertEqual(rc, 1)
         self.assertIn("after the rename", err)
-        rc, _, err = run(["push-pack", str(self.pack)], mode="refuse-write")
+        rc, _, err = run(["push-pack", str(self.pack)], mode="cli-error")
+        self.assertEqual((rc, FakeDevice.files), (1, {}))
+        self.assertIn("Storage error: access denied", err)
+        rc, _, err = run(["push-pack", str(self.pack)], mode="full")
         self.assertEqual(rc, 1)
-        self.assertIn("refused the write", err)
+        self.assertIn("out of space", err)
+        rc, _, err = run(["push-pack", str(self.pack)], mode="lock-later")
+        self.assertEqual(rc, 1)
+        self.assertIn("verified pack waits", err)
+        self.assertNotIn(f"{bridge.APP_DIR}/kompendium.pkp", FakeDevice.files)
+        rc, _, err = run(["push-pack", str(self.pack)], mode="refuse-rename")
+        self.assertEqual(rc, 1)
+        self.assertIn("the verified pack is", err)
+        spaced = Path(self.tmp.name) / "my pack.pkp"
+        spaced.write_bytes(self.pack.read_bytes())
+        rc, _, err = run(["push-pack", str(spaced)])
+        self.assertEqual((rc, FakeDevice.files), (1, {}))
+        self.assertIn("letters, digits", err)
+        rc, _, err = run(["push-pack", str(Path(self.tmp.name) / "absent.pkp")])
+        self.assertEqual(rc, 1)
+        self.assertIn("No such file", err)
         other = Path(self.tmp.name) / "notes.txt"
         other.write_text("x")
         self.assertEqual(run(["push-pack", str(other)])[0], 1)
@@ -291,10 +330,45 @@ class DeviceTest(unittest.TestCase):
         self.assertEqual(dev.read("/ext/empty"), b"")
         self.assertIsNone(dev.read("/ext/none"))
         self.assertIsNone(dev.md5("/ext/none"))
-        dev.write("/ext/zero", b"")
-        self.assertEqual(FakeDevice.files["/ext/zero"], b"")
         dev.close()
         self.assertTrue(dev.rpc.s.closed)
+
+    def test_a_session_is_never_ended_inside_a_request(self):
+        with mock.patch.dict(sys.modules, {"serial": types.SimpleNamespace(Serial=FakeDevice)}):
+            FakeDevice.mode, FakeDevice.stops = "", 0
+            dev = bridge.Device("/dev/fake")
+            FakeDevice.mode = "mute"
+            with self.assertRaises(TimeoutError):
+                dev.request(bridge.PING_REQ, timeout=0.2)
+            err = io.StringIO()
+            with redirect_stderr(err):
+                dev.close(grace=0.2)  # it never answers: the port is released, no StopSession
+            self.assertIn("never answered", err.getvalue())
+            self.assertEqual(FakeDevice.stops, 0)
+            self.assertTrue(dev.rpc.s.closed)
+            FakeDevice.mode = ""
+            dev = bridge.Device("/dev/fake")
+            FakeDevice.mode = "mute"
+            with self.assertRaises(TimeoutError):
+                dev.request(bridge.PING_REQ, timeout=0.2)
+            dev.rpc.s.reply(dev.pending, 6, b"")  # the late answer arrives
+            FakeDevice.mode = ""
+            dev.close(grace=1.0)
+            self.assertEqual((dev.pending, FakeDevice.stops), (0, 1))
+        FakeDevice.mode = ""
+
+    def test_cli_chunks_are_acknowledged_and_a_silent_cli_times_out(self):
+        FakeDevice.files, FakeDevice.mode = {}, ""
+        data = bytes(range(256)) * 70  # three chunks, the last one short
+        seen = []
+        with mock.patch.dict(sys.modules, {"serial": types.SimpleNamespace(Serial=FakeDevice)}):
+            bridge.send_file("/dev/fake", "/ext/f.part", data, lambda d, n: seen.append(d))
+            self.assertEqual(FakeDevice.files["/ext/f.part"], data)
+            self.assertEqual(seen, [8192, 16384, len(data)])
+            cli = bridge.Cli("/dev/fake")
+            with self.assertRaises(TimeoutError):
+                cli.until(b"never", timeout=0.2)
+            cli.close()
 
     def test_a_lost_first_request_is_retried_by_ping(self):
         with mock.patch.dict(sys.modules, {"serial": types.SimpleNamespace(Serial=FakeDevice)}):
@@ -372,6 +446,8 @@ class DecodeTest(unittest.TestCase):
         self.assertEqual(r["boxes"], {"1": 1, "2": 1, "3": 0, "4": 0, "5": 0})
         r = json.loads(run(["progress", a, b, "--pack", str(self.pack)])[1])
         self.assertEqual((r["from"], r["generation"]), ("progress.tmp", 4))
+        r = json.loads(run(["progress", b, a, "--pack", str(self.pack)])[1])
+        self.assertEqual((r["from"], r["generation"]), ("progress.tmp", 4))  # named by file
         r = json.loads(run(["progress", a, b, "--pack", "/nonexistent.pkp"])[1])
         self.assertIsNone(r["entries"][0]["prompt"])
 

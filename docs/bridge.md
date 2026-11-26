@@ -93,10 +93,9 @@ generated code and no dependency beyond pyserial.
 | `storage_list_request` (7) | `storage_list_response` (8) | the app's files and sizes; is the FAP installed |
 | `storage_md5sum_request` (14) | `storage_md5sum_response` (15) | checking a pack, before and after a push |
 | `storage_read_request` (9) | `storage_read_response` (10), in parts | `pull` |
-| `storage_write_request` (11) | status | `push-pack`, 512-byte parts under one command id |
 | `storage_mkdir_request` (13), `storage_delete_request` (12), `storage_rename_request` (30) | status | `push-pack` |
 | `app_lock_status_request` (17) | `app_lock_status_response` (18) | refusing to push while an app runs |
-| `stop_session` (19) | none | back to the CLI |
+| `stop_session` (19) | none | back to the CLI, only when no request is unanswered |
 
 A session starts with `system_ping_request` (5), repeated until one is answered: on 1.5.1 the
 first request after `start_rpc_session` can be lost, and an MD5 request sent first went
@@ -107,15 +106,34 @@ the same id, and a message with another id is skipped. A status other than OK is
 except "does not exist" where a missing file is an answer (nothing to pull, nothing installed)
 and "already exists" for `mkdir`.
 
+A session is never ended while a request is unanswered: ending the session inside a long
+storage request took the Flipper off USB twice on 1.5.1, and releasing the port ends the session
+too. When a command gives up on an answer, the bridge still waits up to ten more minutes for it
+before `stop_session`; only an answer that never comes leaves the port released with a warning
+that the device may need a restart.
+
+Before the swap the lock is checked again (an app started during the upload leaves the verified
+pack as `.part` and replaces nothing), and if the rename itself is refused the message names the
+`.part` file that holds the verified pack. A pack name is letters, digits, `.`, `_` and `-`.
+
+The pack itself goes over the text CLI, not RPC: `storage write_chunk "<path>" <size>` answers
+`Ready` (or `Storage error: ...`), takes exactly `<size>` bytes, appends them and answers with the
+prompt. Every 8 KiB chunk is acknowledged before the next is sent, so the host never runs ahead
+of the card; this is how uFBT's `storage.py` sends files, and how `just deploy-pack` has always
+installed this pack. The bridge skips the echoed command line before it looks for the answer, so
+a file name cannot be mistaken for one.
+
 ### Installing a pack
 
 1. The pack is decoded on the host with the reference reader first; a pack the app would refuse
    is never sent.
 2. If an application holds the device, the push is refused: the app may have the pack open.
 3. Unless `--force`, a pack whose MD5 on the device already matches is left alone.
-4. The pack is written as `<name>.part`, its MD5 is computed on the device and compared; on a
-   mismatch the part is deleted and nothing is replaced.
-5. The old pack is deleted, the part renamed, and the MD5 checked once more.
+4. A leftover `<name>.part` is deleted, and the RPC session is ended cleanly.
+5. The pack is written as `<name>.part` over the CLI, chunk by acknowledged chunk.
+6. A new RPC session computes the part's MD5 on the device; on a mismatch the part is deleted
+   and nothing is replaced.
+7. The old pack is deleted, the part renamed, and the MD5 checked once more.
 
 A pull, a status and a decode never write to the card.
 
