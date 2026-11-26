@@ -12,6 +12,8 @@ static const uint8_t pkp_entry_size[PKP_SEC_KNOWN_LAST + 1] = {
     [PKP_SEC_QUIZ] = 34,
     [PKP_SEC_KINDS] = 6,
     [PKP_SEC_RELNAMES] = 6,
+    [PKP_SEC_SEARCH_KEYS] = 16,
+    [PKP_SEC_SEARCH_POSTINGS] = 2,
 };
 
 static const char* const pkp_status[PKP_STATUS_COUNT] = {
@@ -121,8 +123,13 @@ PkpStatus pkp_open(PkpReader* r, PkpReadFn read, void* ctx, uint32_t file_size) 
         r->sec[type] = s;
         r->present |= 1u << type;
     }
-    for(int t = PKP_SEC_META; t <= PKP_SEC_KNOWN_LAST; t++) {
+    for(int t = PKP_SEC_META; t <= PKP_SEC_REQUIRED_LAST; t++) {
         if(!(r->present & (1u << t))) return PKP_E_MISSING;
+    }
+    /* the search index is two sections or none */
+    if(!(r->present & (1u << PKP_SEC_SEARCH_KEYS)) !=
+       !(r->present & (1u << PKP_SEC_SEARCH_POSTINGS))) {
+        return PKP_E_SECTION;
     }
     /* No two known sections may overlap: otherwise a table could sit inside the string pool,
      * outside the index CRC (review finding, 2026-11-25). */
@@ -257,6 +264,84 @@ static PkpStatus str_entry(const PkpReader* r, PkpSectionType type, uint32_t ind
     if(st != PKP_OK) return st;
     *out = rdstr(b);
     return str_ok(r, *out) ? PKP_OK : PKP_E_STRING;
+}
+
+bool pkp_has_search(const PkpReader* r) {
+    return r->size != 0 && (r->present & (1u << PKP_SEC_SEARCH_KEYS));
+}
+
+/* A key record's 16 bytes, checked: characters of [a-z0-9] then only NUL, at least one, and a
+ * run of at least one posting inside the postings table. */
+static PkpStatus key_of(const PkpReader* r, const uint8_t* b, PkpSearchKey* k) {
+    k->len = 0;
+    for(uint32_t i = 0; i < PKP_SEARCH_KEY_LEN; i++) {
+        uint8_t c = b[i];
+        bool ok = (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
+        if(c == 0) break;
+        if(!ok) return PKP_E_RANGE;
+        k->key[k->len++] = (char)c;
+    }
+    k->key[k->len] = '\0';
+    for(uint32_t i = k->len; i < PKP_SEARCH_KEY_LEN; i++)
+        if(b[i]) return PKP_E_RANGE;
+    k->first = rd32(b + 10);
+    k->count = rd16(b + 14);
+    if(k->len == 0 || k->count == 0 ||
+       (uint64_t)k->first + k->count > r->sec[PKP_SEC_SEARCH_POSTINGS].count) {
+        return PKP_E_RANGE;
+    }
+    return PKP_OK;
+}
+
+PkpStatus pkp_search_key(const PkpReader* r, uint32_t index, PkpSearchKey* out) {
+    uint8_t b[16];
+    PkpStatus st = read_entry(r, PKP_SEC_SEARCH_KEYS, index, b);
+    return st == PKP_OK ? key_of(r, b, out) : st;
+}
+
+PkpStatus pkp_posting(const PkpReader* r, uint32_t index, uint16_t* object, bool* strong) {
+    uint8_t b[2];
+    PkpStatus st = read_entry(r, PKP_SEC_SEARCH_POSTINGS, index, b);
+    if(st != PKP_OK) return st;
+    uint16_t v = rd16(b);
+    *object = (uint16_t)(v & ~PKP_SEARCH_STRONG);
+    *strong = (v & PKP_SEARCH_STRONG) != 0;
+    return *object < r->sec[PKP_SEC_OBJECTS].count ? PKP_OK : PKP_E_RANGE;
+}
+
+PkpStatus pkp_verify_search(const PkpReader* r) {
+    if(!pkp_has_search(r)) return PKP_E_MISSING;
+    const PkpSection* ks = &r->sec[PKP_SEC_SEARCH_KEYS];
+    const PkpSection* ps = &r->sec[PKP_SEC_SEARCH_POSTINGS];
+    uint8_t keys[256], post[64], prev[PKP_SEARCH_KEY_LEN] = {0};
+    uint32_t at = 0, have_from = 0, have_to = 0; /* postings [have_from, have_to) in `post` */
+    for(uint32_t k = 0; k < ks->count; k++) {
+        uint32_t slot = k % (sizeof(keys) / 16);
+        if(slot == 0) {
+            uint32_t n = ks->count - k < sizeof(keys) / 16 ? ks->count - k : sizeof(keys) / 16;
+            if(!r->read(r->ctx, ks->offset + k * 16, keys, n * 16)) return PKP_E_IO;
+        }
+        PkpSearchKey key;
+        const uint8_t* b = keys + slot * 16;
+        PkpStatus st = key_of(r, b, &key);
+        if(st != PKP_OK) return st;
+        if((k && memcmp(b, prev, PKP_SEARCH_KEY_LEN) <= 0) || key.first != at)
+            return PKP_E_SECTION;
+        memcpy(prev, b, PKP_SEARCH_KEY_LEN);
+        uint16_t last = 0;
+        for(uint32_t j = 0; j < key.count; j++, at++) {
+            if(at >= have_to) {
+                uint32_t n = ps->count - at < sizeof(post) / 2 ? ps->count - at : sizeof(post) / 2;
+                if(!r->read(r->ctx, ps->offset + at * 2, post, n * 2)) return PKP_E_IO;
+                have_from = at;
+                have_to = at + n;
+            }
+            uint16_t obj = (uint16_t)(rd16(post + (at - have_from) * 2) & ~PKP_SEARCH_STRONG);
+            if(obj >= r->sec[PKP_SEC_OBJECTS].count || (j && obj <= last)) return PKP_E_RANGE;
+            last = obj;
+        }
+    }
+    return at == ps->count ? PKP_OK : PKP_E_SECTION;
 }
 
 PkpStatus pkp_meta(const PkpReader* r, uint32_t field, PkpStr* out) {

@@ -121,7 +121,15 @@ static PkpStatus walk(const uint8_t* d, uint32_t size) {
         if((st = pkp_kind_name(&r, (uint8_t)i, name, sizeof(name))) != PKP_OK) return st;
     for(uint32_t i = 1; i <= pkp_count(&r, PKP_SEC_RELNAMES); i++)
         if((st = pkp_relation_name(&r, (uint8_t)i, name, sizeof(name))) != PKP_OK) return st;
-    return PKP_OK;
+    if(!pkp_has_search(&r)) return PKP_OK;
+    PkpSearchKey k;
+    for(uint32_t i = 0; i < pkp_count(&r, PKP_SEC_SEARCH_KEYS); i++)
+        if((st = pkp_search_key(&r, i, &k)) != PKP_OK) return st;
+    uint16_t obj;
+    bool strong;
+    for(uint32_t i = 0; i < pkp_count(&r, PKP_SEC_SEARCH_POSTINGS); i++)
+        if((st = pkp_posting(&r, i, &obj, &strong)) != PKP_OK) return st;
+    return pkp_verify_search(&r);
 }
 
 /* Byte offset of section `type`'s directory entry, or 0. */
@@ -185,6 +193,88 @@ static void m_rel_type(uint8_t* d, uint32_t n) { (void)n; d[sec_offset(d, PKP_SE
 static void m_overlap(uint8_t* d, uint32_t n) { (void)n; put32(d + dir_entry(d, PKP_SEC_KINDS) + 4, sec_offset(d, PKP_SEC_STRINGS)); }
 static void m_strings_all(uint8_t* d, uint32_t n) { uint32_t e = dir_entry(d, PKP_SEC_STRINGS); uint16_t ns = (uint16_t)(d[16] | (d[17] << 8)); put32(d + e + 4, 32 + 16u * ns); put32(d + e + 8, n - 32 - 16u * ns); put32(d + e + 12, n - 32 - 16u * ns); put32(d + 12, 0); }
 static void m_strings_flip(uint8_t* d, uint32_t n) { (void)n; d[sec_offset(d, PKP_SEC_STRINGS) + 5] ^= 0x01; }
+
+/* The search index: one key or posting made invalid at a time (sections 10 and 11). */
+static uint32_t key_at(const uint8_t* d, uint32_t k) { return sec_offset(d, PKP_SEC_SEARCH_KEYS) + 16 * k; }
+static uint32_t nkeys(const uint8_t* d) { return le32(d + dir_entry(d, PKP_SEC_SEARCH_KEYS) + 12); }
+static uint32_t run_key; /* a key whose run has two postings or more, found by test_search */
+static void m_key_char(uint8_t* d, uint32_t n) { (void)n; d[key_at(d, 0)] = 'A'; }
+static void m_key_hole(uint8_t* d, uint32_t n) { (void)n; uint32_t k = key_at(d, 0); d[k] = 'a'; d[k + 1] = 0; d[k + 2] = 'b'; }
+static void m_key_empty(uint8_t* d, uint32_t n) { (void)n; memset(d + key_at(d, 0), 0, 10); }
+static void m_key_count(uint8_t* d, uint32_t n) { (void)n; put16(d + key_at(d, 0) + 14, 0); }
+static void m_key_past(uint8_t* d, uint32_t n) { (void)n; put16(d + key_at(d, nkeys(d) - 1) + 14, 0xFFFF); }
+static void m_key_twice(uint8_t* d, uint32_t n) { (void)n; memcpy(d + key_at(d, 1), d + key_at(d, 0), 16); }
+static void m_key_gap(uint8_t* d, uint32_t n) { (void)n; put32(d + key_at(d, 0) + 10, 1); }
+static void m_key_dropped(uint8_t* d, uint32_t n) { (void)n; uint32_t e = dir_entry(d, PKP_SEC_SEARCH_KEYS); put32(d + e + 12, le32(d + e + 12) - 1); put32(d + e + 8, le32(d + e + 8) - 16); }
+static void m_post_object(uint8_t* d, uint32_t n) { (void)n; put16(d + sec_offset(d, PKP_SEC_SEARCH_POSTINGS), 0x7FFF); }
+static void m_post_twice(uint8_t* d, uint32_t n) { (void)n; uint32_t p = sec_offset(d, PKP_SEC_SEARCH_POSTINGS) + 2 * le32(d + key_at(d, run_key) + 10); memcpy(d + p + 2, d + p, 2); }
+static void m_search_alone(uint8_t* d, uint32_t n) { (void)n; put16(d + dir_entry(d, PKP_SEC_SEARCH_POSTINGS), 99); }
+static void m_search_esize(uint8_t* d, uint32_t n) { (void)n; put16(d + dir_entry(d, PKP_SEC_SEARCH_KEYS) + 2, 15); }
+static void m_search_overlap(uint8_t* d, uint32_t n) { (void)n; put32(d + dir_entry(d, PKP_SEC_SEARCH_POSTINGS) + 4, sec_offset(d, PKP_SEC_STRINGS)); }
+static void m_search_none(uint8_t* d, uint32_t n) { (void)n; put16(d + dir_entry(d, PKP_SEC_SEARCH_KEYS), 0); put16(d + dir_entry(d, PKP_SEC_SEARCH_POSTINGS), 0); }
+
+/* The search accessors and the table check against the real pack, every way they refuse. */
+static void test_search(const uint8_t* pack, uint32_t size) {
+    Mem m = {pack, size, -1};
+    PkpReader r;
+    CHECK(pkp_open(&r, mem_read, &m, size) == PKP_OK);
+    CHECK(pkp_has_search(&r));
+    uint32_t keys = pkp_count(&r, PKP_SEC_SEARCH_KEYS);
+    CHECK(keys > 16 && pkp_count(&r, PKP_SEC_SEARCH_POSTINGS) > 32); /* both tables stream in chunks */
+    PkpSearchKey k, prev;
+    CHECK(pkp_search_key(&r, 0, &prev) == PKP_OK && prev.first == 0 && prev.len == strlen(prev.key));
+    for(uint32_t i = 1; i < keys; i++) {
+        CHECK(pkp_search_key(&r, i, &k) == PKP_OK);
+        CHECK(strcmp(prev.key, k.key) < 0 && k.first == prev.first + prev.count);
+        if(k.count >= 2 && !run_key) run_key = i;
+        prev = k;
+    }
+    CHECK(run_key > 0);
+    CHECK(pkp_search_key(&r, keys, &k) == PKP_E_RANGE);
+    uint16_t obj;
+    bool strong;
+    CHECK(pkp_posting(&r, 0, &obj, &strong) == PKP_OK && obj < pkp_count(&r, PKP_SEC_OBJECTS));
+    CHECK(pkp_posting(&r, pkp_count(&r, PKP_SEC_SEARCH_POSTINGS), &obj, &strong) == PKP_E_RANGE);
+    CHECK(pkp_verify_search(&r) == PKP_OK);
+    /* a failed read in each of them, and in each of the check's two streams */
+    m.fail_after = 0;
+    CHECK(pkp_search_key(&r, 0, &k) == PKP_E_IO);
+    m.fail_after = 0;
+    CHECK(pkp_posting(&r, 0, &obj, &strong) == PKP_E_IO);
+    m.fail_after = 0;
+    CHECK(pkp_verify_search(&r) == PKP_E_IO);
+    m.fail_after = 1;
+    CHECK(pkp_verify_search(&r) == PKP_E_IO);
+    m.fail_after = -1;
+    PkpReader closed;
+    Mem none = {pack, 10, -1};
+    CHECK(pkp_open(&closed, mem_read, &none, 10) == PKP_E_TRUNCATED);
+    CHECK(!pkp_has_search(&closed) && pkp_verify_search(&closed) == PKP_E_MISSING);
+
+    CHECK(mutated(pack, size, m_key_char, 1) == PKP_E_RANGE);
+    CHECK(mutated(pack, size, m_key_hole, 1) == PKP_E_RANGE);
+    CHECK(mutated(pack, size, m_key_empty, 1) == PKP_E_RANGE);
+    CHECK(mutated(pack, size, m_key_count, 1) == PKP_E_RANGE);
+    CHECK(mutated(pack, size, m_key_past, 1) == PKP_E_RANGE);
+    CHECK(mutated(pack, size, m_key_twice, 1) == PKP_E_SECTION);
+    CHECK(mutated(pack, size, m_key_gap, 1) == PKP_E_SECTION);
+    CHECK(mutated(pack, size, m_key_dropped, 1) == PKP_E_SECTION);
+    CHECK(mutated(pack, size, m_post_object, 1) == PKP_E_RANGE);
+    CHECK(mutated(pack, size, m_post_twice, 1) == PKP_E_RANGE);
+    CHECK(mutated(pack, size, m_search_alone, 1) == PKP_E_SECTION);
+    CHECK(mutated(pack, size, m_search_esize, 1) == PKP_E_SECTION);
+    CHECK(mutated(pack, size, m_search_overlap, 1) == PKP_E_SECTION);
+    /* a pack without the index opens, reads and has no search */
+    CHECK(mutated(pack, size, m_search_none, 1) == PKP_OK);
+    uint8_t* d = malloc(size);
+    memcpy(d, pack, size);
+    m_search_none(d, size);
+    reseal(d, size);
+    Mem mm = {d, size, -1};
+    CHECK(pkp_open(&r, mem_read, &mm, size) == PKP_OK);
+    CHECK(!pkp_has_search(&r) && pkp_verify_search(&r) == PKP_E_MISSING);
+    free(d);
+}
 
 static void test_reader(const uint8_t* pack, uint32_t size) {
     Mem m = {pack, size, -1};
@@ -491,6 +581,24 @@ static int dump(const uint8_t* d, uint32_t size) {
         printf(",\"response\":");
         json_str(&r, q.response);
         putchar('}');
+    }
+    printf("],\"search\":");
+    if(!pkp_has_search(&r)) {
+        printf("null}\n");
+        return 0;
+    }
+    putchar('[');
+    for(uint32_t i = 0; i < pkp_count(&r, PKP_SEC_SEARCH_KEYS); i++) {
+        PkpSearchKey k;
+        pkp_search_key(&r, i, &k);
+        printf("%s{\"key\":\"%s\",\"postings\":[", i ? "," : "", k.key);
+        for(uint32_t j = 0; j < k.count; j++) {
+            uint16_t obj;
+            bool strong;
+            pkp_posting(&r, k.first + j, &obj, &strong);
+            printf("%s[%u,%d]", j ? "," : "", obj, strong ? 1 : 0);
+        }
+        printf("]}");
     }
     printf("]}\n");
     return 0;
@@ -806,6 +914,7 @@ int main(int argc, char** argv) {
         test_reader(pack, size);
         test_io_failures(pack, size);
         test_corruption(pack, size);
+        test_search(pack, size);
         test_fuzz(pack, size);
         test_detect();
         test_cache(pack, size);

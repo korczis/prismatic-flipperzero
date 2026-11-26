@@ -8,7 +8,11 @@
  * Nothing is cast from file bytes to a struct. A checksum detects corruption; it
  * authenticates nothing.
  *
- * The layout is defined by tools/pocket.py (encode/decode); docs/pocket.md describes it.
+ * Sections 1-9 are required. 10 and 11, the search index of Find by name, are optional and come
+ * together; any other type is skipped, so a newer pack opens in an older app. The search records
+ * are checked one at a time by their accessors and as tables by pkp_verify_search().
+ *
+ * The layout is defined by tools/pocket.py (encode/decode); docs/architecture.md describes it.
  */
 #pragma once
 
@@ -49,8 +53,14 @@ typedef enum {
     PKP_SEC_QUIZ,
     PKP_SEC_KINDS,
     PKP_SEC_RELNAMES,
-    PKP_SEC_KNOWN_LAST = PKP_SEC_RELNAMES,
+    PKP_SEC_REQUIRED_LAST = PKP_SEC_RELNAMES,
+    PKP_SEC_SEARCH_KEYS, /* optional: 16-byte keys of Find by name, strictly ascending */
+    PKP_SEC_SEARCH_POSTINGS, /* optional, with the keys: u16 object index, bit 15 strong */
+    PKP_SEC_KNOWN_LAST = PKP_SEC_SEARCH_POSTINGS,
 } PkpSectionType;
+
+#define PKP_SEARCH_KEY_LEN 10u
+#define PKP_SEARCH_STRONG  0x8000u
 
 typedef enum {
     PKP_ITEM_INDICATOR = 1,
@@ -151,6 +161,14 @@ typedef struct {
     uint16_t count;
 } PkpCategory;
 
+/* One search key: up to ten characters of [a-z0-9], and its run of postings. */
+typedef struct {
+    char key[PKP_SEARCH_KEY_LEN + 1]; /* NUL-terminated */
+    uint8_t len;
+    uint32_t first;
+    uint16_t count;
+} PkpSearchKey;
+
 typedef struct {
     uint8_t kind;
     uint8_t answer;
@@ -168,6 +186,16 @@ PkpStatus pkp_relation(const PkpReader* r, uint32_t index, PkpRelation* out);
 PkpStatus pkp_category(const PkpReader* r, uint32_t index, PkpCategory* out);
 PkpStatus pkp_quiz(const PkpReader* r, uint32_t index, PkpQuiz* out);
 PkpStatus pkp_meta(const PkpReader* r, uint32_t field, PkpStr* out);
+/* The search index (sections 10 and 11) is present; pkp_open() makes sure both are or neither. */
+bool pkp_has_search(const PkpReader* r);
+/* Key `index`: its characters, NUL padding, a run of at least one posting inside the table. */
+PkpStatus pkp_search_key(const PkpReader* r, uint32_t index, PkpSearchKey* out);
+/* Posting `index`: an object of the pack, and whether the key is a strong match for it. */
+PkpStatus pkp_posting(const PkpReader* r, uint32_t index, uint16_t* object, bool* strong);
+/* Streams both search tables: every record valid, keys strictly ascending, their runs contiguous
+ * from the first posting to the last, objects ascending within a run. PKP_E_MISSING without an
+ * index, PKP_E_SECTION for a table out of order. */
+PkpStatus pkp_verify_search(const PkpReader* r);
 /* Kind (1-based) and relation type (1-based) names come from the pack's own tables. */
 PkpStatus pkp_kind_name(const PkpReader* r, uint8_t kind, char* buf, size_t cap);
 PkpStatus pkp_relation_name(const PkpReader* r, uint8_t type, char* buf, size_t cap);

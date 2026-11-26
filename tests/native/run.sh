@@ -31,6 +31,23 @@ python3 -c 'import json,sys; a,b=(json.load(open(p)) for p in sys.argv[1:]); sys
   "$out/c-dump.json" "$out/py-dump.json"
 echo "C dump == Python decode"
 
+echo "== compatibility: the v0.2.0 reader opens this pack and skips its search index"
+git rev-parse -q --verify refs/tags/v0.2.0 >/dev/null \
+  || git fetch -q --depth=1 origin refs/tags/v0.2.0:refs/tags/v0.2.0 \
+  || { echo "compatibility: tag v0.2.0 is not here and cannot be fetched" >&2; exit 1; }
+old="$out/v0.2.0"
+rm -rf "$old"
+mkdir -p "$old/app/core" "$old/tests/native"
+for f in $(git ls-tree --name-only v0.2.0 app/core/) tests/native/test_pkp.c; do
+  git show "v0.2.0:$f" >"$old/$f"
+done
+"$cc" "${flags[@]}" -O1 -fsanitize=address,undefined -fno-sanitize-recover=all \
+  "$old"/app/core/*.c "$old/tests/native/test_pkp.c" -o "$old/test_pkp"
+"$old/test_pkp" dump "$out/full.pkp" >"$out/old-dump.json"
+python3 -c 'import json,sys; a,b=(json.load(open(p)) for p in sys.argv[1:]); b.pop("search"); sys.exit(0 if a==b else "the v0.2.0 reader reads this pack differently")' \
+  "$out/old-dump.json" "$out/py-dump.json"
+echo "v0.2.0 dump == Python decode without the index"
+
 echo "== differential fuzz"
 rm -rf "$out/diff"
 python3 tests/native/differential.py "$out/test_pkp" "$out/mini.pkp" "$out/diff" 1500

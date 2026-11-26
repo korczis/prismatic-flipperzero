@@ -32,16 +32,33 @@ def reseal(d):
     d[12:16] = struct.pack("<I", crc)
 
 
+def search_spans(d):
+    """The byte ranges of the search keys and postings (sections 10 and 11), if any."""
+    spans = []
+    for k in range(struct.unpack_from("<H", d, 16)[0]):
+        t, _e, off, length, _c = struct.unpack_from("<HHIII", d, 32 + 16 * k)
+        if t in (10, 11) and length:
+            spans.append((off, off + length))
+    return spans
+
+
 def main(argv):
     binary, pack, work = argv[0], Path(argv[1]).read_bytes(), Path(argv[2])
     rounds = int(argv[3]) if len(argv) > 3 else 1500
     work.mkdir(parents=True, exist_ok=True)
     rng = random.Random(20261125)
     names, expected = [], {}
+    spans = search_spans(pack)
     for i in range(rounds):
         d = bytearray(pack)
         for _ in range(1 + i % 5):
-            at = rng.randrange(32, min(len(d), 32 + 16 * 8)) if i % 2 else rng.randrange(len(d))
+            if i % 3 == 2:  # aimed at the search index: keys, runs, postings
+                lo, hi = spans[rng.randrange(len(spans))]
+                at = rng.randrange(lo, hi)
+            elif i % 2:  # the directory
+                at = rng.randrange(32, min(len(d), 32 + 16 * 11))
+            else:
+                at = rng.randrange(len(d))
             d[at] = rng.randrange(256)
         reseal(d)
         name = f"m{i:05d}.pkp"
