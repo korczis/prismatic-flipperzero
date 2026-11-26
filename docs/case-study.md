@@ -82,6 +82,9 @@ Generated from the repository's history by [`tools/docs.py`](../tools/docs.py). 
 | `8755d42` | 14:18 | chore(just): run the bridge recipe without echoing its shell line |
 | `24ee70d` | 14:38 | docs(adr): ADR 0001-0005 accepted by the owner; UI workflow invokes the Flowbite skill |
 | `3c8502a` | 14:42 | chore(release): 0.2.0 Bridge: version, changelog, release notes, security |
+| `1a6f1d5` | 14:46 | docs(evidence): parity 24 of 24 on the 0.2.0 build |
+| `0fc3fd4` | 14:50 | docs(release): v0.2.0 notes say which build the device gallery shows |
+| `64de98d` | 14:55 | fix(screen): end an RPC session only after the device confirms it |
 <!-- docs:end timeline -->
 
 ## What made it fast
