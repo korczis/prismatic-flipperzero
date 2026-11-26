@@ -4,8 +4,9 @@
  *   test_pkp dump <pack>          canonical JSON dump (compared with tools/pocket.py decode)
  *   test_pkp walk <dir>           verdict "ok" or the status for every file in a list
  *                                 (<dir>/list.txt), for the differential fuzz test
- *   test_pkp search <pack>        Find by name typed through every prefix of one to three
- *                                 letters the wheel offers (compared with pocket.search)
+ *   test_pkp search <pack> [N]    Find by name typed through every prefix of one to N (3)
+ *                                 letters the wheel offers; N 0: every key typed in full
+ *                                 (both compared with pocket.search)
  */
 #include "../../app/core/cache.h"
 #include "../../app/core/pkp.h"
@@ -214,6 +215,12 @@ static void m_post_twice(uint8_t* d, uint32_t n) { (void)n; uint32_t p = sec_off
 static void m_search_alone(uint8_t* d, uint32_t n) { (void)n; put16(d + dir_entry(d, PKP_SEC_SEARCH_POSTINGS), 99); }
 static void m_search_esize(uint8_t* d, uint32_t n) { (void)n; put16(d + dir_entry(d, PKP_SEC_SEARCH_KEYS) + 2, 15); }
 static void m_search_overlap(uint8_t* d, uint32_t n) { (void)n; put32(d + dir_entry(d, PKP_SEC_SEARCH_POSTINGS) + 4, sec_offset(d, PKP_SEC_STRINGS)); }
+static void m_search_keys_alone(uint8_t* d, uint32_t n) { (void)n; put16(d + dir_entry(d, PKP_SEC_SEARCH_KEYS), 99); }
+/* across the check's chunk boundaries: keys 15 and 16 (16 to a chunk) swap names; a posting
+ * at a multiple of 32 repeats the one before it inside the same run */
+static void m_key_swap16(uint8_t* d, uint32_t n) { (void)n; uint8_t t[10]; memcpy(t, d + key_at(d, 15), 10); memcpy(d + key_at(d, 15), d + key_at(d, 16), 10); memcpy(d + key_at(d, 16), t, 10); }
+static uint32_t chunk_posting; /* a posting p, p % 32 == 0, whose run also holds p - 1 */
+static void m_post_chunk(uint8_t* d, uint32_t n) { (void)n; uint32_t p = sec_offset(d, PKP_SEC_SEARCH_POSTINGS) + 2 * chunk_posting; memcpy(d + p, d + p - 2, 2); }
 static void m_search_none(uint8_t* d, uint32_t n) { (void)n; put16(d + dir_entry(d, PKP_SEC_SEARCH_KEYS), 0); put16(d + dir_entry(d, PKP_SEC_SEARCH_POSTINGS), 0); }
 
 /* The search accessors and the table check against the real pack, every way they refuse. */
@@ -230,6 +237,8 @@ static void test_search(const uint8_t* pack, uint32_t size) {
         CHECK(pkp_search_key(&r, i, &k) == PKP_OK);
         CHECK(strcmp(prev.key, k.key) < 0 && k.first == prev.first + prev.count);
         if(k.count >= 2 && !run_key) run_key = i;
+        for(uint32_t p = k.first + 1; !chunk_posting && p < k.first + k.count; p++)
+            if(p % 32 == 0) chunk_posting = p;
         prev = k;
     }
     CHECK(run_key > 0);
@@ -265,6 +274,9 @@ static void test_search(const uint8_t* pack, uint32_t size) {
     CHECK(mutated(pack, size, m_post_object, 1) == PKP_E_RANGE);
     CHECK(mutated(pack, size, m_post_twice, 1) == PKP_E_RANGE);
     CHECK(mutated(pack, size, m_search_alone, 1) == PKP_E_SECTION);
+    CHECK(mutated(pack, size, m_search_keys_alone, 1) == PKP_E_SECTION);
+    CHECK(mutated(pack, size, m_key_swap16, 1) == PKP_E_SECTION);
+    CHECK(chunk_posting > 0 && mutated(pack, size, m_post_chunk, 1) == PKP_E_RANGE);
     CHECK(mutated(pack, size, m_search_esize, 1) == PKP_E_SECTION);
     CHECK(mutated(pack, size, m_search_overlap, 1) == PKP_E_SECTION);
     /* a pack without the index opens, reads and has no search */
@@ -552,16 +564,33 @@ static void test_search_engine(const uint8_t* pack, uint32_t size) {
     CHECK(pkp_open(&big, mem_read, &none, size) == PKP_OK);
     CHECK(pkp_search_init(&s, &big) == PKP_E_MISSING && pkp_search_next(&s) == 0);
 
-    /* a bad posting and runs out of order are reported, not followed */
+    /* an index pkp_verify_search refuses is never used: a bad posting, a gap between runs */
     memcpy(d, pack, size);
     m_post_object(d, size);
     reseal(d, size);
-    CHECK(pkp_open(&big, mem_read, &none, size) == PKP_OK && pkp_search_init(&s, &big) == PKP_OK);
+    CHECK(pkp_open(&big, mem_read, &none, size) == PKP_OK);
+    CHECK(pkp_search_init(&s, &big) == PKP_E_RANGE && pkp_search_push(&s, 'e') == PKP_E_RANGE);
+    memcpy(d, pack, size);
+    m_key_gap(d, size); /* the keys still sorted, their runs not contiguous */
+    reseal(d, size);
+    CHECK(pkp_open(&big, mem_read, &none, size) == PKP_OK);
+    CHECK(pkp_search_init(&s, &big) == PKP_E_SECTION && pkp_search_results(&s, 0, out, 1) == 0);
+    /* a card changed after init: the engine reports what it meets, never follows or overruns */
+    memcpy(d, pack, size);
+    Mem live = {d, size, -1};
     PkpSearchKey k0;
+    CHECK(pkp_open(&big, mem_read, &live, size) == PKP_OK && pkp_search_init(&s, &big) == PKP_OK);
     CHECK(pkp_search_key(&big, 0, &k0) == PKP_OK);
+    m_post_object(d, size);
     CHECK(pkp_search_push(&s, k0.key[0]) == PKP_E_RANGE && s.len == 0);
-    /* a letter's keys [g0, g1) whose last run is moved before its first: the run would end
-     * before it starts */
+    /* the reader now claims more objects than the bitsets hold: the bound fixed at init holds */
+    uint32_t real = big.sec[PKP_SEC_OBJECTS].count;
+    big.sec[PKP_SEC_OBJECTS].count = 5000;
+    put16(d + sec_offset(d, PKP_SEC_SEARCH_POSTINGS), 4500);
+    CHECK(pkp_search_push(&s, k0.key[0]) == PKP_E_RANGE && s.len == 0);
+    big.sec[PKP_SEC_OBJECTS].count = real;
+    /* a letter's keys [g0, g1) whose last run moved before its first: it would end before it
+     * starts */
     uint32_t g0 = 0, g1 = 0;
     PkpSearchKey ka, kb, kc;
     CHECK(pkp_open(&r, mem_read, &m, size) == PKP_OK);
@@ -576,35 +605,60 @@ static void test_search_engine(const uint8_t* pack, uint32_t size) {
     CHECK(g1 > g0 + 1);
     memcpy(d, pack, size);
     put32(d + key_at(d, g1 - 1) + 10, 0);
-    reseal(d, size);
-    CHECK(pkp_open(&big, mem_read, &none, size) == PKP_OK && pkp_search_init(&s, &big) == PKP_OK);
     CHECK(pkp_search_push(&s, kc.key[0]) == PKP_E_SECTION && s.len == 0);
     free(d);
     printf("search: PkpSearch is %zu bytes on this host\n", sizeof(PkpSearch));
 }
 
-/* Every prefix of one to three letters the wheel offers, depth first in wheel order, with its
+/* One line of the walk: the query, its counts, the letters after it and every match. */
+static void search_line(PkpSearch* s, char mark) {
+    static uint16_t out[PKP_SEARCH_MAX_OBJECTS];
+    printf("%c %s %u %u %s :", mark, s->query, s->count, s->strong, letters_of(pkp_search_next(s)));
+    uint32_t n = pkp_search_results(s, 0, out, PKP_SEARCH_MAX_OBJECTS);
+    for(uint32_t k = 0; k < n; k++)
+        printf(" %u", out[k]);
+    putchar('\n');
+}
+
+/* Every prefix of one to `depth` letters the wheel offers, depth first in wheel order, with its
  * matches; after each longer one, the prefix again as Left restored it. */
 static void search_walk(PkpSearch* s, int depth) {
     uint64_t next = pkp_search_next(s);
-    uint16_t out[PKP_SEARCH_MAX_OBJECTS];
-    for(uint32_t i = 0; depth < 3 && i < PKP_SEARCH_LETTER_COUNT; i++) {
+    for(uint32_t i = 0; s->len < depth && i < PKP_SEARCH_LETTER_COUNT; i++) {
         if(!(next & (1ull << i))) continue;
         if(pkp_search_push(s, pkp_search_letter(i)) != PKP_OK) {
             printf("! push %s%c\n", s->query, pkp_search_letter(i));
             continue;
         }
-        printf("> %s %u %u %s :", s->query, s->count, s->strong, letters_of(pkp_search_next(s)));
-        uint32_t n = pkp_search_results(s, 0, out, PKP_SEARCH_MAX_OBJECTS);
-        for(uint32_t k = 0; k < n; k++) printf(" %u", out[k]);
-        putchar('\n');
-        search_walk(s, depth + 1);
+        search_line(s, '>');
+        search_walk(s, depth);
         pkp_search_pop(s);
-        printf("< %s %u %u\n", s->query, s->count, s->strong);
+        search_line(s, '<');
     }
 }
 
-static int search_all(const uint8_t* d, uint32_t size) {
+/* Every key typed in full: at each letter the counts and next letters, from the fourth on the
+ * matches too (the walk above has the first three). */
+static void search_keys(PkpSearch* s) {
+    for(uint32_t i = 0; i < s->keys; i++) {
+        PkpSearchKey k;
+        pkp_search_key(s->r, i, &k);
+        pkp_search_clear(s);
+        for(uint32_t c = 0; c < k.len; c++) {
+            if(pkp_search_push(s, k.key[c]) != PKP_OK) {
+                printf("! type %s\n", k.key);
+                break;
+            }
+            if(s->len >= 4)
+                search_line(s, '=');
+            else
+                printf("- %s %u %u %s\n", s->query, s->count, s->strong,
+                       letters_of(pkp_search_next(s)));
+        }
+    }
+}
+
+static int search_all(const uint8_t* d, uint32_t size, int depth) {
     static PkpSearch s;
     Mem m = {d, size, -1};
     PkpReader r;
@@ -615,8 +669,29 @@ static int search_all(const uint8_t* d, uint32_t size) {
         return 1;
     }
     printf("* %s\n", letters_of(pkp_search_next(&s)));
-    search_walk(&s, 0);
+    if(depth > 0)
+        search_walk(&s, depth);
+    else
+        search_keys(&s);
     return 0;
+}
+
+/* Find by name over a mutated pack that opens: init, then the first offered letter three
+ * times, then Left back to empty. ASan and UBSan watch the engine on data it did not write. */
+static void fuzz_search(const uint8_t* d, uint32_t size) {
+    static PkpSearch s;
+    Mem m = {d, size, -1};
+    PkpReader r;
+    uint16_t out[8];
+    if(pkp_open(&r, mem_read, &m, size) != PKP_OK || pkp_search_init(&s, &r) != PKP_OK) return;
+    for(int k = 0; k < 3 && pkp_search_next(&s); k++) {
+        if(pkp_search_push(&s, pkp_search_letter((uint32_t)__builtin_ctzll(pkp_search_next(&s)))) !=
+           PKP_OK)
+            break;
+        CHECK(s.count > 0 && pkp_search_results(&s, 0, out, 8) > 0);
+    }
+    while(s.len)
+        pkp_search_pop(&s);
 }
 
 static void test_fuzz(const uint8_t* pack, uint32_t size) {
@@ -637,6 +712,7 @@ static void test_fuzz(const uint8_t* pack, uint32_t size) {
         reseal(d, size);
         if(walk(d, size) == PKP_OK) accepted++;
         else rejected++;
+        fuzz_search(d, size);
     }
     free(d);
     printf("fuzz: %d mutated packs,", FUZZ_ROUNDS); printf(" %u accepted, %u rejected, no memory error\n", accepted,
@@ -1084,8 +1160,8 @@ static void test_bayes(void) {
 }
 
 int main(int argc, char** argv) {
-    if(argc != 3) {
-        fprintf(stderr, "usage: test_pkp test|dump|walk|search <path>\n");
+    if(argc != 3 && !(argc == 4 && strcmp(argv[1], "search") == 0)) {
+        fprintf(stderr, "usage: test_pkp test|dump|walk <path> | search <pack> [depth]\n");
         return 2;
     }
     if(strcmp(argv[1], "walk") == 0) return walk_list(argv[2]);
@@ -1095,7 +1171,7 @@ int main(int argc, char** argv) {
     if(strcmp(argv[1], "dump") == 0) {
         rc = dump(pack, size);
     } else if(strcmp(argv[1], "search") == 0) {
-        rc = search_all(pack, size);
+        rc = search_all(pack, size, argc == 4 ? atoi(argv[3]) : 3); /* 0: every key in full */
     } else {
         test_reader(pack, size);
         test_io_failures(pack, size);

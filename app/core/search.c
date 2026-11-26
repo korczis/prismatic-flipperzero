@@ -70,7 +70,7 @@ static PkpStatus collect(PkpSearch* s, uint32_t lo, uint32_t hi) {
     memset(s->any, 0, sizeof(s->any));
     memset(s->strong_bits, 0, sizeof(s->strong_bits));
     s->count = s->strong = 0;
-    uint32_t objects = pkp_count(s->r, PKP_SEC_OBJECTS);
+    uint32_t objects = s->objects;
     const PkpSection* ps = &s->r->sec[PKP_SEC_SEARCH_POSTINGS];
     uint8_t chunk[CHUNK * 2];
     for(uint32_t at = from; at < to;) {
@@ -109,9 +109,14 @@ PkpStatus pkp_search_init(PkpSearch* s, const PkpReader* r) {
     if(pkp_count(r, PKP_SEC_OBJECTS) > PKP_SEARCH_MAX_OBJECTS || keys > 0xFFFFu) {
         return PKP_E_RANGE;
     }
+    PkpStatus st = pkp_verify_search(r);
+    if(st != PKP_OK) return st;
     s->keys = (uint16_t)keys;
+    s->objects = (uint16_t)pkp_count(r, PKP_SEC_OBJECTS);
     s->hi[0] = s->keys;
-    return letters(s, 0);
+    st = letters(s, 0);
+    if(st != PKP_OK) s->keys = 0; /* unusable: push refuses, results are empty */
+    return st;
 }
 
 uint64_t pkp_search_next(const PkpSearch* s) {
@@ -161,7 +166,7 @@ PkpStatus pkp_search_pop(PkpSearch* s) {
 }
 
 uint32_t pkp_search_results(const PkpSearch* s, uint32_t from, uint16_t* out, uint32_t cap) {
-    uint32_t seen = 0, n = 0, objects = s->keys ? pkp_count(s->r, PKP_SEC_OBJECTS) : 0;
+    uint32_t seen = 0, n = 0, objects = s->keys ? s->objects : 0;
     for(int pass = 0; pass < 2; pass++) { /* strong first, then the rest */
         for(uint32_t obj = 0; obj < objects && n < cap; obj++) {
             uint8_t bit = (uint8_t)(1u << (obj & 7));

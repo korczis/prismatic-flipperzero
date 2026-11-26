@@ -27,6 +27,7 @@ Types 10 and 11 are the search index (Find by name); 12-14 are reserved for a mu
 detector; the next free type is 15.
 """
 
+import bisect
 import hashlib
 import io
 import json
@@ -66,7 +67,7 @@ REQUIRED = [k for k in ENTRY_SIZE if k <= SEC_RELNAMES]
 SEARCH_KEY_LEN = 10
 SEARCH_CHARS = "0123456789abcdefghijklmnopqrstuvwxyz"  # bytewise order, the keys' order
 SEARCH_STRONG = 0x8000
-SEARCH_MAX_OBJECTS = 0x7FFF  # a posting holds 15 bits of object index
+SEARCH_MAX_OBJECTS = 4096  # the device's bitsets (app/core/search.h); larger: no index
 KINDS = ["pattern", "technique", "signature", "fallacy", "bias", "trait", "modality",
          "heuristic", "protocol", "countermeasure", "exercise", "algorithm", "scenario",
          "concept", "article"]
@@ -965,21 +966,22 @@ def search_query(text):
     return "".join(search_tokens(text))[:SEARCH_KEY_LEN]
 
 
-def search(dump, query):
+def search(dump, query, keys=None):
     """Reference Find by name over a decoded pack: every object one of whose keys starts with
     the query, strong matches first, each group in pack (Library) order; and the letters that
-    can follow the query, in bytewise order. The device computes the same (app/core/search.c)."""
+    can follow the query, in bytewise order. The device computes the same (app/core/search.c).
+    `keys`, the index's key list, may be passed in when many queries run over one pack."""
     q = search_query(query)
+    index = dump["search"] or []
+    keys = [e["key"] for e in index] if keys is None else keys
+    lo = bisect.bisect_left(keys, q)
+    hi = bisect.bisect_left(keys, q + "\x7f", lo)  # past every key that starts with q
     strong, weak, letters = set(), set(), set()
-    for entry in dump["search"] or []:
+    for entry in index[lo:hi]:
         key = entry["key"]
-        if not q or not key.startswith(q):
-            if not q:
-                letters.add(key[0])
-            continue
         if len(key) > len(q):
             letters.add(key[len(q)])
-        for obj, s in entry["postings"]:
+        for obj, s in entry["postings"] if q else []:
             (strong if s else weak).add(obj)
     weak -= strong
     return {"query": q, "strong": sorted(strong), "results": sorted(strong) + sorted(weak),

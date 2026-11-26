@@ -22,6 +22,7 @@
 typedef struct {
     const PkpReader* r;
     uint16_t keys;
+    uint16_t objects; /* the bound of every object index, fixed at init: at most 4096 */
     uint8_t len;
     char query[PKP_SEARCH_KEY_LEN + 1];
     /* per prefix length: the range of keys that start with the prefix, and the letters that can
@@ -36,7 +37,10 @@ typedef struct {
 } PkpSearch;
 
 /* An empty query over the pack: PKP_E_MISSING when it has no (or an empty) index, PKP_E_RANGE
- * when it is too large for the bitsets; reads the letters a query can start with. */
+ * when it is too large for the bitsets. The engine relies on what pkp_verify_search() proves
+ * (sorted keys, contiguous runs), so init streams both tables through it first and refuses an
+ * index it rejects with its status; then it reads the letters a query can start with. A card
+ * changed afterwards can still only yield an error, never a read or write out of bounds. */
 PkpStatus pkp_search_init(PkpSearch* s, const PkpReader* r);
 /* Appends one letter. PKP_E_RANGE for a letter the wheel does not offer; any read or index
  * error leaves the query empty (and says why). */

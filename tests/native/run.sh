@@ -49,6 +49,21 @@ done
 python3 -c 'import json,sys; a,b=(json.load(open(p)) for p in sys.argv[1:]); b.pop("search"); sys.exit(0 if a==b else "the v0.2.0 reader reads this pack differently")' \
   "$out/old-dump.json" "$out/py-dump.json"
 echo "v0.2.0 dump == Python decode without the index"
+# and the other way: a pack the v0.2.0 compiler wrote opens here, reads the same, has no search
+mkdir -p "$old/tools" "$old/knowledge"
+git show v0.2.0:tools/pocket.py >"$old/tools/pocket.py"
+git show v0.2.0:knowledge/sources.json >"$old/knowledge/sources.json"
+python3 "$old/tools/pocket.py" compile --ir "$out/mini.ir.json" --out "$out/old-mini.pkp" \
+  --report "$out/old-mini.report.json" >/dev/null
+"$out/test_pkp" dump "$out/old-mini.pkp" >"$out/old-mini-c.json"
+python3 tools/pocket.py decode "$out/old-mini.pkp" >"$out/old-mini-py.json"
+python3 -c 'import json,sys; a,b=(json.load(open(p)) for p in sys.argv[1:]); sys.exit(0 if a==b and a["search"] is None else "a v0.2.0 pack reads differently")' \
+  "$out/old-mini-c.json" "$out/old-mini-py.json"
+if "$out/test_pkp" search "$out/old-mini.pkp" 2>"$out/old-mini-search.txt" >/dev/null \
+  || ! grep -q missing "$out/old-mini-search.txt"; then
+  echo "compatibility: a v0.2.0 pack must have no search index" >&2; exit 1
+fi
+echo "v0.2.0 pack: C dump == Python decode, search: none"
 
 echo "== differential fuzz"
 rm -rf "$out/diff"

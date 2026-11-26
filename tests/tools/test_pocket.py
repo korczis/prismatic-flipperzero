@@ -691,6 +691,36 @@ class SearchTest(unittest.TestCase):
         # an old reader's view: the same dump, less the index
         self.assertEqual({**pocket.decode(plain), "search": self.dump["search"]}, self.dump)
 
+    def test_the_device_cap(self):
+        # the device's bitsets hold 4 096 objects (app/core/search.h): one more and no index
+        base = tiny_ir(1)["objects"][0]
+
+        def pack(n):
+            ir = tiny_ir(1)
+            ir["objects"] = [dict(base, id=f"x/{i:05d}", title=f"Tx {i}", definition="d",
+                                  examples=[], relations=[]) for i in range(n)]
+            return pocket.decode(pocket.encode(ir))
+
+        self.assertEqual(pocket.SEARCH_MAX_OBJECTS, 4096)
+        index = pack(4096)["search"]
+        self.assertEqual(len(next(e for e in index if e["key"] == "tx")["postings"]), 4096)
+        self.assertIsNone(pack(4097)["search"])
+
+    def test_determinism(self):
+        shuffled = json.loads(json.dumps(self.ir))
+        shuffled["objects"].reverse()
+        for o in shuffled["objects"]:
+            o["aliases"] = list(reversed(o.get("aliases", [])))
+        self.assertEqual(pocket.encode(shuffled), self.data)
+        # an alias that repeats a title word adds no second posting
+        ir = json.loads(json.dumps(self.ir))
+        ir["objects"][1]["aliases"] = ["Dilema", "dilema"]
+        index = pocket.decode(pocket.encode(ir))["search"]
+        dilema = next(e for e in index if e["key"] == "dilema")
+        self.assertEqual(len(dilema["postings"]), 2)
+        keys = [e["key"] for e in self.dump["search"]]
+        self.assertEqual(pocket.search(self.dump, "dil", keys), pocket.search(self.dump, "dil"))
+
     def bad(self, mutate, msg):
         d = bytearray(self.data)
         mutate(d)

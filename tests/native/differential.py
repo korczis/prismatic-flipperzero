@@ -5,6 +5,7 @@ same mutated packs. Mutations are re-sealed (CRC recomputed) so the structural c
 Usage: tests/native/differential.py <test_pkp binary> <pack> <workdir> [rounds]
 """
 
+import json
 import random
 import struct
 import subprocess
@@ -13,7 +14,9 @@ import zlib
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pocket  # noqa: E402
+import search_differential  # noqa: E402
 
 
 def reseal(d):
@@ -30,6 +33,17 @@ def reseal(d):
             so, sl = off, length
     crc = zlib.crc32(bytes(d[so + sl:]), zlib.crc32(bytes(d[32:so])))
     d[12:16] = struct.pack("<I", crc)
+
+
+def printable(value):
+    """A dump as the C reader prints it: text outside printable ASCII shown as '?'."""
+    if isinstance(value, str):
+        return "".join(c if " " <= c <= "~" else "?" for c in value)
+    if isinstance(value, list):
+        return [printable(v) for v in value]
+    if isinstance(value, dict):
+        return {k: printable(v) for k, v in value.items()}
+    return value
 
 
 def search_spans(d):
@@ -74,10 +88,20 @@ def main(argv):
     got = dict(line.split() for line in out.stdout.splitlines())
     diff = [n for n in names if got.get(n) != expected[n]]
     oks = sum(v == "ok" for v in expected.values())
+    # every pack both accept must also read the same, search included (strings are not under
+    # the index CRC: the C reader shows damage as '?', so the reference is folded the same way)
+    for name in [n for n in names if expected[n] == "ok" and got.get(n) == "ok"]:
+        path = work / name
+        c_dump = json.loads(subprocess.run([binary, "dump", str(path)], capture_output=True,
+                                           text=True, check=True).stdout)
+        if c_dump != printable(pocket.decode(path.read_bytes())):
+            diff.append(f"{name} (dump)")
+        elif c_dump["search"] and search_differential.compare(binary, path, 2)[1]:
+            diff.append(f"{name} (search)")
     print(f"differential: {rounds} mutated packs, {oks} accepted, {rounds - oks} rejected, "
-          f"{len(diff)} disagreements")
+          f"{len(diff)} disagreements; every accepted one read and searched alike")
     for n in diff[:10]:
-        print(f"  {n}: python {expected[n]}, C {got.get(n)}", file=sys.stderr)
+        print(f"  {n}: python {expected.get(n)}, C {got.get(n)}", file=sys.stderr)
     return 1 if diff else 0
 
 
