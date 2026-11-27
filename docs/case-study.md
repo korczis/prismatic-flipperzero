@@ -95,6 +95,7 @@ Generated from the repository's history by [`tools/docs.py`](../tools/docs.py). 
 | `c4e3e28` | 17:03 | docs: the search index in the pack format, the runtime and the changelog |
 | `da03023` | 17:19 | fix(ui): Find by name after the independent atlas review |
 | `ccf65e0` | 17:50 | docs(evidence): Find by name on the device, 14 of 14 frames identical |
+| `a4ccc51` | 09:26 | chore(release): 0.3.0 Find: version, changelog, release notes, roadmap |
 <!-- docs:end timeline -->
 
 ## What made it fast
