@@ -19,7 +19,7 @@ sim="$(mktemp -d build/sim/parity-sim.XXXX)"
 tests/sim/build.sh
 tools/device.sh cli "loader close" >/dev/null || true # nothing running is fine
 tools/device.sh cli "loader open /ext/apps/Tools/prismatic.fap" >/dev/null
-sleep 3 # pack open and index scan
+sleep 6 # pack open, whole-pack CRC and index scan: 3551 ms + scan measured on the 21 MB pack
 tools/device.sh walk "$dev" "$keys" --settle 1.2 >/dev/null
 build/sim/pocketsim build/packs/kompendium.pkp "$sim" "$keys" >"$sim/out.txt"
 python3 - "$sim" <<'PY'

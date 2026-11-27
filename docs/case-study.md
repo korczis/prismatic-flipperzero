@@ -97,6 +97,7 @@ Generated from the repository's history by [`tools/docs.py`](../tools/docs.py). 
 | `ccf65e0` | 17:50 | docs(evidence): Find by name on the device, 14 of 14 frames identical |
 | `a4ccc51` | 09:26 | chore(release): 0.3.0 Find: version, changelog, release notes, roadmap |
 | `bed3711` | 09:26 | docs(evidence): parity 24 of 24 and device gallery recaptured on 0.3.0 |
+| `d327e2f` | 10:00 | fix(pocket): render the Kompendium's page templates; pin it at f3d8cb3e |
 <!-- docs:end timeline -->
 
 ## What made it fast

@@ -14,7 +14,7 @@ dev="$root/tools/device.sh"
 relaunch() {
   "$dev" cli "loader close" >/dev/null || true # nothing running is fine
   "$dev" cli "loader open /ext/apps/Tools/prismatic.fap" >/dev/null
-  sleep 3 # pack open and index scan, measured at about two seconds
+  sleep 6 # pack open, whole-pack CRC and index scan: 3551 ms + scan on the 21 MB pack
 }
 
 walk() { # name keys [settle]

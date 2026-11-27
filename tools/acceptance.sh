@@ -85,7 +85,7 @@ PY
   tools/device.sh cli "loader close" >/dev/null || true # nothing running is fine
   tools/device.sh deploy-pack "$out/acceptance.pkp" >/dev/null
   tools/device.sh cli "loader open /ext/apps/Tools/prismatic.fap" >/dev/null
-  sleep 4 # pack open and index scan
+  sleep 6 # pack open, whole-pack CRC and index scan (3551 ms + scan, 21 MB pack)
   tools/device.sh walk "$out/dev" "$keys" --settle 1.2 >/dev/null
   tools/device.sh cli "loader close" >/dev/null || true
   tools/device.sh remove-pack acceptance.pkp
