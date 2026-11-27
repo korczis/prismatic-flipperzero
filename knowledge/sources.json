@@ -8,12 +8,13 @@
   },
   "source": {
     "repository": "https://github.com/korczis/kompendium-epistemicke-anihilace",
-    "commit": "2d08d1bf6ab408ed8d4516c9acaaa423b53d58e3"
+    "commit": "f3d8cb3e3be42148441a35f191cebd2de3de78aa"
   },
   "pages": {
     "roots": ["content/kompendium", "content/glossary", "content/philosophy"],
     "exclude": ["_index.md"]
   },
+  "templates": {"root": "templates", "sources": ["templates/partials", "data", "static/data/listings"]},
   "title_strip": ["^Rychlá karta [^:]+:\\s*", "^Detekční signatura:\\s*"],
   "drop_tags": ["kompendium", "quick-reference", "qr-card"],
   "kinds": {

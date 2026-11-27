@@ -23,11 +23,17 @@ flowchart LR
 - **Overlay**: quick-reference cards merge into the technique with the same EA code.
 - **Catalogues**: fallacy and NLP TOML entries merge into the page with the same catalogue id
   (or their canonical page). They contribute aliases and example utterances.
+- **Templates**: a page's source is a Zola (Tera) template. Shared passages are
+  `{% include "partials/…" %}`, the technique metadata row renders from front matter and
+  `data/*.toml`, and index pages loop over the derived listings in `static/data/listings/`. The
+  compiler renders exactly that subset (include, `set`, `set_global`, `load_data`, `for`, `if`,
+  `+`, the `default` and `length` filters) from the same commit, so the pack holds the page a
+  reader gets; any other tag refuses the page, and browser-only shortcodes render to nothing.
 
 The pipeline runs in a fixed order:
 
 1. Discover (one `git archive` of the pinned commit).
-2. Extract (front matter plus sections, with tables and lists as items).
+2. Extract (templates rendered, then front matter plus sections, with tables and lists as items).
 3. Merge.
 4. Resolve links into typed relations (`confused_with` for links inside a *don't confuse*
    section, `related_to` for the rest).

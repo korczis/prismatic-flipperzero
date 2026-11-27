@@ -96,6 +96,7 @@ Generated from the repository's history by [`tools/docs.py`](../tools/docs.py). 
 | `da03023` | 17:19 | fix(ui): Find by name after the independent atlas review |
 | `ccf65e0` | 17:50 | docs(evidence): Find by name on the device, 14 of 14 frames identical |
 | `a4ccc51` | 09:26 | chore(release): 0.3.0 Find: version, changelog, release notes, roadmap |
+| `bed3711` | 09:26 | docs(evidence): parity 24 of 24 and device gallery recaptured on 0.3.0 |
 <!-- docs:end timeline -->
 
 ## What made it fast
@@ -176,7 +177,7 @@ The pack this session produced:
 |---|---:|
 | Knowledge objects | **2 241** |
 | Categories | **66** |
-| Typed relations (links between objects) | **37 567** |
+| Typed relations (links between objects) | **37 899** |
 | Objects with a detector (observable markers) | **1 212** |
 | Objects with what-to-do steps | **1 548** |
 | Objects with confusables to rule out | **1 128** |
@@ -190,7 +191,7 @@ The pack this session produced:
 |   their postings (key to object) | **17 220** |
 |   bytes of the index on the card | **137 480** |
 
-Pack `kompendium.pkp`: 20 842 760 bytes, sha256 `82809d190c8b9425…`, rebuilt byte-for-byte identical by CI from the pinned source.
+Pack `kompendium.pkp`: 21 193 052 bytes, sha256 `9ab07a225ce32ba1…`, rebuilt byte-for-byte identical by CI from the pinned source.
 <!-- docs:end pack-stats -->
 
 ## What it would have taken otherwise

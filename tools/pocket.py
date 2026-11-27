@@ -130,6 +130,213 @@ def split_frontmatter(text):
     return tomllib.loads(m.group(1)), m.group(2)
 
 
+# ---------------------------------------------------------------- templates
+#
+# The book is a Zola site, and a page's source is a Tera template: shared passages are
+# `{% include "partials/…" %}` (the source's ADR 0016), metadata rows render from front matter
+# and data files, and index pages loop over derived listings. The reader gets the rendered page,
+# so the compiler renders exactly the bounded subset the book uses and refuses everything else:
+# raw Tera never reaches a pack. Shortcodes (`{{ <viz_script … /> }}`) are browser figures the
+# device cannot draw; they render to nothing.
+
+TERA_TAG = re.compile(r"\{\{(-?)(.*?)(-?)\}\}|\{%(-?)(.*?)(-?)%\}|\{#(-?).*?(-?)#\}", re.S)
+TERA_TOKEN = re.compile(r'\s*(?:"((?:[^"\\]|\\.)*)"|(\d+)|([A-Za-z_]\w*)|(.))')
+UNDEFINED = object()
+INCLUDE_DEPTH = 4
+
+
+def tera_tokens(src):
+    """[(kind, value)]: 'text', 'expr' or 'stmt', with Tera's whitespace control applied."""
+    out, pos, trim_next = [], 0, False
+    for m in TERA_TAG.finditer(src):
+        text = src[pos:m.start()]
+        if trim_next:
+            text = text.lstrip()
+        left = m.group(1) or m.group(4) or m.group(7)
+        if left:
+            text = text.rstrip()
+        out.append(("text", text))
+        if m.group(2) is not None:
+            out.append(("expr", m.group(2).strip()))
+        elif m.group(5) is not None:
+            out.append(("stmt", m.group(5).strip()))
+        trim_next = bool(m.group(3) or m.group(6) or m.group(8))
+        pos = m.end()
+    tail = src[pos:]
+    out.append(("text", tail.lstrip() if trim_next else tail))
+    return out
+
+
+def tera_tree(tokens, i=0, until=()):
+    """Nested nodes up to a closing statement in `until`; returns (nodes, index, closer)."""
+    nodes = []
+    while i < len(tokens):
+        kind, value = tokens[i]
+        i += 1
+        if kind != "stmt":
+            nodes.append((kind, value))
+            continue
+        word = value.split(None, 1)[0]
+        if word in until:
+            return nodes, i, word
+        if word == "for":
+            m = re.fullmatch(r"for\s+([A-Za-z_]\w*)\s+in\s+(.+)", value, re.S)
+            if not m:
+                raise PocketError(f"template: unsupported loop '{value}'")
+            body, i, _ = tera_tree(tokens, i, ("endfor",))
+            nodes.append(("for", (m.group(1), m.group(2), body)))
+        elif word == "if":
+            yes, i, closer = tera_tree(tokens, i, ("else", "endif"))
+            no = []
+            if closer == "else":
+                no, i, _ = tera_tree(tokens, i, ("endif",))
+            nodes.append(("if", (value[2:].strip(), yes, no)))
+        elif word in ("set", "set_global", "include"):
+            nodes.append((word, value[len(word):].strip()))
+        else:
+            raise PocketError(f"template: unsupported statement '{value}'")
+    if until:
+        raise PocketError(f"template: missing {' or '.join(until)}")
+    return nodes, i, None
+
+
+class Tera:
+    """The bounded Tera the book uses, rendered from the pinned commit's files."""
+
+    def __init__(self, git, spec):
+        self.git = git
+        self.root = spec.get("templates", {}).get("root", "templates")
+
+    def render(self, src, extra, depth=0):
+        nodes, _, _ = tera_tree(tera_tokens(src))
+        return self.run(nodes, [{"page": {"extra": extra}}], extra, depth)
+
+    def run(self, nodes, scope, extra, depth):
+        out = []
+        for kind, value in nodes:
+            if kind == "text":
+                out.append(value)
+            elif kind == "expr":
+                out.append("" if value.startswith("<") else self.show(value, scope))
+            elif kind in ("set", "set_global"):
+                name, _, expr = value.partition("=")
+                scope[0 if kind == "set_global" else -1][name.strip()] = self.eval(expr, scope)
+            elif kind == "include":
+                out.append(self.include(value, extra, depth))
+            elif kind == "for":
+                var, expr, body = value
+                for item in self.eval(expr, scope):
+                    out.append(self.run(body, scope + [{var: item}], extra, depth))
+            else:  # if
+                cond, yes, no = value
+                v = self.eval(cond, scope)
+                out.append(self.run(yes if v not in (UNDEFINED, None) and v else no,
+                                    scope, extra, depth))
+        return "".join(out)
+
+    def include(self, value, extra, depth):
+        m = re.fullmatch(r'"([^"]+)"', value)
+        if not m:
+            raise PocketError(f"template: unsupported include '{value}'")
+        if depth >= INCLUDE_DEPTH:
+            raise PocketError(f"template: includes nested deeper than {INCLUDE_DEPTH}")
+        path = f"{self.root}/{m.group(1)}"
+        if path not in self.git.blobs:
+            raise PocketError(f"template: no partial {path}")
+        return self.render(self.git.read(path), extra, depth + 1)
+
+    def show(self, expr, scope):
+        v = self.eval(expr, scope)
+        if v is UNDEFINED or isinstance(v, (dict, list)):
+            raise PocketError(f"template: '{expr}' renders no text")
+        return str(v)
+
+    def eval(self, expr, scope):
+        toks = [m for m in TERA_TOKEN.finditer(expr) if m.group(0).strip()]
+        try:
+            value, i = self.expr(toks, 0, scope)
+        except IndexError:
+            i = -1
+        if i != len(toks):
+            raise PocketError(f"template: cannot read '{expr}'")
+        return value
+
+    def expr(self, toks, i, scope):
+        """Terms joined by '+', each a primary with its filters (filters bind tighter)."""
+        value, i = self.filtered(toks, i, scope)
+        while i < len(toks) and toks[i].group(4) == "+":
+            term, i = self.filtered(toks, i + 1, scope)
+            if not all(isinstance(v, int) for v in (value, term)):
+                raise PocketError("template: '+' adds numbers only")
+            value += term
+        return value, i
+
+    def filtered(self, toks, i, scope):
+        value, i = self.primary(toks, i, scope)
+        while i < len(toks) and toks[i].group(4) == "|":
+            name = toks[i + 1].group(3)
+            i += 2
+            args, i = self.kwargs(toks, i, scope)
+            if name == "default" and set(args) == {"value"}:
+                value = args["value"] if value in (UNDEFINED, None) else value
+            elif name == "length" and not args and value is not UNDEFINED:
+                value = len(value)
+            else:
+                raise PocketError(f"template: unsupported filter '{name}'")
+        return value, i
+
+    def kwargs(self, toks, i, scope):
+        args = {}
+        if i < len(toks) and toks[i].group(4) == "(":
+            i += 1
+            while toks[i].group(4) != ")":
+                key = toks[i].group(3)
+                if not key or toks[i + 1].group(4) != "=":
+                    raise PocketError("template: arguments are name=value")
+                args[key], i = self.expr(toks, i + 2, scope)
+                if toks[i].group(4) == ",":
+                    i += 1
+            i += 1
+        return args, i
+
+    def primary(self, toks, i, scope):
+        t = toks[i]
+        if t.group(1) is not None:
+            return t.group(1), i + 1
+        if t.group(2) is not None:
+            return int(t.group(2)), i + 1
+        name = t.group(3)
+        if not name:
+            raise PocketError(f"template: unexpected '{t.group(0).strip()}'")
+        i += 1
+        if name == "load_data":
+            args, i = self.kwargs(toks, i, scope)
+            return self.load(args.get("path", "")), i
+        value = next((s[name] for s in reversed(scope) if name in s), UNDEFINED)
+        while i < len(toks) and toks[i].group(4) in (".", "["):
+            if toks[i].group(4) == ".":
+                key, i = toks[i + 1].group(3), i + 2
+            else:
+                key, i = self.expr(toks, i + 1, scope)
+                i += 1  # ]
+            value = self.member(value, key)
+        return value, i
+
+    @staticmethod
+    def member(value, key):
+        if isinstance(value, dict):
+            return value.get(str(key), UNDEFINED)
+        if isinstance(value, list) and isinstance(key, int) and 0 <= key < len(value):
+            return value[key]
+        return UNDEFINED
+
+    def load(self, path):
+        if path not in self.git.blobs:
+            raise PocketError(f"template: load_data of a file not in the sources: {path}")
+        text = self.git.read(path)
+        return tomllib.loads(text) if path.endswith(".toml") else json.loads(text)
+
+
 def sections(body):
     """[(heading, text)] in order; text before the first '## ' has heading ''."""
     out, current, lines = [], "", []
@@ -263,9 +470,10 @@ def empty_object(oid, kind, title, category, prov):
             "relations": [], "validation_status": "unvalidated_heuristic", "provenance": prov}
 
 
-def extract_page(text, path, spec, titles, prov):
+def extract_page(text, path, spec, titles, prov, tera):
     front, body = split_frontmatter(text)
     extra = front.get("extra", {})
+    body = tera.render(body, extra)
     coll = collection_of(path, spec["pages"]["roots"])
     kind = spec["kinds"].get(coll, spec["kinds"]["default"])
     title = front.get("title", PurePosixPath(path).stem)
@@ -484,7 +692,9 @@ def extract(source_dir):
     spec = json.loads(SOURCES.read_text())
     src = spec["source"]
     git = Git(source_dir, src["commit"],
-              spec["pages"]["roots"] + [c["path"] for c in spec["catalogs"]])
+              spec["pages"]["roots"] + [c["path"] for c in spec["catalogs"]]
+              + spec["templates"]["sources"])
+    tera = Tera(git, spec)
     prov = {"repository": src["repository"], "commit": src["commit"]}
     report = {"pages": 0, "accepted": 0, "rejected": [], "overlays_merged": 0,
               "catalog_entries": 0, "catalog_merged": 0, "catalog_standalone": 0,
@@ -498,7 +708,7 @@ def extract(source_dir):
                 continue
             report["pages"] += 1
             try:
-                o = extract_page(git.read(path), path, spec, titles, prov)
+                o = extract_page(git.read(path), path, spec, titles, prov, tera)
             except (PocketError, tomllib.TOMLDecodeError) as e:
                 report["rejected"].append(f"{path}: {e}")
                 continue

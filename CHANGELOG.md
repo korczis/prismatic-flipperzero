@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- The compiler renders the Kompendium's page templates: shared passages pulled in with
+  `{% include %}`, the technique metadata row rendered from front matter and data files, and the
+  chapter indexes that loop over derived listings. Earlier packs, 0.3.0 included, carried 2 214
+  raw template tags in 279 objects in place of that text; the pack now carries none, and a tag
+  outside the supported subset refuses the page instead of reaching a pack.
+- Kompendium pinned at `f3d8cb3e` (was `2d08d1bf`): 14 upstream commits, the technique metadata
+  table moved into one partial. Relations 37 567 -> 37 899 (links inside rendered listings now
+  resolve), alternatives 3 792 -> 3 812.
+
 ## 0.3.0 — Find (preview)
 
 - **Find by name** (Library, first entry): type a title, alias or code a letter at a time on a

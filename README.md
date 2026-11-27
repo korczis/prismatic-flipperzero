@@ -348,7 +348,7 @@ numbers disagree with the build.
 |---|---:|
 | Knowledge objects | **2 241** |
 | Categories | **66** |
-| Typed relations (links between objects) | **37 567** |
+| Typed relations (links between objects) | **37 899** |
 | Objects with a detector (observable markers) | **1 212** |
 | Objects with what-to-do steps | **1 548** |
 | Objects with confusables to rule out | **1 128** |
@@ -362,7 +362,7 @@ numbers disagree with the build.
 |   their postings (key to object) | **17 220** |
 |   bytes of the index on the card | **137 480** |
 
-Pack `kompendium.pkp`: 20 842 760 bytes, sha256 `82809d190c8b9425…`, rebuilt byte-for-byte identical by CI from the pinned source.
+Pack `kompendium.pkp`: 21 193 052 bytes, sha256 `9ab07a225ce32ba1…`, rebuilt byte-for-byte identical by CI from the pinned source.
 <!-- docs:end pack-stats -->
 
 <details>

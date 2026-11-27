@@ -107,11 +107,21 @@ title = "EA-1.2.2 Falešná ekvivalence"
 [extra]
 ea_code = "EA-1.2.2"
 +++
-Krátký úvod.
+Úvod stránky, který spolu s tabulkou metadat přesahuje délku preambule.
+
+| Pole | Hodnota |
+|------|---------|
+{% include "partials/meta.md" %}
 
 ## Definice
 
 Dvě pozice se vydávají za stejně silné, i když nejsou.
+"""
+
+META_PARTIAL = """{#- The metadata row, rendered from front matter. -#}
+{%- set cat = load_data(path="data/categories.toml") -%}
+| **EA kód** | `{{ page.extra.ea_code }}` |
+| **Kategorie** | {{ cat[page.extra.ea_code] | default(value="bez kategorie") }} |
 """
 
 GLOSSARY = """+++
@@ -194,6 +204,7 @@ def spec(commit, exclude=("_index.md",)):
             "escalation": ["kdy a jak eskalovat"],
             "alternatives": ["s čím ji nezaměnit", "diferenciální"],
             "validation": ["validační test"]},
+        "templates": {"root": "templates", "sources": ["templates/partials", "data"]},
         "catalogs": [{"path": "data/fauly", "include": "^[a-z].*\\.toml$", "kind": "fallacy",
                       "prefix": "fauly", "category": "Fauly (katalog)"}],
     }
@@ -213,6 +224,8 @@ def make_source(d, broken=True):
         "content/glossary/heuristika.md": GLOSSARY,
         "data/fauly/relevance.toml": CATALOG,
         "data/fauly/_coverage.toml": "x = 1\n",
+        "templates/partials/meta.md": META_PARTIAL,
+        "data/categories.toml": '"EA-1.2.2" = "1. Akademické techniky"\n',
     }
     if broken:
         files["content/glossary/broken.md"] = "no front matter here\n"
@@ -295,6 +308,10 @@ class ExtractTest(Fixture):
         self.assertIn("ad-hominem", json.dumps(fallacy["relations"]) + "ad-hominem")
         equiv = by["kompendium/techniques/ea-1-2-2-falesna-ekvivalence"]
         self.assertEqual(equiv["code"], "EA-1.2.2")
+        self.assertEqual(equiv["chapters"][0]["text"],
+                         "Úvod stránky, který spolu s tabulkou metadat přesahuje délku preambule."
+                         " | Pole | Hodnota | |------|---------| | EA kód | EA-1.2.2 |"
+                         " | Kategorie | 1. Akademické techniky |")
         self.assertEqual(by["glossary/heuristika"]["kind"], "concept")
         for o in ir["objects"]:
             self.assertNotIn("links", o)
@@ -346,11 +363,67 @@ class ExtractTest(Fixture):
         sp = json.loads(self.spec_path.read_text())
         prov = {"repository": "r", "commit": "c"}
         page = "+++\ntitle = \"T\"\n+++\n## Kapitola\n\nText kapitoly.\n"
-        o = pocket.extract_page(page, "content/glossary/t.md", sp, {}, prov)
+        tera = pocket.Tera(FakeGit({}), sp)
+        o = pocket.extract_page(page, "content/glossary/t.md", sp, {}, prov, tera)
         self.assertEqual(o["definition"], "Text kapitoly.")
         o = pocket.extract_page("+++\ntitle = \"Jen titul\"\n+++\n", "content/glossary/u.md",
-                                sp, {}, prov)
+                                sp, {}, prov, tera)
         self.assertEqual(o["definition"], "Jen titul")
+
+
+class FakeGit:
+    def __init__(self, blobs):
+        self.blobs = blobs
+
+    def read(self, path):
+        return self.blobs[path]
+
+
+class TeraTest(unittest.TestCase):
+    BLOBS = {
+        "templates/partials/row.md": "{#- comment -#}\n| {{ page.extra.code }} |\n{#- -#}",
+        "templates/partials/self.md": '{% include "partials/self.md" %}',
+        "data/l.json": json.dumps({"groups": {"1.1": [{"n": "A"}, {"n": "B"}], "1.2": [{"n": "C"}]},
+                                   "parents": {"1": ["1.1", "1.2", "1.9"], "2": ["1.1", "1.2"]},
+                                   "names": {"1.1": "Jedna"}, "items": [10, 20]}),
+        "data/t.toml": '[[r]]\nlabel = "L"\n',
+    }
+
+    def render(self, src, extra=None):
+        return pocket.Tera(FakeGit(self.BLOBS), {}).render(src, extra or {"code": "EA-1"})
+
+    def test_renders_the_subset_the_book_uses(self):
+        self.assertEqual(self.render('a\n{% include "partials/row.md" %}\nb'),
+                         "a\n| EA-1 |\nb")
+        self.assertEqual(self.render("x {{- page.extra.code -}} y"), "xEA-1y")
+        self.assertEqual(self.render("[{{ <viz_script name=\"v\" /> }}]"), "[]")
+        loops = ('{% set c = load_data(path="data/l.json") %}'
+                 '{% for f in c.parents["1"] %}{% set name = c.names[f] | default(value="") %}'
+                 '{{ f }}{% if name %} {{ name }}{% else %} -{% endif %}'
+                 ' ({{ c.groups[f] | default(value=c.items) | length }});{% endfor %}')
+        self.assertEqual(self.render(loops), "1.1 Jedna (2);1.2 - (1);1.9 - (2);")
+        total = ('{% set c = load_data(path="data/l.json") %}{% set n = 0 %}'
+                 '{% for f in c.parents["2"] %}{% set_global n = n + c.groups[f] | length + 0 %}'
+                 '{% endfor %}{{ n }} {{ c.groups["1.1"] | length + c.groups["1.2"] | length }}'
+                 ' {{ c.items[1] }}{% if c.items[5] %}!{% endif %}')
+        self.assertEqual(self.render(total), "3 3 20")
+        self.assertEqual(self.render('{% set t = load_data(path="data/t.toml") %}'
+                                     '{% for p in t.r %}{{ p.label }}{% endfor %}'), "L")
+        self.assertEqual(self.render("{{ page.extra.missing | default(value='x') }}"
+                                     .replace("'", '"')), "x")
+
+    def test_refuses_anything_else(self):
+        bad = ["{% for a, b in c %}{% endfor %}", "{% for x in c %}", "{% if x %}",
+               "{% macro m() %}", "{% include partials %}", '{% include "partials/no.md" %}',
+               '{% include "partials/self.md" %}', "{{ page.extra }}", "{{ nothing }}",
+               "{{ page.extra.code | upper }}", "{{ 1 + page.extra.code }}",
+               '{{ load_data(path="data/none.toml") }}', "{{ ) }}", "{{ page.extra.code ) }}",
+               "{{ page.extra.code | default(1) }}",
+               '{{ page.extra.code | default(value="a", other="b") }}', "{{ page.extra.code | default(value= }}",
+               "{{ page.extra.nope | length }}"]
+        for src in bad:
+            with self.subTest(src=src), self.assertRaises(pocket.PocketError):
+                self.render(src)
 
 
 def tiny_ir(n=5):
