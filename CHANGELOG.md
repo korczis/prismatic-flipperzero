@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0 — Find (preview)
 
 - **Find by name** (Library, first entry): type a title, alias or code a letter at a time on a
   wheel that offers only letters with matches, so a query never reaches zero; the best three
@@ -13,8 +13,10 @@
 - `app/core/search.c` (1.2 KiB, no allocation), checked against the reference
   `tools/pocket.py search` on every prefix of one to three letters and every key typed in full;
   `tools/cache-bench.sh` measures what each Find step reads from the card in the simulator.
-- Not yet on a device: the gallery, the parity record and the acceptance record still show the
-  0.2.0 build.
+- Proven on official 1.5.1: Find typed and browsed on the device, 14 of 14 frames identical to
+  the simulator (`docs/evidence/find`); parity and the device gallery recorded on the 0.3.0
+  build.
+- Fix: a lead-in sentence ending in ':' is no longer compiled as a marker or a list item.
 
 ## 0.2.0 — Bridge (preview)
 

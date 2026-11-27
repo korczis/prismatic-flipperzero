@@ -276,7 +276,7 @@ None of them is a mock-up.
   <tr><td align="center" width="50%"><img src="docs/evidence/pocket/25-about.png" width="384" alt="About: what the app is and the keys"><br><sub>About: what the app is and the keys</sub></td></tr>
 </table>
 
-Captured 2026-11-26 on firmware 1.5.1 with `tools/capture-screens.sh`.
+Captured 2026-11-27 on firmware 1.5.1 with `tools/capture-screens.sh`.
 <!-- docs:end screens -->
 
 </details>
@@ -522,7 +522,8 @@ timeline
   v0.0.1 First Light : native FAP on hardware : pinned SDK matrix : preview release
   v0.1.0 Pocket : full Kompendium pack : reader, detector, applicator, trainer : sessions and spaced repetition : Prismatic assessments, scorecards, simulations
   v0.2.0 Bridge : host bridge over USB : checked pack install : sessions and progress on a computer
-  next : search index : multi-pattern detector with shared markers : Momentum on hardware
+  v0.3.0 Find : search index in the pack : Find by name on a letter wheel
+  next : multi-pattern detector with shared markers : Momentum on hardware
   later : Prismatic adapter over the bridge's JSON : more packs from the same compiler
 ```
 
