@@ -1,0 +1,35 @@
+# Written by tools/release_record.py from the release GitHub publishes.
+# Evidence, not a plan: every digest below was read by GitHub and matches SHA256SUMS.
+schema: release/v1
+version: "0.0.1"
+tag: v0.0.1
+channel: prerelease
+commit: 67c2cecc03b82460ec6f76c6e4e6734cb6307a3e
+published_at: "2026-11-25T03:54:58Z"
+notes_url: https://github.com/korczis/prismatic-flipperzero/releases/tag/v0.0.1
+artifacts:
+  - target: SHA256SUMS
+    name: SHA256SUMS
+    url: https://github.com/korczis/prismatic-flipperzero/releases/download/v0.0.1/SHA256SUMS
+    sha256: 504f774da4494d580b13799a09c0896a6428d3158a758a54a7c7f4fd3661c89e
+    size: 426
+  - target: prismatic-momentum-api87.1.build.json
+    name: prismatic-0.0.1-momentum-api87.1.build.json
+    url: https://github.com/korczis/prismatic-flipperzero/releases/download/v0.0.1/prismatic-0.0.1-momentum-api87.1.build.json
+    sha256: 0f58e25b512d744ff5ef65c192328d93679c9ef911feb95d942c13e3ca7e3574
+    size: 414
+  - target: prismatic-momentum-api87.1.fap
+    name: prismatic-0.0.1-momentum-api87.1.fap
+    url: https://github.com/korczis/prismatic-flipperzero/releases/download/v0.0.1/prismatic-0.0.1-momentum-api87.1.fap
+    sha256: 29035cac3d46bc932edeb525cf47cd0367de87c6ebc2c9a96dd1e4e80f879b7e
+    size: 2608
+  - target: prismatic-official-api88.2.build.json
+    name: prismatic-0.0.1-official-api88.2.build.json
+    url: https://github.com/korczis/prismatic-flipperzero/releases/download/v0.0.1/prismatic-0.0.1-official-api88.2.build.json
+    sha256: a96f75f55da8921f4d5c960b2aab66c9693ee66a9defc62a083258648a93701e
+    size: 411
+  - target: prismatic-official-api88.2.fap
+    name: prismatic-0.0.1-official-api88.2.fap
+    url: https://github.com/korczis/prismatic-flipperzero/releases/download/v0.0.1/prismatic-0.0.1-official-api88.2.fap
+    sha256: b077bde240c4f251eb0dda836a216222cede624abc7d30dc31d0a92df7c5177b
+    size: 2608

@@ -1,0 +1,45 @@
+# Written by tools/release_record.py from the release GitHub publishes.
+# Evidence, not a plan: every digest below was read by GitHub and matches SHA256SUMS.
+schema: release/v1
+version: "0.3.1"
+tag: v0.3.1
+channel: prerelease
+commit: f6a1db3b3348a565adeb4aec07912f649a7d3ab2
+published_at: "2026-11-28T05:35:07Z"
+notes_url: https://github.com/korczis/prismatic-flipperzero/releases/tag/v0.3.1
+artifacts:
+  - target: SHA256SUMS
+    name: SHA256SUMS
+    url: https://github.com/korczis/prismatic-flipperzero/releases/download/v0.3.1/SHA256SUMS
+    sha256: f9d484b5f75afbf2a9fc416d0e678f7cc64a460d3cea3eb4e98354ea1194653f
+    size: 608
+  - target: kompendium.pkp
+    name: kompendium-0.3.1.pkp
+    url: https://github.com/korczis/prismatic-flipperzero/releases/download/v0.3.1/kompendium-0.3.1.pkp
+    sha256: 9ab07a225ce32ba101226c02ad4211e98659528ba4ad3b9b9282f9ca8f85b583
+    size: 21193052
+  - target: kompendium.report.json
+    name: kompendium-0.3.1.report.json
+    url: https://github.com/korczis/prismatic-flipperzero/releases/download/v0.3.1/kompendium-0.3.1.report.json
+    sha256: 7561c4a1ca53ab4dac6422f725ec61522e286d4d9b00ffca5dfaa939425a199a
+    size: 1127
+  - target: prismatic-momentum-api87.1.build.json
+    name: prismatic-0.3.1-momentum-api87.1.build.json
+    url: https://github.com/korczis/prismatic-flipperzero/releases/download/v0.3.1/prismatic-0.3.1-momentum-api87.1.build.json
+    sha256: d65a034f66b5b6a9a7f6443c26af693a7f545ade52a2beae48a0613b1f47caf9
+    size: 414
+  - target: prismatic-momentum-api87.1.fap
+    name: prismatic-0.3.1-momentum-api87.1.fap
+    url: https://github.com/korczis/prismatic-flipperzero/releases/download/v0.3.1/prismatic-0.3.1-momentum-api87.1.fap
+    sha256: b8e7519bcdafcbce4903457689c0968a818330151d52124b8a5f3a197c2f5d0d
+    size: 81960
+  - target: prismatic-official-api88.2.build.json
+    name: prismatic-0.3.1-official-api88.2.build.json
+    url: https://github.com/korczis/prismatic-flipperzero/releases/download/v0.3.1/prismatic-0.3.1-official-api88.2.build.json
+    sha256: 3ba7e60870bc24e867a18142e25fbf14e782daadd95b7ba6dd0bed38dc554201
+    size: 411
+  - target: prismatic-official-api88.2.fap
+    name: prismatic-0.3.1-official-api88.2.fap
+    url: https://github.com/korczis/prismatic-flipperzero/releases/download/v0.3.1/prismatic-0.3.1-official-api88.2.fap
+    sha256: df7621759720f8bfd2345a67112636fbf9f8b8ef3a65c6726db2f5e97c181bec
+    size: 81960

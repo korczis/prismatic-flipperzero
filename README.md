@@ -482,6 +482,7 @@ just verify        # everything CI checks, locally
 | `just bridge <cmd>` | Host bridge over RPC: device status, checked pack install, pull and decode saved sessions and progress |
 | `just screenshot` / `just walk DIR KEYS` | Real device frames, optionally after scripted key presses |
 | `just release-assets` | Versioned FAPs, the pack, provenance and `SHA256SUMS` |
+| `just release-record <tag>` | After a release is published: its Majordomus record, every digest checked against `SHA256SUMS` |
 
 ## How it is kept honest
 

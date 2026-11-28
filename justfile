@@ -81,6 +81,10 @@ verify:
 release-assets:
     tools/release.sh
 
+# Majordomus release record of published tags (.ai/repo/releases), read back from GitHub
+release-record *tags:
+    tools/release_record.py {{tags}}
+
 # Pages explorer: data from the pack, site build, e2e in Chromium, JS line coverage
 site:
     python3 tools/explorer.py
