@@ -350,6 +350,22 @@ class FlipperScreenTest(unittest.TestCase):
         rpc.send(20)
         self.assertEqual(len(rpc.frame(timeout=1.0, settle=0.1)), 1024)
 
+    def test_bytes_after_the_echo_are_kept_for_rpc(self):
+        body = fs.field(1, 0, 7)
+
+        class EagerRpc(FakeFlipper):
+            """The first RPC message arrives in the same read as the echo."""
+
+            def write(self, data):
+                super().write(data)
+                if data == b"start_rpc_session\r":
+                    self.out += fs.varint(len(body)) + body
+
+        with mock.patch.dict(sys.modules, {"serial": types.SimpleNamespace(Serial=EagerRpc)}):
+            rpc = fs.Rpc("/dev/fake")
+        self.assertEqual(rpc.buf, fs.varint(len(body)) + body)
+        self.assertEqual(rpc.next_message(timeout=0.5), {1: 7})
+
     def test_close_waits_for_the_session_end_but_never_hangs(self):
         with mock.patch.dict(sys.modules, {"serial": types.SimpleNamespace(Serial=FakeFlipper)}):
             rpc = fs.Rpc("/dev/fake")

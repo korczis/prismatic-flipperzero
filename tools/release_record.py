@@ -17,7 +17,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / ".ai" / "repo" / "releases"
-TAG = re.compile(r"^v(\d+\.\d+\.\d+)$")
+TAG = re.compile(r"^v(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$")  # release/v1's tag pattern
 SUMS = "SHA256SUMS"
 
 
@@ -26,7 +26,12 @@ class RecordError(Exception):
 
 
 def run(cmd):
-    return subprocess.run(cmd, cwd=ROOT, check=True, capture_output=True, text=True).stdout
+    """A command's output; a failure is a refusal carrying what the command said."""
+    done = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
+    if done.returncode:
+        said = (done.stderr or done.stdout).strip() or f"exit {done.returncode}"
+        raise RecordError(f"{' '.join(cmd[:3])}: {said}")
+    return done.stdout
 
 
 def target(name, version):
@@ -38,18 +43,22 @@ def sums(text):
     out = {}
     for line in text.splitlines():
         if line.strip():
-            digest, name = line.split(maxsplit=1)
-            out[name.lstrip("*")] = digest
+            parts = line.split(maxsplit=1)
+            if len(parts) != 2 or not re.fullmatch(r"[0-9a-f]{64}", parts[0]):
+                raise RecordError(f"{SUMS}: not a '<sha256>  <name>' line: {line.strip()!r}")
+            out[parts[1].strip().lstrip("*")] = parts[0]
     return out
 
 
 def record(tag, sh=run):
     m = TAG.match(tag)
     if not m:
-        raise RecordError(f"{tag}: not a vMAJOR.MINOR.PATCH tag")
+        raise RecordError(f"{tag}: not a vMAJOR.MINOR.PATCH[-PRE] tag")
     version = m.group(1)
     rel = json.loads(sh(["gh", "release", "view", tag, "--json",
-                         "tagName,publishedAt,url,isPrerelease,assets"]))
+                         "tagName,publishedAt,url,isPrerelease,isDraft,assets"]))
+    if rel["isDraft"]:
+        raise RecordError(f"{tag}: the release is a draft, not published")
     commit = sh(["git", "rev-list", "-n", "1", tag]).strip()
     listed = sums(sh(["gh", "release", "download", tag, "-p", SUMS, "-O", "-"]))
     lines = [
@@ -58,7 +67,7 @@ def record(tag, sh=run):
         "schema: release/v1",
         f'version: "{version}"',
         f"tag: {tag}",
-        f"channel: {'prerelease' if rel['isPrerelease'] else 'stable'}",
+        f"channel: {'prerelease' if rel['isPrerelease'] or '-' in version else 'stable'}",
         f"commit: {commit}",
         f'published_at: "{rel["publishedAt"]}"',
         f"notes_url: {rel['url']}",
@@ -66,9 +75,11 @@ def record(tag, sh=run):
     ]
     names = set()
     for a in sorted(rel["assets"], key=lambda a: a["name"]):
-        name, digest = a["name"], a.get("digest", "").removeprefix("sha256:")
+        name, digest = a["name"], (a.get("digest") or "").removeprefix("sha256:")
         if not re.fullmatch(r"[0-9a-f]{64}", digest):
             raise RecordError(f"{tag}: GitHub reports no SHA-256 for {name}")
+        if a["size"] < 1:
+            raise RecordError(f"{tag}: {name} is empty")
         if name != SUMS and listed.get(name) != digest:
             raise RecordError(f"{tag}: {name} does not match {SUMS}")
         names.add(name)
@@ -86,20 +97,20 @@ def main(argv, sh=run):
         i = args.index("--out-dir")
         out = Path(args[i + 1])
         del args[i:i + 2]
-    tags = [t for t in sh(["git", "tag", "-l", "v*"]).split() if TAG.match(t)] \
-        if args == ["--all"] else args
-    if not tags:
-        print(__doc__.strip().splitlines()[-1], file=sys.stderr)
-        return 2
-    out.mkdir(parents=True, exist_ok=True)
-    for tag in tags:
-        try:
+    try:
+        tags = [t for t in sh(["git", "tag", "-l", "v*"]).split() if TAG.match(t)] \
+            if args == ["--all"] else args
+        if not tags:
+            print(__doc__.strip().splitlines()[-1], file=sys.stderr)
+            return 2
+        out.mkdir(parents=True, exist_ok=True)
+        for tag in tags:
             text = record(tag, sh)
-        except RecordError as e:
-            print(f"release-record: {e}", file=sys.stderr)
-            return 1
-        (out / f"{tag}.yaml").write_text(text)
-        print(f"release-record: {out / f'{tag}.yaml'}")
+            (out / f"{tag}.yaml").write_text(text)
+            print(f"release-record: {out / f'{tag}.yaml'}")
+    except RecordError as e:
+        print(f"release-record: {e}", file=sys.stderr)
+        return 1
     return 0
 
 

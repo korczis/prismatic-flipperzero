@@ -27,7 +27,8 @@ def asset(name, digest, size=10):
 class FakeGh:
     """Answers the three questions the tool asks: the release, the tag's commit, SHA256SUMS."""
 
-    def __init__(self, assets=None, sums=None, prerelease=True, tags="v1.2.3\nv1.2\nlatest\n"):
+    def __init__(self, assets=None, sums=None, prerelease=True, draft=False,
+                 tags="v1.2.3\nv1.2\nlatest\n"):
         self.assets = assets if assets is not None else [
             asset("prismatic-1.2.3-official-api88.2.fap", FAP),
             asset("kompendium-1.2.3.pkp", PACK, 2048),
@@ -35,12 +36,13 @@ class FakeGh:
         ]
         self.sums = sums if sums is not None else (
             f"{FAP}  prismatic-1.2.3-official-api88.2.fap\n{PACK} *kompendium-1.2.3.pkp\n\n")
-        self.prerelease, self.tags = prerelease, tags
+        self.prerelease, self.draft, self.tags = prerelease, draft, tags
 
     def __call__(self, cmd):
         if cmd[:3] == ["gh", "release", "view"]:
             return json.dumps({"tagName": cmd[3], "publishedAt": "2026-11-28T05:35:07Z",
                                "url": f"{URL}/tag/{cmd[3]}", "isPrerelease": self.prerelease,
+                               "isDraft": self.draft,
                                "assets": self.assets})
         if cmd[:2] == ["git", "rev-list"]:
             return "f" * 40 + "\n"
@@ -70,11 +72,21 @@ class RecordTest(unittest.TestCase):
         self.assertIn(f"    sha256: {PACK}\n    size: 2048\n", text)
         self.assertIn("target: prismatic-official-api88.2.fap", text)
         self.assertIn("channel: stable", rr.record("v1.2.3", FakeGh(prerelease=False)))
+        # a version with a pre-release part is never stable, whatever GitHub says
+        pre = FakeGh(prerelease=False, assets=[], sums="")
+        self.assertIn('version: "1.2.3-rc.1"\ntag: v1.2.3-rc.1\nchannel: prerelease\n',
+                      rr.record("v1.2.3-rc.1", pre))
 
     def test_refusals(self):
         cases = [
             ("v1.2", FakeGh(), "not a vMAJOR"),
             ("v1.2.3", FakeGh(assets=[{"name": "x", "size": 1, "url": URL}]), "no SHA-256"),
+            ("v1.2.3", FakeGh(assets=[{"name": "x", "size": 1, "url": URL, "digest": None}]),
+             "no SHA-256"),
+            ("v1.2.3", FakeGh(assets=[asset("SHA256SUMS", "c" * 64, size=0)]), "is empty"),
+            ("v1.2.3", FakeGh(draft=True), "a draft"),
+            ("v1.2.3", FakeGh(sums=f"{FAP}\n"), "not a '<sha256>  <name>' line"),
+            ("v1.2.3", FakeGh(sums="SHA256 (a.fap) = x\n"), "not a '<sha256>  <name>' line"),
             ("v1.2.3", FakeGh(sums=f"{PACK}  prismatic-1.2.3-official-api88.2.fap\n"),
              "does not match"),
             ("v1.2.3", FakeGh(sums=FakeGh().sums + f"{FAP}  gone.fap\n"), "lacks: gone.fap"),
@@ -93,12 +105,22 @@ class RecordTest(unittest.TestCase):
             rc, _, err = quiet(rr.main, ["v1.2.3", "--out-dir", d], FakeGh(sums=""))
             self.assertEqual(rc, 1)
             self.assertIn("release-record: v1.2.3", err)
+        def no_git(cmd):
+            raise rr.RecordError("git tag -l: not a git repository")
+
+        rc, _, err = quiet(rr.main, ["--all"], no_git)
+        self.assertEqual(rc, 1)
+        self.assertIn("not a git repository", err)
         rc, _, err = quiet(rr.main, [], FakeGh())
         self.assertEqual(rc, 2)
         self.assertIn("Usage", err)
 
     def test_run_and_entry_point(self):
         self.assertEqual(rr.run([sys.executable, "-c", "print(40)"]), "40\n")
+        with self.assertRaisesRegex(rr.RecordError, "release not found"):
+            rr.run([sys.executable, "-c", "import sys; sys.exit('release not found')"])
+        with self.assertRaisesRegex(rr.RecordError, "exit 3"):
+            rr.run([sys.executable, "-c", "raise SystemExit(3)"])
         with mock.patch.object(sys, "argv", ["release_record.py"]):
             with self.assertRaises(SystemExit) as cm:
                 quiet(runpy.run_path, str(ROOT / "tools" / "release_record.py"), None,
