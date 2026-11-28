@@ -232,3 +232,11 @@ sources:
 
   # A claim's detail page, docs/claims/<id>.md, is a document the `document` class already
   # discovers: a second class of the same kind over it would claim every page twice.
+
+  # The release records (.ai/repo/releases/v*.yaml, release/v1), written by
+  # tools/release_record.py from the published release; release currency is measured from them.
+  - id: release
+    kind: release-record
+    discovery: vcs
+    pathspec: ':(glob).ai/repo/releases/*.yaml'
+    required: false

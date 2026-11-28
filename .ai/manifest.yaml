@@ -29,6 +29,7 @@ sections:
   why: repo/why
   features: repo/features
   deployments: repo/deployments
+  releases: repo/releases
 
 # The scoped context documents: file names that must carry the context contract wherever
 # they appear in the tree. The contract itself (schema: context/v1) identifies a document;
