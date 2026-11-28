@@ -399,3 +399,39 @@ test('calculate: sources fuse by Bayes as the source code does, prior moves, sou
   await page.locator('[data-act="calc:add:10"]').click();
   await expect(page.locator('[data-status]')).toHaveText('rejected');
 });
+
+// majordomus-skill: fleet-flowbite-pro
+// The page is built on Flowbite: on a narrow screen the sidebar is Flowbite's Drawer, opened
+// by its toggle, usable above the backdrop it draws, and closed by a link or that backdrop,
+// with no handler of ours in between.
+test('flowbite: the sidebar drawer opens, navigates above its backdrop, and closes', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await ready(page);
+  const sidebar = page.locator('#sidebar');
+  const backdrop = page.locator('[drawer-backdrop]');
+  const toggle = page.locator('[data-drawer-toggle="sidebar"]');
+  const closed = async () => {
+    await expect(sidebar).toHaveClass(/-translate-x-full/);
+    await expect(sidebar).not.toHaveAttribute('aria-modal', 'true');
+    await expect(backdrop).toHaveCount(0);
+  };
+  await closed();
+  await toggle.click();
+  await expect(sidebar).not.toHaveClass(/-translate-x-full/);
+  await expect(sidebar).toHaveAttribute('aria-modal', 'true');
+  await expect(backdrop).toHaveCount(1);
+  await expect.poll(async () => (await sidebar.boundingBox()).x).toBe(0); // slid in
+  // a link inside the open drawer is what a tap reaches, not the backdrop
+  const link = sidebar.locator('[data-nav="explore"]');
+  const box = await link.boundingBox();
+  expect(await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.dataset.nav,
+    [box.x + box.width / 2, box.y + box.height / 2])).toBe('explore');
+  await link.click();
+  await expect(page).toHaveURL(/#\/explore$/);
+  await closed();
+  await toggle.click();
+  await expect(backdrop).toHaveCount(1);
+  await backdrop.click({ position: { x: 370, y: 400 } });
+  await closed();
+});
