@@ -329,6 +329,27 @@ class FlipperScreenTest(unittest.TestCase):
         rpc.close()
         self.assertTrue(rpc.s.closed)
 
+    def test_late_prompt_before_the_echo_is_not_parsed_as_rpc(self):
+        class LatePrompt(FakeFlipper):
+            """The second prompt (from the Enter after Ctrl-C) arrives after the input reset,
+            and bytes arrive a line at a time, as they do on the wire."""
+
+            @property
+            def in_waiting(self):
+                nl = self.out.find(b"\n")
+                return nl + 1 if nl >= 0 else len(self.out)
+
+            def write(self, data):
+                if data == b"start_rpc_session\r":
+                    self.out += b"\r\n>: "
+                super().write(data)
+
+        with mock.patch.dict(sys.modules, {"serial": types.SimpleNamespace(Serial=LatePrompt)}):
+            rpc = fs.Rpc("/dev/fake")
+        self.assertEqual(rpc.buf, b"")
+        rpc.send(20)
+        self.assertEqual(len(rpc.frame(timeout=1.0, settle=0.1)), 1024)
+
     def test_close_waits_for_the_session_end_but_never_hangs(self):
         with mock.patch.dict(sys.modules, {"serial": types.SimpleNamespace(Serial=FakeFlipper)}):
             rpc = fs.Rpc("/dev/fake")

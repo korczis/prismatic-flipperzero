@@ -127,7 +127,12 @@ class Rpc:
         self._cli_until(b">: ", send=b"\x03\r")  # Ctrl-C ends any command left running
         self.s.reset_input_buffer()
         self.s.write(b"start_rpc_session\r")
-        self._cli_until(b"\n")  # the echoed command line; RPC framing starts after it
+        # RPC framing starts after the echoed command line. Wait for the echo itself, not for
+        # any newline: the Ctrl-C and the Enter above can each draw a prompt, and one that
+        # arrives late would otherwise leave the echo to be parsed as a message ("unsupported
+        # wire type 4": 's' read as a length, 't' as field 14 with wire type 4).
+        echo = b"start_rpc_session\r\n"
+        self.buf = self._cli_until(echo).split(echo, 1)[1]
 
     def _cli_until(self, token, send=None, timeout=5.0):
         if send:
