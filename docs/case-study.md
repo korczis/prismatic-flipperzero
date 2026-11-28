@@ -99,6 +99,10 @@ Generated from the repository's history by [`tools/docs.py`](../tools/docs.py). 
 | `bed3711` | 09:26 | docs(evidence): parity 24 of 24 and device gallery recaptured on 0.3.0 |
 | `d327e2f` | 10:00 | fix(pocket): render the Kompendium's page templates; pin it at f3d8cb3e |
 | `3cea570` | 10:20 | docs(evidence): parity 24 of 24 and gallery on the f3d8cb3e pack |
+| `f6a1db3` | 06:28 | chore(release): 0.3.1 Find, rendered pages: version, changelog, release notes |
+| `ea87232` | 06:39 | fix(tools): wait for the start_rpc_session echo, not for any newline |
+| `12c627d` | 08:26 | chore(release): record v0.0.1 to v0.3.1 and the tool that reads them back |
+| `fecf25d` | 08:36 | chore(ai): discover the release records: releases section and source |
 <!-- docs:end timeline -->
 
 ## What made it fast

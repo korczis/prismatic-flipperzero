@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.2 — Find, steady captures (preview)
+
+- Device tools: the RPC session waits for the echo of `start_rpc_session` instead of any
+  newline. A CLI prompt arriving late left the echo in the RPC buffer, and a capture failed
+  now and then with "unsupported wire type 4"; 12 of 12 captures and a walk passed on the
+  device with the fix. The app and the pack are unchanged apart from the version.
+- Every published release has a Majordomus record (`.ai/repo/releases`), written by
+  `just release-record <tag>` from the release GitHub serves, each digest checked against its
+  `SHA256SUMS`.
+- Proven on official 1.5.1 with the 0.3.2 build: parity 24 of 24, the device gallery
+  recaptured.
+
 ## 0.3.1 — Find, rendered pages (preview)
 
 - The compiler renders the Kompendium's page templates: shared passages pulled in with

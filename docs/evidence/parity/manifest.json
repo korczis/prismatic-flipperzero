@@ -4,7 +4,7 @@
  "keys": "right,down,up,ok,ok,ok,down,right,ok:long,back,ok:long,down,down,ok,up,back,back,back,back:long,down,ok,down,ok",
  "frames_identical": 24,
  "frames_different": 0,
- "fap_sha256": "f2629b2e4566dc7586b391b0a26e462f8823af5bf666bb5db6e0da28e787680c",
+ "fap_sha256": "8c982dbfbba5cf6359b9155f1f17ab4dbe4270d44df377c3fd8bb56f6e951361",
  "pack_sha256": "9ab07a225ce32ba101226c02ad4211e98659528ba4ad3b9b9282f9ca8f85b583",
  "command": "tools/parity.sh --record"
 }
