@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.1 — Find, rendered pages (preview)
 
 - The compiler renders the Kompendium's page templates: shared passages pulled in with
   `{% include %}`, the technique metadata row rendered from front matter and data files, and the
@@ -10,6 +10,9 @@
 - Kompendium pinned at `f3d8cb3e` (was `2d08d1bf`): 14 upstream commits, the technique metadata
   table moved into one partial. Relations 37 567 -> 37 899 (links inside rendered listings now
   resolve), alternatives 3 792 -> 3 812.
+- Device scripts wait 6 s after the loader opens the app: the pack open with its whole-pack CRC
+  measured 3 551 ms on the device. Proven on official 1.5.1 with the 0.3.1 build: parity 24 of
+  24, the device gallery recaptured.
 
 ## 0.3.0 — Find (preview)
 

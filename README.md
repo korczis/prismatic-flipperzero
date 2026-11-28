@@ -276,7 +276,7 @@ None of them is a mock-up.
   <tr><td align="center" width="50%"><img src="docs/evidence/pocket/25-about.png" width="384" alt="About: what the app is and the keys"><br><sub>About: what the app is and the keys</sub></td></tr>
 </table>
 
-Captured 2026-11-27 on firmware 1.5.1 with `tools/capture-screens.sh`.
+Captured 2026-11-28 on firmware 1.5.1 with `tools/capture-screens.sh`.
 <!-- docs:end screens -->
 
 </details>
